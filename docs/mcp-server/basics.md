@@ -1,0 +1,100 @@
+---
+sidebar_position: 1
+---
+
+# MCP Server - Basics
+
+Let's build a simple MCP server with Neva and add a tool, prompt and resource handlers.
+
+## Create an app
+
+Create a new binary-based app:
+```bash
+cargo new neva-mcp-server
+cd neva-mcp-server
+```
+
+Add the following dependencies in your `Cargo.toml`:
+
+```toml
+[dependencies]
+neva = { version = "0.1.8", features = "server-full" }
+tokio = { version = "1", features = ["full"] }
+```
+
+## Setup a tool
+Let's start by adding a simple tool - a function that greets a user by name.
+
+Create your main application in `main.rs`:
+
+```rust
+use neva::prelude::*;
+
+#[tool(descr = "A say hello tool")]
+async fn hello(name: String) -> String {
+    format!("Hello, {name}!")
+}
+
+#[tokio::main]
+async fn main() {
+    App::new()
+        .with_options(|opt| opt
+            .with_stdio()
+            .with_name("Sample MCP server")
+            .with_version("1.0.0"))
+        .run()
+        .await;
+}
+```
+
+In the code above configured the MCP Server that runs on `stdio` transport and declared an async tool handler by using a [tool](https://docs.rs/neva/latest/neva/attr.tool.html) attribute macro that extracts the `name` parameter into a `String` and expects another result `String` to be returned. The macro registers our `hello` tool with the specified description. 
+
+Besides the `descr`, you can configure your tool with:
+- `title` — Tool title.
+- `input_schema` — Schema for the tool input.
+- `output_schema` — Schema for the tool output.
+- `annotations` — Arbitrary metadata.
+- `roles` & `permissions` — Define which users can run the tool when using Streamable HTTP transport with OAuth.
+
+## Testing the MCP Server
+
+For testing purposes you may leverage the [MCP Inspector](https://github.com/modelcontextprotocol/inspector) by running the following command:
+```bash
+npx @modelcontextprotocol/inspector cargo run
+```
+This launches the MCP Inspector UI, allowing you to explore your server’s tools, prompts, and resources interactively.
+
+## Adding a prompt handler
+
+Next, we'll similarly add the prompt handler by using the [prompt](https://docs.rs/neva/latest/neva/attr.prompt.html) attribute macro:
+```rust
+#[prompt(descr = "Analyze code for potential improvements")]
+async fn analyze_code(lang: String) -> PromptMessage {
+    PromptMessage::user()
+        .with(format!("Language: {lang}"))
+}
+```
+
+## Adding a resource tempate handler
+
+Same idea as above, with the special [resource](https://docs.rs/neva/latest/neva/attr.resource.html) attribute macro you can define a resource handler with minimal boilerplate:
+```rust
+#[resource(
+    uri = "res://{name}",
+    title = "Read resource",
+    descr = "Some details about resource",
+    mime = "text/plain",
+    annotations = r#"{
+        "audience": ["user"],
+        "priority": 1.0
+    }"#
+)]
+async fn get_res(name: String) -> TextResourceContents {
+    TextResourceContents::new(
+        format!("res://{name}"),
+        format!("Some details about resource: {name}"))
+}
+```
+
+## Learn By Example
+Here you may find the full [example](https://github.com/RomanEmreis/neva/tree/0.1.8/examples/server)
