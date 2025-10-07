@@ -2,7 +2,7 @@
 sidebar_position: 1
 ---
 
-# MCP Client Basics
+# MCP Client - Basics
 
 Let’s use the Neva MCP client to connect to your MCP servers (and others too).
 
