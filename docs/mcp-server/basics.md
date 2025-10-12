@@ -2,7 +2,7 @@
 sidebar_position: 1
 ---
 
-# MCP Server - Basics
+# Basics
 
 Let's build a simple MCP server with Neva and add a tool, prompt and resource handlers.
 
@@ -18,7 +18,7 @@ Add the following dependencies in your `Cargo.toml`:
 
 ```toml
 [dependencies]
-neva = { version = "0.1.8", features = "server-full" }
+neva = { version = "0.1.9", features = "server-full" }
 tokio = { version = "1", features = ["full"] }
 ```
 
@@ -50,11 +50,11 @@ async fn main() {
 In the code above configured the MCP Server that runs on `stdio` transport and declared an async tool handler by using a [tool](https://docs.rs/neva/latest/neva/attr.tool.html) attribute macro that extracts the `name` parameter into a `String` and expects another result `String` to be returned. The macro registers our `hello` tool with the specified description. 
 
 Besides the `descr`, you can configure your tool with:
-- `title` — Tool title.
-- `input_schema` — Schema for the tool input.
-- `output_schema` — Schema for the tool output.
-- `annotations` — Arbitrary metadata.
-- `roles` & `permissions` — Define which users can run the tool when using Streamable HTTP transport with OAuth.
+- `title` - Tool title.
+- `input_schema` - Schema for the tool input.
+- `output_schema` - Schema for the tool output.
+- `annotations` - Arbitrary [metadata](https://docs.rs/neva/latest/neva/types/tool/struct.ToolAnnotations.html).
+- `roles` & `permissions` - Define which users can run the tool when using Streamable HTTP transport with OAuth.
 
 ## Testing the MCP Server
 

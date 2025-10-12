@@ -50,73 +50,59 @@ function HomepageHeader() {
 function Examples() {
   return (
     <div className={styles.examples}>
-      <div>
-        <div className="container">
-          <div className={styles.example}>
-            <div className={styles.code}>
-              <MDXContent>
-                <ServerHello />
-              </MDXContent>
-            </div>
-            <div className={styles.description}>
-              <Heading as="h1">Hello from MCP Tool</Heading>
-              <p>
-                Create an MCP server and add your first <a href='https://modelcontextprotocol.io/specification/draft/server/tools' target='_blank'>tool</a> in just a few lines.
-              </p>
-            </div>
-          </div>
+      <div className={`${styles.example} ${styles.reverse}`}>
+        <div className={styles.description}>
+          <Heading as="h1">Hello from MCP Tool</Heading>
+          <p>
+            Create an MCP server and add your first <a href='https://modelcontextprotocol.io/specification/draft/server/tools' target='_blank'>tool</a> in just a few lines.
+          </p>
+        </div>
+        <div className={styles.code}>
+          <MDXContent>
+            <ServerHello />
+          </MDXContent>
         </div>
       </div>
 
-      <div>
-        <div className="container">
-          <div className={styles.example}>
-            <div className={styles.description}>
-              <Heading as="h1">Power of Prompts</Heading>
-              <p>
-                Define rich, flexible <a href='https://modelcontextprotocol.io/specification/draft/server/prompts' target='_blank'>prompts</a> with ease.
-              </p>
-            </div>
-            <div className={styles.code}>
-              <MDXContent>
-                <PromptHello />
-              </MDXContent>
-            </div>
-          </div>
+      <div className={styles.example}>
+        <div className={styles.description}>
+          <Heading as="h1">Power of Prompts</Heading>
+          <p>
+            Define rich, flexible <a href='https://modelcontextprotocol.io/specification/draft/server/prompts' target='_blank'>prompts</a> with ease.
+          </p>
+        </div>
+        <div className={styles.code}>
+          <MDXContent>
+            <PromptHello />
+          </MDXContent>
         </div>
       </div>
 
-      <div>
-        <div className="container">
-          <div className={styles.example}>
-            <div className={styles.code}>
-              <MDXContent>
-                <ResourcesHello />
-              </MDXContent>
-            </div>
-            <div className={styles.description}>
-              <Heading as="h1">Resources Made Simple</Heading>
-              <p>
-                Expose <a href='https://modelcontextprotocol.io/specification/draft/server/resources' target='_blank'>resources</a> with intuitive APIs. Design reusable resource templates for ultimate flexibility.
-              </p>
-            </div>
-          </div>
+      <div className={`${styles.example} ${styles.reverse}`}>
+        <div className={styles.description}>
+          <Heading as="h1">Resources Made Simple</Heading>
+          <p>
+            Expose <a href='https://modelcontextprotocol.io/specification/draft/server/resources' target='_blank'>resources</a> with intuitive APIs. Design reusable resource templates for ultimate flexibility.
+          </p>
+        </div>
+        <div className={styles.code}>
+          <MDXContent>
+            <ResourcesHello />
+          </MDXContent>
         </div>
       </div>
 
-      <div className="container">
-        <div className={styles.example}>
-          <div className={styles.description}>
-            <Heading as="h1">Flexible MCP Client</Heading>
-            <p>
-              An intuitive API with effortless configuration and smooth interaction with MCP servers.
-            </p>
-          </div>
-          <div className={styles.code}>
-            <MDXContent>
-              <ClientHello />
-            </MDXContent>
-          </div>
+      <div className={styles.example}>
+        <div className={styles.description}>
+          <Heading as="h1">Flexible MCP Client</Heading>
+          <p>
+            An intuitive API with effortless configuration and smooth interaction with MCP servers.
+          </p>
+        </div>
+        <div className={styles.code}>
+          <MDXContent>
+            <ClientHello />
+          </MDXContent>
         </div>
       </div>
     </div>

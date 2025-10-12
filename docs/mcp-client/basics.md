@@ -2,7 +2,7 @@
 sidebar_position: 1
 ---
 
-# MCP Client - Basics
+# Basics
 
 Let’s use the Neva MCP client to connect to your MCP servers (and others too).
 
@@ -18,7 +18,7 @@ Add the following dependencies in your `Cargo.toml`:
 
 ```toml
 [dependencies]
-neva = { version = "0.1.8", features = "client-full" }
+neva = { version = "0.1.9", features = "client-full" }
 tokio = { version = "1", features = ["full"] }
 ```
 
@@ -117,4 +117,4 @@ let resources = client
 ```
 
 ## Learn By Example
-Here you may find the full [example](https://github.com/RomanEmreis/neva/tree/0.1.8/examples/client)
+Here you may find the full [example](https://github.com/RomanEmreis/neva/tree/main/examples/server)

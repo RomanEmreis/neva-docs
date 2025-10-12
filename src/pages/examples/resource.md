@@ -1,8 +1,8 @@
 ```rust
 #[resources]
-async fn list_resources(_: ListResourcesRequestParams) -> impl Into<ListResourcesResult> {
+async fn list_resources(_: ListResourcesRequestParams) -> Vec<Resource> {
     // Read a list of resources from some source
-    let resources = [
+    let resources = vec![
         Resource::new("res://res1", "resource 1")
             .with_descr("A test resource 1")
             .with_mime("text/plain"),
@@ -10,7 +10,6 @@ async fn list_resources(_: ListResourcesRequestParams) -> impl Into<ListResource
             .with_descr("A test resource 2")
             .with_mime("text/plain"),
     ];
-
     resources
 }
 
