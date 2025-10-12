@@ -74,7 +74,7 @@ async fn hello(name: String) -> String {
 
 ## Output Schema
 
-If your tool returns **structured data** (for example, a JSON object),
+If your tool returns [**structured data**](https://modelcontextprotocol.io/specification/draft/server/tools#tool-result) (for example, a JSON object),
 Neva automatically generates an [output schema](https://docs.rs/neva/latest/neva/types/tool/struct.ToolSchema.html) based on the return type.
 
 Just like with the [input schema](/docs/mcp-server/tools#input-schema),
