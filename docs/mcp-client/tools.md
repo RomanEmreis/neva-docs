@@ -79,6 +79,7 @@ struct Weather {
     humidity: f32,
 }
 
+let args = ("location", "London");
 let result = client.call_tool("weather-forecast", args).await?;
 let weather: Weather = result.as_json()?;
 
