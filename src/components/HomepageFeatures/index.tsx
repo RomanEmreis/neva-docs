@@ -39,6 +39,7 @@ function Feature({title, description}: FeatureItem) {
   return (
     <div className={clsx('col col--4')}>
       <div className="text--center padding-horiz--md">
+        <div className={styles.circle} role="img" aria-label="small-circle"></div>
         <Heading as="h3">{title}</Heading>
         <p>{description}</p>
       </div>

@@ -4,6 +4,8 @@ sidebar_position: 2
 
 # Tools
 
+The Model Context Protocol (MCP) allows servers to expose [tools](https://modelcontextprotocol.io/specification/draft/server/tools) that can be invoked by language models. Tools enable models to interact with external systems, such as querying databases, calling APIs, or performing computations. Each tool is uniquely identified by a name and includes metadata describing its schema.
+
 In the [Basics](/docs/mcp-server/basics) chapter, we learned how to declare a simple tool:
 
 ```rust
@@ -110,10 +112,9 @@ you can inject the [Context](https://docs.rs/neva/latest/neva/app/context/struct
 #[tool(descr = "Fetches resource metadata")]
 async fn read_resource(ctx: Context, res: Uri) -> Result<Content, Error> {
     let result = ctx.resource(res).await?;
-    let resource = result
-        .contents
-        .first()
-        .cloned()
+    let resource = result.contents
+        .into_iter()
+        .next()
         .expect("No resource contents");
     Ok(Content::resource(resource))
 }
