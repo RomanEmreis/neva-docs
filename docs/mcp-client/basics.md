@@ -41,6 +41,7 @@ async fn main() -> Result<(), Error> {
     
     let args = ("name", "John");
     let result = client.call_tool("hello", args).await?;
+
     println!("{:?}", result.content);
     
     client.disconnect().await
@@ -57,7 +58,6 @@ Next, let’s fetch a [prompt](/docs/mcp-server/basics#adding-a-prompt-handler) 
 ```rust
 let args = ("lang", "Rust");
 let prompt = client.get_prompt("analyze_code", args).await?;
-println!("{:?}: {:?}", prompt.descr, prompt.messages);
 ```
 
 ## Read a Resource
@@ -65,10 +65,9 @@ println!("{:?}: {:?}", prompt.descr, prompt.messages);
 Then, let's read a resource that we declared [here](/docs/mcp-server/basics#adding-a-resource-tempate-handler).
 ```rust
 let resource = client.read_resource("res://resource-1").await?;
-println!("{:?}", resource.contents);
 ```
 
-## List Of Tools, Prompts and Resources
+## List Of Tools, Prompts, and Resources
 
 Finally, here’s how to explore all available tools, prompts, and resources dynamically.
 
@@ -83,7 +82,7 @@ let resources = client
     .list_resources(None)
     .await?;
 
-// Returns a list resource templates
+// Returns a list of resource templates
 let templates = client
     .list_resource_templates(None)
     .await?;
