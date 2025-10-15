@@ -117,4 +117,4 @@ let resources = client
 ```
 
 ## Learn By Example
-Here you may find the full [example](https://github.com/RomanEmreis/neva/tree/main/examples/server)
+Here you may find the full [example](https://github.com/RomanEmreis/neva/tree/main/examples/client)
