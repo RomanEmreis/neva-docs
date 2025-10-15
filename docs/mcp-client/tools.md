@@ -126,3 +126,7 @@ You can configure its behavior using attributes such as:
 * `ser` - derive serialization only
 * `serde` - derive both serialization and deserialization
 * `debug` - include debug metadata in the generated schema
+
+
+## Learn By Example
+Here you may find the full [example](https://github.com/RomanEmreis/neva/tree/main/examples/client)
