@@ -12,6 +12,10 @@ You may lear more about MCP [here](https://modelcontextprotocol.io/docs/getting-
 ## Neva
 Neva provides everything you need to quickly build MCP clients and servers, fully aligned with the latest MCP specification.
 
+:::warning
+This project is currently in preview. Breaking changes can be introduced without prior notice.
+:::
+
 ## Supported Platforms
 Neva runs on Rust stable on Linux, macOS, and Windows.
 
