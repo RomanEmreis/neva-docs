@@ -83,16 +83,18 @@ Same idea as above, with the special [resource](https://docs.rs/neva/latest/neva
     uri = "res://{name}",
     title = "Read resource",
     descr = "Some details about resource",
-    mime = "text/plain",
+    mime = "application/octet-stream",
     annotations = r#"{
         "audience": ["user"],
         "priority": 1.0
     }"#
 )]
-async fn get_res(name: String) -> TextResourceContents {
-    TextResourceContents::new(
-        format!("res://{name}"),
-        format!("Some details about resource: {name}"))
+async fn get_res(uri: Uri, name: String) -> ResourceContents {
+    let data = "some file contents"; // Read a resource from some source
+
+    ResourceContents::new(uri)
+        .with_title(name)
+        .with_blob(data)
 }
 ```
 
