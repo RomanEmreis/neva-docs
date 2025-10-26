@@ -27,6 +27,7 @@ async fn main() -> Result<(), Error> {
 
     let args = ("name", "John");
     let result = client.call_tool("hello", args).await?;
+
     println!("{:?}", result.content);
 
     client.disconnect().await
@@ -66,7 +67,7 @@ You can access it directly through the [`struct_content`](https://docs.rs/neva/l
 
 ```rust
 let result = client.call_tool("weather-forecast", args).await?;
-println!("{}", result.struct_content);
+println!("{:?}", result.struct_content);
 ```
 
 Or, you can deserialize it into a typed structure using [`as_json()`](https://docs.rs/neva/latest/neva/types/tool/call_tool_response/struct.CallToolResponse.html#method.as_json):
@@ -79,10 +80,9 @@ struct Weather {
     humidity: f32,
 }
 
+let args = ("location", "London");
 let result = client.call_tool("weather-forecast", args).await?;
 let weather: Weather = result.as_json()?;
-
-println!("{weather:?}");
 ```
 
 ## Validating Structured Results
@@ -114,8 +114,6 @@ let result = client.call_tool(&tool.name, args).await?;
 let weather: Weather = tool
     .validate(&result)
     .and_then(|res| res.as_json())?;
-
-println!("{weather:?}");
 ```
 
 The [`json_schema`](https://docs.rs/neva/latest/neva/attr.json_schema.html) macro automatically derives JSON schema metadata from your Rust structures, ensuring compatibility with [`serde`](https://serde.rs/).
@@ -125,3 +123,7 @@ You can configure its behavior using attributes such as:
 * `ser` - derive serialization only
 * `serde` - derive both serialization and deserialization
 * `debug` - include debug metadata in the generated schema
+
+
+## Learn By Example
+Here you may find the full [example](https://github.com/RomanEmreis/neva/tree/main/examples/client)

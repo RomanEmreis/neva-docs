@@ -119,3 +119,7 @@ async fn read_resource(ctx: Context, res: Uri) -> Result<Content, Error> {
     Ok(Content::resource(resource))
 }
 ```
+
+
+## Learn By Example
+Here you may find the full [example](https://github.com/RomanEmreis/neva/tree/main/examples/server)

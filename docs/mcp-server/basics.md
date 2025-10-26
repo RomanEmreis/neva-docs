@@ -99,4 +99,4 @@ async fn get_res(uri: Uri, name: String) -> ResourceContents {
 ```
 
 ## Learn By Example
-Here you may find the full [example](https://github.com/RomanEmreis/neva/tree/0.1.8/examples/server)
+Here you may find the full [example](https://github.com/RomanEmreis/neva/tree/main/examples/server)
