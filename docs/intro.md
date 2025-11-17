@@ -21,7 +21,7 @@ Neva runs on Rust stable on Linux, macOS, and Windows.
 
 ## Install Rust
 If you don’t have Rust installed yet, the easiest way is via [`rustup`](https://doc.rust-lang.org/book/ch01-01-installation.html).  
-Neva requires Rust **1.85 or newer**. Running `rustup update` ensures you’re on the latest version.
+Neva requires Rust **1.90 or newer**. Running `rustup update` ensures you’re on the latest version.
 
 ## Under the Hood
 Neva is powered by **Tokio**, Rust’s battle-tested async runtime.  
