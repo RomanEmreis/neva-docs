@@ -18,7 +18,7 @@ Add the following dependencies in your `Cargo.toml`:
 
 ```toml
 [dependencies]
-neva = { version = "0.2.0", features = "client-full" }
+neva = { version = "0.2.2", features = "client-full" }
 tokio = { version = "1", features = ["full"] }
 ```
 
@@ -57,7 +57,7 @@ Next, let’s fetch a [prompt](/docs/mcp-server/basics#adding-a-prompt-handler) 
 
 ```rust
 let args = ("lang", "Rust");
-let prompt = client.get_prompt("analyze_code", args).await?;
+let prompt = client.get_prompt("hello_world_code", args).await?;
 ```
 
 ## Read a Resource

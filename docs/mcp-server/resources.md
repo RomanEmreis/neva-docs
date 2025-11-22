@@ -6,7 +6,7 @@ sidebar_position: 3
 
 The Model Context Protocol (MCP) provides a standardized way for servers to expose [resources](https://modelcontextprotocol.io/specification/draft/server/resources) to clients. Resources allow servers to share data that provides context to language models, such as files, database schemas, or application-specific information. Each resource is uniquely identified by a [**URI**](https://datatracker.ietf.org/doc/html/rfc3986).
 
-In the [Basics](/docs/mcp-server/basics) chapter, we learned how to declare a simple dynamic resource:
+In the [Basics](/docs/mcp-server/basics#adding-a-resource-tempate-handler) chapter, we learned how to declare a simple dynamic resource:
 ```rust
 use neva::prelude::*;
 

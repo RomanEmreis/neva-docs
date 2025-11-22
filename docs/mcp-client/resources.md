@@ -4,7 +4,7 @@ sidebar_position: 3
 
 # Resources
 
-In the [Basics](/docs/mcp-client/basics) chapter, we learned how to read a resource.
+In the [Basics](/docs/mcp-client/basics#read-a-resource) chapter, we learned how to read a resource.
 In this section, we’ll explore in more detail how deal with resources provided by the MCP server.
 
 ## Reading a Resource

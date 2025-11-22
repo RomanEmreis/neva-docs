@@ -4,7 +4,7 @@ sidebar_position: 2
 
 # Tools
 
-In the [Basics](/docs/mcp-client/basics) chapter, we learned how to invoke a simple tool.
+In the [Basics](/docs/mcp-client/basics#call-a-tool) chapter, we learned how to invoke a simple tool.
 In this section, we’ll explore in more detail how to **call tools**, **pass arguments**, **handle structured results**, and **validate outputs** against the tool schemas provided by the MCP server.
 
 ## Calling a Tool

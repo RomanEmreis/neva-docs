@@ -18,7 +18,7 @@ Add the following dependencies in your `Cargo.toml`:
 
 ```toml
 [dependencies]
-neva = { version = "0.2.0", features = "server-full" }
+neva = { version = "0.2.2", features = "server-full" }
 tokio = { version = "1", features = ["full"] }
 ```
 
@@ -68,10 +68,10 @@ This launches the MCP Inspector UI, allowing you to explore your server’s tool
 
 Next, we'll similarly add the prompt handler by using the [prompt](https://docs.rs/neva/latest/neva/attr.prompt.html) attribute macro:
 ```rust
-#[prompt(descr = "Analyze code for potential improvements")]
-async fn analyze_code(lang: String) -> PromptMessage {
+#[prompt(descr = "Generates a user message requesting a hello world code generation.")]
+async fn hello_world_code(lang: String) -> PromptMessage {
     PromptMessage::user()
-        .with(format!("Language: {lang}"))
+        .with(format!("Write a hello-world function on {lang}"))
 }
 ```
 
