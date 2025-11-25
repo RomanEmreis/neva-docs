@@ -18,7 +18,7 @@ Add the following dependencies in your `Cargo.toml`:
 
 ```toml
 [dependencies]
-neva = { version = "0.2.2", features = "server-full" }
+neva = { version = "0.2.3", features = "server-full" }
 tokio = { version = "1", features = ["full"] }
 ```
 
