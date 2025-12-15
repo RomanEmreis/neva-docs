@@ -61,5 +61,28 @@ Enable `roots.listChanged` only if:
 
 If all roots are known upfront, this capability is not required.
 
+## Accessing Roots on the Server
+
+On the server side, roots provided by the client are available through the
+request `Context`. Roots may be received during the initial handshake or
+updated dynamically via the `roots.listChanged` capability.
+
+To access the current list of roots, inject [`Context`](https://docs.rs/neva/latest/neva/app/context/struct.Context.html)
+into your tool handler:
+
+```rust
+#[tool]
+async fn roots_request(mut ctx: Context) -> Result<(), Error> {
+    let roots = ctx.list_roots().await?;
+
+    // Each root contains a URI and a human-readable name
+    for root in roots.roots {
+        tracing::info!(uri = %root.uri, name = %root.name);
+    }
+
+    Ok(())
+}
+```
+
 ## Learn By Example
-Here you may find the full [example](https://github.com/RomanEmreis/neva/blob/main/examples/roots/client/src/main.rs).
+Here you may find the full [example](https://github.com/RomanEmreis/neva/tree/main/examples/roots).
