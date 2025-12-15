@@ -73,10 +73,10 @@ into your tool handler:
 ```rust
 #[tool]
 async fn roots_request(mut ctx: Context) -> Result<(), Error> {
-    let roots = ctx.list_roots().await?;
+    let list = ctx.list_roots().await?;
 
     // Each root contains a URI and a human-readable name
-    for root in roots.roots {
+    for root in list.roots {
         tracing::info!(uri = %root.uri, name = %root.name);
     }
 
