@@ -28,8 +28,7 @@ Sampling support must be explicitly enabled on the client:
 ```rust
 let mut client = Client::new()
     .with_options(|opt| opt
-        .with_sampling(|s| s.with_tools())
-        .with_http(|http| http.bind("localhost:7878")));
+        .with_sampling(|s| s.with_tools()));
 ```
 * [with_sampling()](https://docs.rs/neva/latest/neva/client/options/struct.McpOptions.html#method.with_sampling) enables sampling support
 * [with_tools()](https://docs.rs/neva/latest/neva/types/struct.SamplingCapability.html#method.with_tools) allows tool calls during sampling
