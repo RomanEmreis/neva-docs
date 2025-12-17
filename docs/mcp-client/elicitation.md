@@ -64,7 +64,7 @@ async fn elicitation_handler(params: ElicitRequestParams) -> ElicitResult {
   * Validated payload is returned as [ElicitResult](https://docs.rs/neva/latest/neva/types/elicitation/struct.ElicitResult.html)
 
 :::info
-If you skip the [with_elicitation()](https://docs.rs/neva/latest/neva/client/options/struct.McpOptions.html#method.with_elicitation) or [with_form()](https://docs.rs/neva/latest/neva/types/struct.ElicitationCapability.html#method.with_form) or [with_url](https://docs.rs/neva/latest/neva/types/struct.ElicitationCapability.html#method.with_url) but declare the elicitation handler this will enable form elicitation by default.
+If you skip the [with_elicitation()](https://docs.rs/neva/latest/neva/client/options/struct.McpOptions.html#method.with_elicitation) or [with_form()](https://docs.rs/neva/latest/neva/types/struct.ElicitationCapability.html#method.with_form) or [with_url()](https://docs.rs/neva/latest/neva/types/struct.ElicitationCapability.html#method.with_url) but declare the elicitation handler this will enable form elicitation by default.
 :::
 
 ## Observing Elicitation Completion
