@@ -1,0 +1,6 @@
+# Algolia-Crawler-Verif: EB8783CF2E1E2D90
+
+User-agent: *
+Allow: /
+
+Sitemap: https://romanemreis.github.io/neva-docs/sitemap.xml
