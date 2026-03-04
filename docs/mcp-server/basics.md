@@ -98,5 +98,58 @@ async fn get_res(uri: Uri, name: String) -> ResourceContents {
 }
 ```
 
+## Custom Handlers
+
+Use [`#[handler]`](https://docs.rs/neva/latest/neva/attr.handler.html) to respond to any raw JSON-RPC method — including custom methods outside the standard MCP specification. This is useful for implementing proprietary protocol extensions or server-to-server coordination messages.
+
+The `command` parameter specifies the JSON-RPC method name to handle:
+
+```rust
+use neva::prelude::*;
+
+#[handler(command = "ping")]
+async fn ping_handler() {
+    eprintln!("pong");
+}
+```
+
+Handler functions can accept any parameters that implement [`FromHandlerParams`](https://docs.rs/neva/latest/neva/app/handler/trait.FromHandlerParams.html):
+
+```rust
+use neva::prelude::*;
+
+/// Receives the full request and the current MCP context
+#[handler(command = "custom/status")]
+async fn status_handler(ctx: Context, req: Request) -> String {
+    let session = ctx.session_id
+        .map(|id| id.to_string())
+        .unwrap_or_else(|| "none".into());
+    format!("session={session} method={}", req.method)
+}
+```
+
+Available built-in parameter types:
+
+| Type | Provides |
+|------|----------|
+| `Context` | Current session context (send sampling requests, subscribe to resources, etc.) |
+| `Request` | Raw JSON-RPC request (method, params, headers, claims) |
+| `RequestId` | The request's identifier |
+| `RuntimeMcpOptions` | Server configuration at runtime |
+
+Handlers also support the `middleware` parameter, just like `#[tool]` and `#[prompt]`:
+
+```rust
+async fn audit(ctx: MwContext, next: Next) -> Response {
+    tracing::info!("custom command called");
+    next(ctx).await
+}
+
+#[handler(command = "custom/action", middleware = [audit])]
+async fn action_handler(req: Request) {
+    tracing::info!("handling {}", req.method);
+}
+```
+
 ## Learn By Example
 Here you may find the full [example](https://github.com/RomanEmreis/neva/tree/main/examples/server)

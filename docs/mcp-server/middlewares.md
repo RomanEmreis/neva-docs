@@ -4,7 +4,7 @@ sidebar_position: 9
 
 # Middlewares
 
-Neva supports a middleware pipeline that allows you to intercept, inspect, or modify requests before and after they are processed. Middlewares are async functions that receive a [`MwContext`](https://docs.rs/neva/latest/neva/app/middleware/struct.MwContext.html) and a [`Next`](https://docs.rs/neva/latest/neva/app/middleware/type.Next.html) callback.
+Neva supports a middleware pipeline that allows you to intercept, inspect, or modify requests before and after they are processed. Middlewares are async functions that receive a [`MwContext`](https://docs.rs/neva/latest/neva/middleware/struct.MwContext.html) and a [`Next`](https://docs.rs/neva/latest/neva/middleware/type.Next.html) callback.
 
 ## Writing a Middleware
 

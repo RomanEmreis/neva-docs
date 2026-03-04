@@ -1,6 +1,6 @@
 {
   "label": "MCP Server",
-  "position": 2,
+  "position": 3,
   "link": {
     "description": "Let's learn how to build robust MCP servers with Neva.",
     "type": "generated-index"
