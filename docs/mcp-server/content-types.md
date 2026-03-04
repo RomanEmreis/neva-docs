@@ -27,6 +27,7 @@ To return a serializable type as structured output, wrap it in [`Json<T>`](https
 
 ```rust
 use neva::prelude::*;
+use serde::Serialize;
 
 #[derive(Serialize)]
 struct WeatherReport {
@@ -171,6 +172,8 @@ async fn get_note(uri: Uri, id: String) -> ResourceContents {
 ### JSON
 
 ```rust
+use serde_json::json;
+
 #[resource(uri = "config://{key}", title = "Read config")]
 async fn get_config(uri: Uri, key: String) -> ResourceContents {
     let value = json!({ "key": key, "enabled": true });
