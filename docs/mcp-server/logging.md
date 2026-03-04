@@ -8,7 +8,7 @@ Neva integrates with Rust's [`tracing`](https://docs.rs/tracing) ecosystem to em
 
 ## Setup
 
-To enable MCP log notifications, configure `tracing_subscriber` with Neva's [`NotificationFormatter`](https://docs.rs/neva/latest/neva/notification/struct.NotificationFormatter.html) and register the handle with [`with_logging()`](https://docs.rs/neva/latest/neva/app/options/struct.McpOptions.html#method.with_logging):
+To enable MCP log notifications, configure `tracing_subscriber` with Neva's [`NotificationFormatter`](https://docs.rs/neva/latest/neva/types/notification/struct.NotificationFormatter.html) and register the handle with [`with_logging()`](https://docs.rs/neva/latest/neva/app/options/struct.McpOptions.html#method.with_logging):
 
 ```rust
 use neva::prelude::*;

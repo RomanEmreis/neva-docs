@@ -8,7 +8,7 @@ For long-running tools, Neva can emit **progress notifications** (`notifications
 
 ## Enabling Progress Notifications
 
-Progress notifications are emitted via [`tracing`](https://docs.rs/tracing). Configure the notification layer using [`notification::fmt::layer()`](https://docs.rs/neva/latest/neva/notification/fmt/fn.layer.html):
+Progress notifications are emitted via [`tracing`](https://docs.rs/tracing). Configure the notification layer using [`notification::fmt::layer()`](https://docs.rs/neva/latest/neva/types/notification/fmt/fn.layer.html):
 
 ```rust
 use neva::prelude::*;
@@ -35,7 +35,7 @@ async fn main() {
 
 ## Reporting Progress from a Tool
 
-Inject [`Meta<ProgressToken>`](https://docs.rs/neva/latest/neva/types/meta/struct.Meta.html) into your tool handler to access the progress token provided by the client. Then emit progress events using the `tracing::info!` macro with the `target: "progress"` target:
+Inject [`Meta<ProgressToken>`](https://docs.rs/neva/latest/neva/types/struct.Meta.html) into your tool handler to access the progress token provided by the client. Then emit progress events using the `tracing::info!` macro with the `target: "progress"` target:
 
 ```rust
 use neva::prelude::*;
@@ -70,7 +70,7 @@ async fn long_running_task(token: Meta<ProgressToken>, command: String) {
 | Field | Description |
 |---|---|
 | `target: "progress"` | Routes the event to the MCP progress notification handler |
-| `token = %token` | The [`ProgressToken`](https://docs.rs/neva/latest/neva/types/meta/struct.ProgressToken.html) from the client request |
+| `token = %token` | The [`ProgressToken`](https://docs.rs/neva/latest/neva/types/enum.ProgressToken.html) from the client request |
 | `value = <number>` | Current progress value |
 | `total = <number>` | *(Optional)* Total steps; helps clients display a percentage |
 

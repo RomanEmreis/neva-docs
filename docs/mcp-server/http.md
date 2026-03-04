@@ -28,7 +28,7 @@ This starts an HTTP server on `127.0.0.1:3000` with the default `/mcp` endpoint.
 
 ## Custom Endpoint
 
-You can change the MCP endpoint path with [`with_endpoint()`](https://docs.rs/neva/latest/neva/app/options/http/struct.HttpServer.html#method.with_endpoint):
+You can change the MCP endpoint path with [`with_endpoint()`](https://docs.rs/neva/latest/neva/transport/struct.HttpServer.html#method.with_endpoint):
 
 ```rust
 App::new()
@@ -53,7 +53,7 @@ App::new()
 
 ## TLS
 
-To enable HTTPS, configure TLS using the [`with_tls()`](https://docs.rs/neva/latest/neva/app/options/http/struct.HttpServer.html#method.with_tls) method:
+To enable HTTPS, configure TLS using the [`with_tls()`](https://docs.rs/neva/latest/neva/transport/struct.HttpServer.html#method.with_tls) method:
 
 ```rust
 let http = HttpServer::new("localhost:7878")
@@ -66,14 +66,14 @@ App::new()
     .await;
 ```
 
-[`DevCertMode::Auto`](https://docs.rs/neva/latest/neva/app/options/http/tls/enum.DevCertMode.html) automatically generates a self-signed certificate for local development.
+[`DevCertMode::Auto`](https://docs.rs/neva/latest/neva/transport/http/enum.DevCertMode.html) automatically generates a self-signed certificate for local development.
 In production, provide your own certificate and key files instead.
 
 ## JWT Authentication
 
 Neva supports **bearer token authentication** via JWT on the HTTP transport.
 
-To enable it, use [`with_auth()`](https://docs.rs/neva/latest/neva/app/options/http/struct.HttpServer.html#method.with_auth) inside `with_http()`:
+To enable it, use [`with_auth()`](https://docs.rs/neva/latest/neva/transport/struct.HttpServer.html#method.with_auth) inside `with_http()`:
 
 ```rust
 let secret = std::env::var("JWT_SECRET")

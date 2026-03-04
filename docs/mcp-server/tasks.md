@@ -64,7 +64,7 @@ async fn tool_with_elicitation(mut ctx: Context, task: Meta<RelatedTaskMetadata>
 }
 ```
 
-[`Meta<RelatedTaskMetadata>`](https://docs.rs/neva/latest/neva/types/meta/struct.Meta.html) carries task context automatically injected by the framework. It is passed to [`with_related_task()`](https://docs.rs/neva/latest/neva/types/elicitation/struct.ElicitRequestFormParams.html#method.with_related_task) so the client can correlate the elicitation request with the running task.
+[`Meta<RelatedTaskMetadata>`](https://docs.rs/neva/latest/neva/types/struct.Meta.html) carries task context automatically injected by the framework. It is passed to [`with_related_task()`](https://docs.rs/neva/latest/neva/types/elicitation/struct.ElicitRequestFormParams.html#method.with_related_task) so the client can correlate the elicitation request with the running task.
 
 ## Learn By Example
 
