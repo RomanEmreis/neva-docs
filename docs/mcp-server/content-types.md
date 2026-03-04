@@ -23,7 +23,7 @@ async fn greet(name: String) -> String {
 
 ### Structured JSON
 
-Return a serializable type as structured output using `CallToolResponse::json()`, or simply return any type that implements `serde::Serialize`:
+To return a serializable type as structured output, wrap it in [`Json<T>`](https://docs.rs/neva/latest/neva/types/struct.Json.html) and use it as the return type:
 
 ```rust
 use neva::prelude::*;
@@ -37,14 +37,17 @@ struct WeatherReport {
 }
 
 #[tool(descr = "Returns weather for a city")]
-async fn get_weather(city: String) -> CallToolResponse {
-    CallToolResponse::json(WeatherReport {
+async fn get_weather(city: String) -> Json<WeatherReport> {
+    WeatherReport {
         city,
         temperature_c: 22.5,
         condition: "Sunny".into(),
-    })
+    }
+    .into()
 }
 ```
+
+`Json<T>` automatically converts into a `CallToolResponse` with structured content. You can also construct it explicitly with `Json(value)` or call `CallToolResponse::json(value)` when building the response manually.
 
 ### Images
 
@@ -198,7 +201,7 @@ Neva implements `Into<CallToolResponse>` for many common types, so you often don
 |-------------|---------------|
 | `String` | `CallToolResponse::new(text)` |
 | `&str` | `CallToolResponse::new(text)` |
-| `impl Serialize` | `CallToolResponse::json(value)` |
+| `Json<T>` | `CallToolResponse::json(value)` |
 | `(String, String)` | Two-field text tuple (uri, body) |
 | `Vec<Content>` | `CallToolResponse::array(items)` |
 | `Content` | Single-item response |
