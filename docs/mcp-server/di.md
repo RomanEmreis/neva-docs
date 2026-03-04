@@ -35,7 +35,7 @@ Services are registered on `App` during setup, before calling `.run()`.
 Pass an already-constructed instance:
 
 ```rust
-use neva::App;
+use neva::prelude::*;
 
 #[derive(Clone)]
 struct AppConfig {
@@ -61,7 +61,7 @@ async fn main() {
 Implement the [`Inject`](https://docs.rs/volga-di/latest/volga_di/trait.Inject.html) trait to describe how the service constructs itself from the container. The container calls this once per request scope.
 
 ```rust
-use neva::{App, di::{Container, Inject, DiError}};
+use neva::prelude::*;
 
 #[derive(Clone)]
 struct RequestLogger {
@@ -127,7 +127,6 @@ Use `Dc<T>` as a function parameter to receive a service in any tool, resource, 
 
 ```rust
 use neva::prelude::*;
-use neva::di::Dc;
 
 #[derive(Default, Clone)]
 struct AppConfig {
@@ -186,7 +185,6 @@ Inside middleware, use `ctx.resolve::<T>()` for a cloned value or `ctx.resolve_s
 
 ```rust
 use neva::prelude::*;
-use neva::app::middleware::{MwContext, Next};
 
 async fn auth_middleware(ctx: MwContext, next: Next) -> Response {
     let config = ctx.resolve_shared::<AppConfig>()?;
@@ -204,7 +202,7 @@ async fn auth_middleware(ctx: MwContext, next: Next) -> Response {
 `Inject` gives a type the ability to pull its own dependencies from the container — useful when a service itself depends on other registered services:
 
 ```rust
-use neva::di::{Container, Inject, DiError};
+use neva::prelude::*;
 
 #[derive(Clone)]
 struct EmailService {
@@ -225,7 +223,6 @@ When you call `add_scoped::<EmailService>()`, neva will call `EmailService::inje
 
 ```rust
 use neva::prelude::*;
-use neva::di::{Dc, Container, Inject, DiError};
 
 // --- Services ---
 

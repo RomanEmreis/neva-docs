@@ -14,7 +14,6 @@ This applies whether you return `Err(...)` from a `Result`, propagate with `?`, 
 
 ```rust
 use neva::prelude::*;
-use neva::error::{Error, ErrorCode};
 
 #[tool(descr = "Reads a record by ID")]
 async fn get_record(id: String) -> Result<String, Error> {
@@ -74,7 +73,7 @@ Some errors are produced automatically by the framework, before any handler runs
 [`Error`](https://docs.rs/neva/latest/neva/error/struct.Error.html) wraps a JSON-RPC error code and a message:
 
 ```rust
-use neva::error::{Error, ErrorCode};
+use neva::prelude::*;
 
 let err = Error::new(ErrorCode::InvalidParams, "Missing required field: name");
 ```
@@ -118,8 +117,6 @@ Middleware receives a `MwContext` and returns a `Response`. To short-circuit wit
 
 ```rust
 use neva::prelude::*;
-use neva::app::middleware::{MwContext, Next};
-use neva::error::{Error, ErrorCode};
 
 async fn auth_check(ctx: MwContext, next: Next) -> Response {
     if !is_authorized(&ctx) {

@@ -97,7 +97,6 @@ Completion handlers support `Dc<T>` extraction just like tool and resource handl
 
 ```rust
 use neva::prelude::*;
-use neva::di::Dc;
 
 #[derive(Default, Clone)]
 struct CatalogService {
