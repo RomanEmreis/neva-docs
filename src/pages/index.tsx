@@ -8,6 +8,7 @@ import Heading from '@theme/Heading';
 import MDXContent from '@theme/MDXContent';
 import useBaseUrl from '@docusaurus/useBaseUrl';
 import ThemedImage from '@theme/ThemedImage';
+import Translate from '@docusaurus/Translate';
 
 import ServerHello from './examples/server-hello.md';
 import ClientHello from './examples/client-hello.md';
@@ -33,13 +34,15 @@ function HomepageHeader() {
           {siteConfig.title}
         </Heading>
         <p className="hero__subtitle">
-          {siteConfig.tagline}
+          <Translate id="homepage.tagline">
+            Blazingly fast, easily configurable and extremely powerful Model Context Protocol (MCP) server and client SDK for Rust.
+          </Translate>
         </p>
         <div className={styles.buttons}>
           <Link
             className="button button--secondary button--lg"
             to="/docs/intro">
-            Get Started
+            <Translate id="homepage.getStarted">Get Started</Translate>
           </Link>
         </div>
       </div>
@@ -52,9 +55,21 @@ function Examples() {
     <div className={styles.examples}>
       <div className={`${styles.example} ${styles.reverse}`}>
         <div className={styles.description}>
-          <Heading as="h1">Hello from MCP Tool</Heading>
+          <Heading as="h1">
+            <Translate id="homepage.example.tool.title">Hello from MCP Tool</Translate>
+          </Heading>
           <p>
-            Create an MCP server and add your first <a href='https://modelcontextprotocol.io/specification/draft/server/tools' target='_blank'>tool</a> in just a few lines.
+            <Translate
+              id="homepage.example.tool.desc"
+              values={{
+                toolLink: (
+                  <a href='https://modelcontextprotocol.io/specification/draft/server/tools' target='_blank'>
+                    <Translate id="homepage.example.tool.desc.linkText">tool</Translate>
+                  </a>
+                ),
+              }}>
+              {'Create an MCP server and add your first {toolLink} in just a few lines.'}
+            </Translate>
           </p>
         </div>
         <div className={styles.code}>
@@ -66,9 +81,21 @@ function Examples() {
 
       <div className={styles.example}>
         <div className={styles.description}>
-          <Heading as="h1">Power of Prompts</Heading>
+          <Heading as="h1">
+            <Translate id="homepage.example.prompts.title">Power of Prompts</Translate>
+          </Heading>
           <p>
-            Define rich, flexible <a href='https://modelcontextprotocol.io/specification/draft/server/prompts' target='_blank'>prompts</a> with ease.
+            <Translate
+              id="homepage.example.prompts.desc"
+              values={{
+                promptsLink: (
+                  <a href='https://modelcontextprotocol.io/specification/draft/server/prompts' target='_blank'>
+                    <Translate id="homepage.example.prompts.desc.linkText">prompts</Translate>
+                  </a>
+                ),
+              }}>
+              {'Define rich, flexible {promptsLink} with ease.'}
+            </Translate>
           </p>
         </div>
         <div className={styles.code}>
@@ -80,9 +107,21 @@ function Examples() {
 
       <div className={`${styles.example} ${styles.reverse}`}>
         <div className={styles.description}>
-          <Heading as="h1">Resources Made Simple</Heading>
+          <Heading as="h1">
+            <Translate id="homepage.example.resources.title">Resources Made Simple</Translate>
+          </Heading>
           <p>
-            Expose <a href='https://modelcontextprotocol.io/specification/draft/server/resources' target='_blank'>resources</a> with intuitive APIs. Design reusable resource templates for ultimate flexibility.
+            <Translate
+              id="homepage.example.resources.desc"
+              values={{
+                resourcesLink: (
+                  <a href='https://modelcontextprotocol.io/specification/draft/server/resources' target='_blank'>
+                    <Translate id="homepage.example.resources.desc.linkText">resources</Translate>
+                  </a>
+                ),
+              }}>
+              {'Expose {resourcesLink} with intuitive APIs. Design reusable resource templates for ultimate flexibility.'}
+            </Translate>
           </p>
         </div>
         <div className={styles.code}>
@@ -94,9 +133,13 @@ function Examples() {
 
       <div className={styles.example}>
         <div className={styles.description}>
-          <Heading as="h1">Flexible MCP Client</Heading>
+          <Heading as="h1">
+            <Translate id="homepage.example.client.title">Flexible MCP Client</Translate>
+          </Heading>
           <p>
-            An intuitive API with effortless configuration and smooth interaction with MCP servers.
+            <Translate id="homepage.example.client.desc">
+              An intuitive API with effortless configuration and smooth interaction with MCP servers.
+            </Translate>
           </p>
         </div>
         <div className={styles.code}>
