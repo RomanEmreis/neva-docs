@@ -1,0 +1,10 @@
+{
+  "sidebar.tutorialSidebar.category.MCP Server": {
+    "message": "MCP Сервер",
+    "description": "The label for category MCP Server in sidebar tutorialSidebar"
+  },
+  "sidebar.tutorialSidebar.category.MCP Client": {
+    "message": "MCP Клиент",
+    "description": "The label for category MCP Client in sidebar tutorialSidebar"
+  }
+}
