@@ -22,7 +22,7 @@ neva = { version = "0.2.5", features = "client-full" }
 tokio = { version = "1", features = ["full"] }
 ```
 
-## Вызов инструмента
+## Вызов инструмента {#call-a-tool}
 
 Для начала вызовем инструмент, созданный в разделе [основы сервера](/docs/mcp-server/basics#setup-a-tool).
 
@@ -51,7 +51,7 @@ async fn main() -> Result<(), Error> {
 Здесь мы настраиваем [MCP-клиент](https://docs.rs/neva/latest/neva/client/struct.Client.html) для подключения к серверу через `stdio`.
 После подключения можно вызывать инструменты, получать запросы или читать ресурсы вплоть до отключения (или удаления клиента).
 
-## Получение запроса
+## Получение запроса {#get-a-prompt}
 
 Далее получим [запрос](/docs/mcp-server/basics#adding-a-prompt-handler), чтобы увидеть, как они работают на стороне клиента.
 
@@ -60,7 +60,7 @@ let args = ("lang", "Rust");
 let prompt = client.get_prompt("hello_world_code", args).await?;
 ```
 
-## Чтение ресурса
+## Чтение ресурса {#read-a-resource}
 
 Затем прочитаем ресурс, объявленный [здесь](/docs/mcp-server/basics#adding-a-resource-tempate-handler).
 ```rust

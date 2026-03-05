@@ -49,7 +49,7 @@ async fn main() {
 
 Метод [`map_tool()`](https://docs.rs/neva/latest/neva/app/struct.App.html#method.map_tool) регистрирует обработчик инструмента под указанным именем и возвращает изменяемую ссылку на зарегистрированный [инструмент](https://docs.rs/neva/latest/neva/types/tool/struct.Tool.html).
 
-## Схема входных данных
+## Схема входных данных {#input-schema}
 
 Для инструмента можно явно задать [схему входных данных](https://docs.rs/neva/latest/neva/types/tool/struct.ToolSchema.html).
 Если схема не указана, Neva автоматически генерирует её на основе сигнатуры функции-обработчика.
@@ -74,7 +74,7 @@ async fn hello(name: String) -> String {
 }
 ```
 
-## Схема выходных данных
+## Схема выходных данных {#output-schema}
 
 Если инструмент возвращает [**структурированные данные**](https://modelcontextprotocol.io/specification/draft/server/tools#tool-result) (например, JSON-объект),
 Neva автоматически генерирует [схему выходных данных](https://docs.rs/neva/latest/neva/types/tool/struct.ToolSchema.html) на основе возвращаемого типа.
@@ -103,7 +103,7 @@ async fn hello(say: String, name: String) -> Json<Results> {
 }
 ```
 
-## MCP-контекст
+## MCP-контекст {#mcp-context}
 
 В более сложных сценариях — например, когда инструменту нужен доступ к ресурсам, объявленным на том же MCP-сервере, — можно внедрить [Context](https://docs.rs/neva/latest/neva/app/context/struct.Context.html) в обработчик инструмента:
 
