@@ -1,8 +1,0 @@
-{
-  "label": "MCP Сервер",
-  "position": 3,
-  "link": {
-    "description": "Изучим, как создавать надёжные MCP-серверы с Neva.",
-    "type": "generated-index"
-  }
-}
