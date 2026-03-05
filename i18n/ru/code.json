@@ -1,0 +1,78 @@
+{
+  "homepage.tagline": {
+    "message": "Молниеносно быстрый, легко настраиваемый и чрезвычайно мощный SDK для MCP-сервера и клиента на Rust.",
+    "description": "Hero tagline on the homepage"
+  },
+  "homepage.getStarted": {
+    "message": "Начать",
+    "description": "Get Started button on the homepage"
+  },
+  "homepage.feature.easyToUse.title": {
+    "message": "Простота использования",
+    "description": "Feature card title"
+  },
+  "homepage.feature.easyToUse.desc": {
+    "message": "Удобные эргономичные API — одна библиотека для создания MCP-клиентов и серверов.",
+    "description": "Feature card description"
+  },
+  "homepage.feature.featureFullHouse.title": {
+    "message": "Полный набор возможностей",
+    "description": "Feature card title"
+  },
+  "homepage.feature.featureFullHouse.desc": {
+    "message": "Neva предоставляет богатый набор функций из коробки: потоковый HTTP, TLS, трассировка, OAuth и многое другое.",
+    "description": "Feature card description"
+  },
+  "homepage.feature.poweredByRust.title": {
+    "message": "На базе Rust",
+    "description": "Feature card title"
+  },
+  "homepage.feature.poweredByRust.desc": {
+    "message": "Молниеносная скорость, типобезопасность и асинхронность по умолчанию.",
+    "description": "Feature card description"
+  },
+  "homepage.example.tool.title": {
+    "message": "Привет от MCP-инструмента",
+    "description": "Example section heading"
+  },
+  "homepage.example.tool.desc": {
+    "message": "Создайте MCP-сервер и добавьте свой первый {toolLink} всего за несколько строк.",
+    "description": "Example section description (toolLink is an inline hyperlink)"
+  },
+  "homepage.example.tool.desc.linkText": {
+    "message": "инструмент",
+    "description": "Link text inside the tool example description"
+  },
+  "homepage.example.prompts.title": {
+    "message": "Мощь запросов",
+    "description": "Example section heading"
+  },
+  "homepage.example.prompts.desc": {
+    "message": "Создавайте гибкие {promptsLink} с лёгкостью.",
+    "description": "Example section description (promptsLink is an inline hyperlink)"
+  },
+  "homepage.example.prompts.desc.linkText": {
+    "message": "запросы",
+    "description": "Link text inside the prompts example description"
+  },
+  "homepage.example.resources.title": {
+    "message": "Простота ресурсов",
+    "description": "Example section heading"
+  },
+  "homepage.example.resources.desc": {
+    "message": "Предоставляйте {resourcesLink} через интуитивные API. Создавайте переиспользуемые шаблоны ресурсов для максимальной гибкости.",
+    "description": "Example section description (resourcesLink is an inline hyperlink)"
+  },
+  "homepage.example.resources.desc.linkText": {
+    "message": "ресурсы",
+    "description": "Link text inside the resources example description"
+  },
+  "homepage.example.client.title": {
+    "message": "Гибкий MCP-клиент",
+    "description": "Example section heading"
+  },
+  "homepage.example.client.desc": {
+    "message": "Интуитивный API с простой настройкой и удобным взаимодействием с MCP-серверами.",
+    "description": "Example section description"
+  }
+}
