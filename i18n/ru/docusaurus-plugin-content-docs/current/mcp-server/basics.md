@@ -4,7 +4,7 @@ sidebar_position: 1
 
 # Основы
 
-Давайте создадим простой MCP-сервер с Neva и добавим обработчики инструментов, запросов и ресурсов.
+Давайте создадим простой MCP-сервер с Neva и добавим обработчики инструментов, промптов и ресурсов.
 
 ## Создание приложения
 
@@ -62,11 +62,11 @@ async fn main() {
 ```bash
 npx @modelcontextprotocol/inspector cargo run
 ```
-Это запустит пользовательский интерфейс MCP Inspector, позволяющий интерактивно исследовать инструменты, запросы и ресурсы сервера.
+Это запустит пользовательский интерфейс MCP Inspector, позволяющий интерактивно исследовать инструменты, промпты и ресурсы сервера.
 
-## Добавление обработчика запроса {#adding-a-prompt-handler}
+## Добавление обработчика промпта {#adding-a-prompt-handler}
 
-Далее аналогичным образом добавим обработчик запроса с помощью атрибутного макроса [prompt](https://docs.rs/neva/latest/neva/attr.prompt.html):
+Далее аналогичным образом добавим обработчик промпта с помощью атрибутного макроса [prompt](https://docs.rs/neva/latest/neva/attr.prompt.html):
 ```rust
 #[prompt(descr = "Generates a user message requesting a hello world code generation.")]
 async fn hello_world_code(lang: String) -> PromptMessage {

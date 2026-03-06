@@ -2,15 +2,15 @@
 sidebar_position: 4
 ---
 
-# Запросы
+# Промпты
 
-В главе [Основы](/docs/mcp-client/basics#get-a-prompt) мы научились получать простой запрос.
-В этом разделе подробнее рассмотрим работу с запросами, предоставляемыми MCP-сервером.
+В главе [Основы](/docs/mcp-client/basics#get-a-prompt) мы научились получать простой промпт.
+В этом разделе подробнее рассмотрим работу с промптами, предоставляемыми MCP-сервером.
 
-## Получение запроса
+## Получение промпта
 
-Для получения запроса используйте метод [`get_prompt()`](https://docs.rs/neva/latest/neva/client/struct.Client.html#method.get_prompt).
-Он принимает имя запроса и необязательные аргументы.
+Для получения промпта используйте метод [`get_prompt()`](https://docs.rs/neva/latest/neva/client/struct.Client.html#method.get_prompt).
+Он принимает имя промпта и необязательные аргументы.
 
 ```rust
 use neva::prelude::*;
@@ -36,14 +36,14 @@ async fn main() -> Result<(), Error> {
 
 ## Передача аргументов
 
-Если запрос принимает один параметр, передайте кортеж с именем параметра и его значением:
+Если промпт принимает один параметр, передайте кортеж с именем параметра и его значением:
 
 ```rust
 let args = ("lang", "Rust");
 let prompt = client.get_prompt("hello_world_code", args).await?;
 ```
 
-Если запрос принимает **несколько параметров**, передайте их в виде массива, [`Vec`](https://doc.rust-lang.org/std/vec/struct.Vec.html) или [`HashMap`](https://doc.rust-lang.org/std/collections/struct.HashMap.html):
+Если промпт принимает **несколько параметров**, передайте их в виде массива, [`Vec`](https://doc.rust-lang.org/std/vec/struct.Vec.html) или [`HashMap`](https://doc.rust-lang.org/std/collections/struct.HashMap.html):
 
 ```rust
 let args = [
@@ -53,7 +53,7 @@ let args = [
 let prompt = client.get_prompt("write_code", args).await?;
 ```
 
-Если запрос **не принимает параметров**, передайте [тип-единицу `()`](https://doc.rust-lang.org/std/primitive.unit.html):
+Если промпт **не принимает параметров**, передайте [тип-единицу `()`](https://doc.rust-lang.org/std/primitive.unit.html):
 
 ```rust
 let prompt = client.get_prompt("rust_hello_world", ()).await?;

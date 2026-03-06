@@ -34,7 +34,7 @@ async fn generate_weather_report(mut ctx: Context, city: String) -> Result<Strin
 ```
 
 :::tip
-Если в вашем MCP-сервере уже объявлен подходящий шаблон запроса, можно использовать метод [prompt()](https://docs.rs/neva/latest/neva/app/context/struct.Context.html#method.prompt) объекта `Context` вместо передачи форматированной строки.
+Если в вашем MCP-сервере уже объявлен подходящий шаблон промпта, можно использовать метод [prompt()](https://docs.rs/neva/latest/neva/app/context/struct.Context.html#method.prompt) объекта `Context` вместо передачи форматированной строки.
 :::
 
 ### Настройка запроса на создание сообщения
