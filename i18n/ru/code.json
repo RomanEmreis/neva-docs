@@ -44,7 +44,7 @@
     "description": "Link text inside the tool example description"
   },
   "homepage.example.prompts.title": {
-    "message": "Мощь запросов",
+    "message": "Мощь промптов",
     "description": "Example section heading"
   },
   "homepage.example.prompts.desc": {
@@ -52,7 +52,7 @@
     "description": "Example section description (promptsLink is an inline hyperlink)"
   },
   "homepage.example.prompts.desc.linkText": {
-    "message": "запросы",
+    "message": "промпты",
     "description": "Link text inside the prompts example description"
   },
   "homepage.example.resources.title": {

@@ -51,9 +51,9 @@ async fn main() -> Result<(), Error> {
 Здесь мы настраиваем [MCP-клиент](https://docs.rs/neva/latest/neva/client/struct.Client.html) для подключения к серверу через `stdio`.
 После подключения можно вызывать инструменты, получать запросы или читать ресурсы вплоть до отключения (или удаления клиента).
 
-## Получение запроса {#get-a-prompt}
+## Получение промпта {#get-a-prompt}
 
-Далее получим [запрос](/docs/mcp-server/basics#adding-a-prompt-handler), чтобы увидеть, как они работают на стороне клиента.
+Далее получим [промпт](/docs/mcp-server/basics#adding-a-prompt-handler), чтобы увидеть, как они работают на стороне клиента.
 
 ```rust
 let args = ("lang", "Rust");
@@ -67,9 +67,9 @@ let prompt = client.get_prompt("hello_world_code", args).await?;
 let resource = client.read_resource("res://resource-1").await?;
 ```
 
-## Список инструментов, запросов и ресурсов
+## Список инструментов, промптов и ресурсов
 
-Наконец, вот как динамически изучить все доступные инструменты, запросы и ресурсы.
+Наконец, вот как динамически изучить все доступные инструменты, промпты и ресурсы.
 
 ```rust
 // Возвращает список инструментов
@@ -87,7 +87,7 @@ let templates = client
     .list_resource_templates(None)
     .await?;
 
-// Возвращает список запросов
+// Возвращает список промптов
 let prompts = client
     .list_prompts(None)
     .await?;

@@ -2,11 +2,11 @@
 sidebar_position: 4
 ---
 
-# Запросы
+# Промпты
 
-Model Context Protocol (MCP) предоставляет стандартизированный способ для серверов предоставлять клиентам [шаблоны запросов](https://modelcontextprotocol.io/specification/draft/server/prompts). Запросы позволяют серверам передавать структурированные сообщения и инструкции для взаимодействия с языковыми моделями. Клиенты могут получать список доступных запросов, извлекать их содержимое и передавать аргументы для их настройки.
+Model Context Protocol (MCP) предоставляет стандартизированный способ для серверов предоставлять клиентам [шаблоны промптов](https://modelcontextprotocol.io/specification/draft/server/prompts). Промпты позволяют серверам передавать структурированные сообщения и инструкции для взаимодействия с языковыми моделями. Клиенты могут получать список доступных промптов, извлекать их содержимое и передавать аргументы для их настройки.
 
-В главе [Основы](/docs/mcp-server/basics#adding-a-prompt-handler) мы научились объявлять простой запрос:
+В главе [Основы](/docs/mcp-server/basics#adding-a-prompt-handler) мы научились объявлять простой промпт:
 ```rust
 #[prompt(descr = "Generates a user message requesting a hello world code generation.")]
 async fn hello_world_code(lang: String) -> PromptMessage {
@@ -40,16 +40,16 @@ async fn main() {
 }
 ```
 
-В примере выше имя запроса должно быть задано явно.
-При использовании атрибутного макроса [`#[prompt]`](https://docs.rs/neva/latest/neva/attr.prompt.html) имя запроса автоматически выводится из имени функции.
+В примере выше имя промпта должно быть задано явно.
+При использовании атрибутного макроса [`#[prompt]`](https://docs.rs/neva/latest/neva/attr.prompt.html) имя промпта автоматически выводится из имени функции.
 
-Все остальные параметры запроса, доступные в атрибутном макросе, можно настроить с помощью методов `with_*` (например, [`with_description()`](https://docs.rs/neva/latest/neva/types/prompt/struct.Prompt.html#method.with_description)).
+Все остальные параметры промпта, доступные в атрибутном макросе, можно настроить с помощью методов `with_*` (например, [`with_description()`](https://docs.rs/neva/latest/neva/types/prompt/struct.Prompt.html#method.with_description)).
 
-Метод [`map_prompt()`](https://docs.rs/neva/latest/neva/app/struct.App.html#method.map_prompt) регистрирует обработчик запроса под указанным именем и возвращает изменяемую ссылку на зарегистрированный [запрос](https://docs.rs/neva/latest/neva/types/prompt/struct.Prompt.html).
+Метод [`map_prompt()`](https://docs.rs/neva/latest/neva/app/struct.App.html#method.map_prompt) регистрирует обработчик промпта под указанным именем и возвращает изменяемую ссылку на зарегистрированный [промпт](https://docs.rs/neva/latest/neva/types/prompt/struct.Prompt.html).
 
 ## Входные аргументы
 
-Для запроса можно явно задать [входные аргументы](https://docs.rs/neva/latest/neva/types/prompt/struct.PromptArgument.html).
+Для промпта можно явно задать [входные аргументы](https://docs.rs/neva/latest/neva/types/prompt/struct.PromptArgument.html).
 Если аргументы не указаны, Neva автоматически генерирует их на основе сигнатуры функции-обработчика.
 
 Для переопределения сгенерированной схемы укажите её в виде JSON-строки:
@@ -72,7 +72,7 @@ async fn hello_world_code(lang: String) -> PromptMessage {
 
 ## MCP-контекст
 
-В более сложных сценариях — например, когда запросу нужен доступ к ресурсам, объявленным на том же MCP-сервере, — можно внедрить [Context](https://docs.rs/neva/latest/neva/app/context/struct.Context.html) в обработчик запроса:
+В более сложных сценариях — например, когда промпту нужен доступ к ресурсам, объявленным на том же MCP-сервере, — можно внедрить [Context](https://docs.rs/neva/latest/neva/app/context/struct.Context.html) в обработчик промпта:
 
 ```rust
 #[prompt(descr = "Generates a user message requesting a translate a text using the glossary.")]
