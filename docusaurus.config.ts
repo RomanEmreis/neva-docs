@@ -87,7 +87,6 @@ const config: Config = {
       theme: prismThemes.github,
       darkTheme: prismThemes.dracula,
       additionalLanguages: ["bash", "toml"],
-      showLineNumbers: true,
     },
   } satisfies Preset.ThemeConfig,
 };
