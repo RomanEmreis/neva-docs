@@ -28,3 +28,13 @@
   --docusaurus-highlighted-code-line-bg: rgba(181, 168, 245, 0.2);
 }
 
+/* Vertical separator between line numbers and code */
+[class*="codeLineNumber"] {
+  border-right: 1px solid rgba(0, 0, 0, 0.15);
+  padding-right: 1rem !important;
+  margin-right: 1rem;
+}
+
+[data-theme='dark'] [class*="codeLineNumber"] {
+  border-right-color: rgba(255, 255, 255, 0.15);
+}
