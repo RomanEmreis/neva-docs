@@ -64,12 +64,24 @@ pre[class*="codeBlock"] {
   box-sizing: border-box;
   width: var(--code-line-number-width, 3em) !important;
   min-width: var(--code-line-number-width, 3em) !important;
-  text-align: right;
-  padding-right: 0.75rem !important;
+  text-align: center;
+  padding-right: 0 !important;
   margin-right: 0 !important;
 }
 
 /* Gap between separator and code text */
 [class*="codeLineContent"] {
   padding-left: 1rem;
+}
+
+/* Border and shadow around code blocks */
+[class*="codeBlockContainer"] {
+  border: 1px solid rgba(0, 0, 0, 0.1);
+  border-radius: var(--ifm-code-border-radius, 0.4rem);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+}
+
+[data-theme='dark'] [class*="codeBlockContainer"] {
+  border-color: rgba(255, 255, 255, 0.1);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.4);
 }
