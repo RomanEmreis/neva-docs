@@ -62,9 +62,10 @@ pre[class*="codeBlock"] {
 /* Fixed-width line number column to align with separator position */
 [class*="codeLineNumber"] {
   box-sizing: border-box;
+  display: inline-flex !important;
+  justify-content: center;
   width: var(--code-line-number-width, 3em) !important;
   min-width: var(--code-line-number-width, 3em) !important;
-  text-align: center;
   padding-right: 0 !important;
   margin-right: 0 !important;
 }
