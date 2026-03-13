@@ -29,12 +29,47 @@
 }
 
 /* Vertical separator between line numbers and code */
-[class*="codeLineNumber"] {
-  border-right: 1px solid rgba(0, 0, 0, 0.15);
-  padding-right: 1rem !important;
-  margin-right: 1rem;
+
+/* Remove vertical padding from pre, move it to the lines container
+   so the separator pseudo-element can span the full block height */
+pre[class*="codeBlock"] {
+  padding-top: 0 !important;
+  padding-bottom: 0 !important;
 }
 
-[data-theme='dark'] [class*="codeLineNumber"] {
-  border-right-color: rgba(255, 255, 255, 0.15);
+[class*="codeBlockLines"] {
+  display: block;
+  position: relative;
+  padding-top: var(--ifm-pre-padding, 1rem) !important;
+  padding-bottom: var(--ifm-pre-padding, 1rem) !important;
+}
+
+/* Draw the separator as a full-height pseudo-element on the container */
+[class*="codeBlockLines"]::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: var(--code-line-number-width, 3em);
+  width: 1px;
+  background-color: rgba(0, 0, 0, 0.15);
+}
+
+[data-theme='dark'] [class*="codeBlockLines"]::before {
+  background-color: rgba(255, 255, 255, 0.15);
+}
+
+/* Fixed-width line number column to align with separator position */
+[class*="codeLineNumber"] {
+  box-sizing: border-box;
+  width: var(--code-line-number-width, 3em) !important;
+  min-width: var(--code-line-number-width, 3em) !important;
+  text-align: right;
+  padding-right: 0.75rem !important;
+  margin-right: 0 !important;
+}
+
+/* Gap between separator and code text */
+[class*="codeLineContent"] {
+  padding-left: 1rem;
 }
