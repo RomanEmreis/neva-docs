@@ -53,7 +53,7 @@ async fn main() -> Result<(), Error> {
 
 ## Processing Responses
 
-Each element in the returned `Vec<Response>` corresponds to a request in order. Use [`into_result::<T>()`](https://docs.rs/neva/latest/neva/types/struct.Response.html#method.into_result) to deserialize a response into the expected type:
+Each element in the returned `Vec<Response>` corresponds to a request in order. Use [`into_result::<T>()`](https://docs.rs/neva/latest/neva/types/enum.Response.html#method.into_result) to deserialize a response into the expected type:
 
 ```rust
 let responses = client
