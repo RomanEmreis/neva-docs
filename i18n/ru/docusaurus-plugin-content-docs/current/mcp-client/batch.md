@@ -53,7 +53,7 @@ async fn main() -> Result<(), Error> {
 
 ## Обработка ответов
 
-Каждый элемент возвращаемого `Vec<Response>` соответствует запросу по порядку. Используйте [`into_result::<T>()`](https://docs.rs/neva/latest/neva/types/struct.Response.html#method.into_result) для десериализации ответа в нужный тип:
+Каждый элемент возвращаемого `Vec<Response>` соответствует запросу по порядку. Используйте [`into_result::<T>()`](https://docs.rs/neva/latest/neva/types/enum.Response.html#method.into_result) для десериализации ответа в нужный тип:
 
 ```rust
 let responses = client
