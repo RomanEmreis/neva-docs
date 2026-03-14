@@ -133,6 +133,13 @@ async fn restricted_resource(uri: Uri, name: String) -> (String, String) {
 
 Roles and permissions are extracted from JWT token claims. Access is denied with a `403 Forbidden` if the token does not satisfy the declared requirements.
 
+## JSON-RPC 2.0 Batch Support
+
+Any Neva HTTP server handles [JSON-RPC 2.0 batch requests](https://www.jsonrpc.org/specification#batch) automatically — no extra configuration is required.
+When a client sends a batch (an array of request objects), the server processes each request and returns the responses as a JSON array in the same order.
+
+See the [client Batch Requests guide](/docs/mcp-client/batch) for the client-side API.
+
 ## Blocking Runner
 
 For use cases where you need a synchronous entry point (e.g., embedding in a non-async context), you can use [`run_blocking()`](https://docs.rs/neva/latest/neva/app/struct.App.html#method.run_blocking) instead of `.run().await`:
