@@ -151,5 +151,12 @@ async fn action_handler(req: Request) {
 }
 ```
 
+## JSON-RPC 2.0 Batch Support
+
+Neva servers handle [JSON-RPC 2.0 batch requests](https://www.jsonrpc.org/specification#batch) automatically on both `stdio` and HTTP transports — no extra configuration is required.
+When a client sends a batch (a JSON array of request objects), the server processes each request and returns the responses as a JSON array in the same order.
+
+See the [client Batch Requests guide](/docs/mcp-client/batch) for the client-side API.
+
 ## Learn By Example
 Here you may find the full [example](https://github.com/RomanEmreis/neva/tree/main/examples/server)

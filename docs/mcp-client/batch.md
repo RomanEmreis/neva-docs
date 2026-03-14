@@ -7,10 +7,6 @@ sidebar_position: 10
 Neva supports **JSON-RPC 2.0 batch requests** — a way to send multiple requests to the server in a single round trip and receive all responses at once.
 This is useful when you need to fetch several independent pieces of information (tools list, resources, prompt results, etc.) and want to minimize latency.
 
-:::note
-Batch requests are only supported over **HTTP transport**. `stdio` transport does not support batching.
-:::
-
 ## Building a Batch
 
 Use [`client.batch()`](https://docs.rs/neva/latest/neva/client/struct.Client.html#method.batch) to obtain a [`BatchBuilder`](https://docs.rs/neva/latest/neva/client/batch/struct.BatchBuilder.html), chain the desired requests, then call `.send()`:
@@ -122,7 +118,7 @@ let tools = responses[0].clone().into_result::<ListToolsResult>()?;
 
 ## Server Side
 
-No additional server configuration is required to support batch requests. Any Neva server running on HTTP transport handles JSON-RPC 2.0 batches automatically.
+No additional server configuration is required to support batch requests. Any Neva server — on both `stdio` and HTTP transports — handles JSON-RPC 2.0 batches automatically.
 A standard setup is sufficient:
 
 ```rust
