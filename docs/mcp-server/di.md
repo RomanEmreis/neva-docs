@@ -10,7 +10,7 @@ Neva includes a built-in dependency injection (DI) container that lets you regis
 DI is included in the `server-full` feature preset. If you are using a custom feature set, add the `di` feature explicitly:
 
 ```toml
-neva = { version = "0.2.6", features = ["server-macros", "di"] }
+neva = { version = "...", features = ["server-macros", "di"] }
 ```
 :::
 

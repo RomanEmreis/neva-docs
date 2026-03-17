@@ -13,13 +13,13 @@ For most projects, the bundled presets are all you need:
 ```toml
 [dependencies]
 # Full-featured MCP server
-neva = { version = "0.2.6", features = ["server-full"] }
+neva = { version = "...", features = ["server-full"] }
 
 # Full-featured MCP client
-neva = { version = "0.2.6", features = ["client-full"] }
+neva = { version = "...", features = ["client-full"] }
 
 # Both server and client
-neva = { version = "0.2.6", features = ["full"] }
+neva = { version = "...", features = ["full"] }
 ```
 
 ## Feature Reference
@@ -64,7 +64,7 @@ neva = { version = "0.2.6", features = ["full"] }
 ### Minimal stdio server (no macros)
 
 ```toml
-neva = { version = "0.2.6", features = ["server"] }
+neva = { version = "...", features = ["server"] }
 ```
 
 Use this when you prefer to register handlers manually with `map_tool()`, `map_resource()`, and `map_prompt()` instead of attribute macros.
@@ -72,7 +72,7 @@ Use this when you prefer to register handlers manually with `map_tool()`, `map_r
 ### Server with macros, without HTTP
 
 ```toml
-neva = { version = "0.2.6", features = ["server-macros", "tracing"] }
+neva = { version = "...", features = ["server-macros", "tracing"] }
 ```
 
 Attribute macros and logging, but no HTTP transport compiled in. Useful for stdio-only servers.
@@ -80,7 +80,7 @@ Attribute macros and logging, but no HTTP transport compiled in. Useful for stdi
 ### HTTP server without TLS
 
 ```toml
-neva = { version = "0.2.6", features = ["server-macros", "http-server", "tracing", "di", "tasks"] }
+neva = { version = "...", features = ["server-macros", "http-server", "tracing", "di", "tasks"] }
 ```
 
 HTTP transport without TLS — suitable for local or internal deployments behind a reverse proxy.
@@ -88,7 +88,7 @@ HTTP transport without TLS — suitable for local or internal deployments behind
 ### Minimal HTTP client
 
 ```toml
-neva = { version = "0.2.6", features = ["http-client"] }
+neva = { version = "...", features = ["http-client"] }
 ```
 
 A lightweight client that connects to remote MCP servers over HTTP, without macros or tracing.
@@ -96,7 +96,7 @@ A lightweight client that connects to remote MCP servers over HTTP, without macr
 ### Server + embedded client (agent pattern)
 
 ```toml
-neva = { version = "0.2.6", features = ["server-full", "http-client"] }
+neva = { version = "...", features = ["server-full", "http-client"] }
 ```
 
 An MCP server that also acts as a client — for example, a server that delegates sampling requests or fans out to other MCP servers.

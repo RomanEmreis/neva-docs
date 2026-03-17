@@ -10,7 +10,7 @@ Neva включает встроенный контейнер внедрения
 DI входит в пресет `server-full`. При использовании пользовательского набора компонентов добавьте компонент `di` явно:
 
 ```toml
-neva = { version = "0.2.6", features = ["server-macros", "di"] }
+neva = { version = "...", features = ["server-macros", "di"] }
 ```
 :::
 
