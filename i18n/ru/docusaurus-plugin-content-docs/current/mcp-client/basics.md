@@ -18,7 +18,7 @@ cd neva-mcp-client
 
 ```toml
 [dependencies]
-neva = { version = "0.2.5", features = "client-full" }
+neva = { version = "...", features = "client-full" }
 tokio = { version = "1", features = ["full"] }
 ```
 
