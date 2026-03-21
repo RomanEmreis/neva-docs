@@ -31,7 +31,7 @@ async fn main() -> Result<(), Error> {
 
 ## Calling a Tool as a Task
 
-Use [`client.task()`](https://docs.rs/neva/latest/neva/client/struct.Client.html#method.task) to obtain a task builder, then call [`call_tool()`](https://docs.rs/neva/latest/neva/client/struct.TaskBuilder.html#method.call_tool) to execute a tool asynchronously as a managed task.
+Use [`client.task()`](https://docs.rs/neva/latest/neva/client/struct.Client.html#method.task) to obtain a task builder, then call [`call_tool()`](https://docs.rs/neva/latest/neva/client/task/struct.TaskBuilder.html#method.call_tool) to execute a tool asynchronously as a managed task.
 This is required when calling a tool that has `task_support = "required"` on the server side (see the [server Tasks guide](/docs/mcp-server/tasks)).
 
 ```rust
@@ -44,7 +44,7 @@ println!("{:?}", result);
 
 ### With a TTL
 
-Chain [`with_ttl()`](https://docs.rs/neva/latest/neva/client/struct.TaskBuilder.html#method.with_ttl) (in milliseconds) to automatically cancel the task if it exceeds the given time limit:
+Chain [`with_ttl()`](https://docs.rs/neva/latest/neva/client/task/struct.TaskBuilder.html#method.with_ttl) (in milliseconds) to automatically cancel the task if it exceeds the given time limit:
 
 ```rust
 let ttl = 10_000; // 10 seconds

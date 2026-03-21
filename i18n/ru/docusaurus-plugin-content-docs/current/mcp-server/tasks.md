@@ -37,7 +37,7 @@ async fn endless_tool() {
 }
 ```
 
-Инструмент, помеченный `task_support = "required"`, должен вызываться как задача (через [`call_tool_as_task()`](https://docs.rs/neva/latest/neva/client/struct.Client.html#method.call_tool_as_task) на стороне клиента). Вызов его как обычного инструмента будет отклонён.
+Инструмент, помеченный `task_support = "required"`, должен вызываться как задача (через [`client.task().call_tool()`](https://docs.rs/neva/latest/neva/client/task/struct.TaskBuilder.html#method.call_tool) на стороне клиента). Вызов его как обычного инструмента будет отклонён.
 
 ## Комбинирование задач с сэмплированием и получением данных
 

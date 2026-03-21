@@ -31,21 +31,27 @@ async fn main() -> Result<(), Error> {
 
 ## Вызов инструмента как задачи
 
-Используйте [`call_tool_as_task()`](https://docs.rs/neva/latest/neva/client/struct.Client.html#method.call_tool_as_task) для асинхронного выполнения инструмента в виде управляемой задачи.
+Используйте [`client.task()`](https://docs.rs/neva/latest/neva/client/struct.Client.html#method.task) для получения строителя задачи, затем вызовите [`call_tool()`](https://docs.rs/neva/latest/neva/client/task/struct.TaskBuilder.html#method.call_tool) для асинхронного выполнения инструмента в виде управляемой задачи.
 Это необходимо при вызове инструмента с `task_support = "required"` на стороне сервера (см. [руководство по задачам сервера](/docs/mcp-server/tasks)).
 
 ```rust
-let result = client.call_tool_as_task("my_long_tool", (), None).await;
+let result = client
+    .task()
+    .call_tool("my_long_tool", ()).await;
+
 println!("{:?}", result);
 ```
 
 ### С TTL
 
-Передайте необязательный TTL (в миллисекундах) для автоматической отмены задачи при превышении указанного лимита времени:
+Цепочечно вызовите [`with_ttl()`](https://docs.rs/neva/latest/neva/client/task/struct.TaskBuilder.html#method.with_ttl) (в миллисекундах) для автоматической отмены задачи при превышении указанного лимита времени:
 
 ```rust
 let ttl = 10_000; // 10 секунд
-let result = client.call_tool_as_task("endless_tool", (), Some(ttl)).await;
+let result = client
+    .task()
+    .with_ttl(ttl)
+    .call_tool("endless_tool", ()).await;
 ```
 
 Если TTL истекает до завершения инструмента, задача отменяется и возвращается соответствующая ошибка.
@@ -56,7 +62,9 @@ let result = client.call_tool_as_task("endless_tool", (), Some(ttl)).await;
 
 ```rust
 let args = [("city1", "London"), ("city2", "Paris")];
-let result = client.call_tool_as_task("generate_weather_report", args, None).await;
+let result = client
+    .task()
+    .call_tool("generate_weather_report", args).await;
 ```
 
 ## Получение списка активных задач
@@ -71,12 +79,11 @@ println!("{:?}", tasks);
 ## Обработка сэмплирования и получения данных в задачах
 
 Инструменты с поддержкой задач могут инициировать [сэмплирование](/docs/mcp-client/sampling) или [получение данных](/docs/mcp-client/elicitation) в процессе выполнения.
-Для поддержки этих взаимодействий в рамках вызова задачи настройте обработчики сэмплирования и получения данных на клиенте перед подключением:
+Для поддержки этих взаимодействий зарегистрируйте обработчики с помощью макросов `#[sampling]` и `#[elicitation]`. Фреймворк вызывает их автоматически, когда серверный инструмент обращается к `ctx.sample()` или `ctx.elicit()` в ходе выполнения задачи.
 
 ```rust
 #[sampling]
 async fn sampling_handler(params: CreateMessageRequestParams) -> CreateMessageResult {
-    // Обрабатываем запрос на сэмплирование LLM
     CreateMessageResult::assistant()
         .with_model("gpt-5")
         .with_content("Response text")
@@ -86,15 +93,10 @@ async fn sampling_handler(params: CreateMessageRequestParams) -> CreateMessageRe
 #[elicitation]
 async fn elicitation_handler(params: ElicitRequestParams) -> ElicitResult {
     match params {
-        ElicitRequestParams::Form(_) => ElicitResult::decline(),
-        ElicitRequestParams::Url(_) => ElicitResult::accept(),
+        ElicitRequestParams::Url(_url) => ElicitResult::accept(),
+        ElicitRequestParams::Form(_form) => ElicitResult::decline(),
     }
 }
-
-let mut client = Client::new()
-    .with_options(|opt| opt
-        .with_tasks(|t| t.with_all())
-        .with_default_http());
 ```
 
 ## Обучение на примерах
