@@ -31,21 +31,27 @@ async fn main() -> Result<(), Error> {
 
 ## Calling a Tool as a Task
 
-Use [`call_tool_as_task()`](https://docs.rs/neva/latest/neva/client/struct.Client.html#method.call_tool_as_task) to execute a tool asynchronously as a managed task.
+Use [`client.task()`](https://docs.rs/neva/latest/neva/client/struct.Client.html#method.task) to obtain a task builder, then call [`call_tool()`](https://docs.rs/neva/latest/neva/client/struct.TaskBuilder.html#method.call_tool) to execute a tool asynchronously as a managed task.
 This is required when calling a tool that has `task_support = "required"` on the server side (see the [server Tasks guide](/docs/mcp-server/tasks)).
 
 ```rust
-let result = client.call_tool_as_task("my_long_tool", (), None).await;
+let result = client
+    .task()
+    .call_tool("my_long_tool", ()).await;
+
 println!("{:?}", result);
 ```
 
 ### With a TTL
 
-Pass an optional TTL (in milliseconds) to automatically cancel the task if it exceeds the given time limit:
+Chain [`with_ttl()`](https://docs.rs/neva/latest/neva/client/struct.TaskBuilder.html#method.with_ttl) (in milliseconds) to automatically cancel the task if it exceeds the given time limit:
 
 ```rust
 let ttl = 10_000; // 10 seconds
-let result = client.call_tool_as_task("endless_tool", (), Some(ttl)).await;
+let result = client
+    .task()
+    .with_ttl(ttl)
+    .call_tool("endless_tool", ()).await;
 ```
 
 If the TTL expires before the tool completes, the task is cancelled and an appropriate error is returned.
@@ -56,7 +62,9 @@ Pass arguments the same way as with [`call_tool()`](https://docs.rs/neva/latest/
 
 ```rust
 let args = [("city1", "London"), ("city2", "Paris")];
-let result = client.call_tool_as_task("generate_weather_report", args, None).await;
+let result = client
+    .task()
+    .call_tool("generate_weather_report", args).await;
 ```
 
 ## Listing Active Tasks
@@ -71,12 +79,11 @@ println!("{:?}", tasks);
 ## Handling Sampling and Elicitation in Tasks
 
 Task-capable tools may trigger [sampling](/docs/mcp-client/sampling) or [elicitation](/docs/mcp-client/elicitation) mid-execution.
-To support these interactions within a task call, configure sampling and elicitation handlers on the client before connecting:
+To support these interactions, register handlers using the `#[sampling]` and `#[elicitation]` macros. The framework invokes them automatically when the server-side tool calls `ctx.sample()` or `ctx.elicit()` during task execution.
 
 ```rust
 #[sampling]
 async fn sampling_handler(params: CreateMessageRequestParams) -> CreateMessageResult {
-    // Handle the LLM sampling request
     CreateMessageResult::assistant()
         .with_model("gpt-5")
         .with_content("Response text")
@@ -86,15 +93,74 @@ async fn sampling_handler(params: CreateMessageRequestParams) -> CreateMessageRe
 #[elicitation]
 async fn elicitation_handler(params: ElicitRequestParams) -> ElicitResult {
     match params {
-        ElicitRequestParams::Form(_) => ElicitResult::decline(),
-        ElicitRequestParams::Url(_) => ElicitResult::accept(),
+        ElicitRequestParams::Url(_url) => ElicitResult::accept(),
+        ElicitRequestParams::Form(_form) => ElicitResult::decline(),
+    }
+}
+```
+
+### Full Example
+
+```rust
+use neva::prelude::*;
+
+#[sampling]
+async fn sampling_handler(params: CreateMessageRequestParams) -> CreateMessageResult {
+    tracing::info!("Received sampling: {:?}", params);
+
+    CreateMessageResult::assistant()
+        .with_model("gpt-5")
+        .with_content(
+            r#"Winter night whispers,
+Warm lights breathe through frosted glass—
+Time pauses, snow listens."#)
+        .end_turn()
+}
+
+#[elicitation]
+async fn elicitation_handler(params: ElicitRequestParams) -> ElicitResult {
+    tracing::info!("Received elicitation: {:?}", params);
+
+    match params {
+        ElicitRequestParams::Url(_url) => ElicitResult::accept(),
+        ElicitRequestParams::Form(_form) => ElicitResult::decline(),
     }
 }
 
-let mut client = Client::new()
-    .with_options(|opt| opt
-        .with_tasks(|t| t.with_all())
-        .with_default_http());
+#[tokio::main]
+async fn main() -> Result<(), Error> {
+    let mut client = Client::new()
+        .with_options(|opt| opt
+            .with_tasks(|t| t.with_all())
+            .with_default_http());
+
+    client.connect().await?;
+
+    // Call a tool that triggers sampling
+    let result = client
+        .task()
+        .call_tool("tool_with_sampling", ()).await;
+    tracing::info!("Received result: {:?}", result);
+
+    // Call a tool that triggers elicitation
+    let result = client
+        .task()
+        .call_tool("tool_with_elicitation", ()).await;
+    tracing::info!("Received result: {:?}", result);
+
+    // Call an infinite tool with a 10-second TTL
+    let result = client
+        .task()
+        .with_ttl(10_000)
+        .call_tool("endless_tool", ()).await;
+    tracing::info!("Received result: {:?}", result);
+
+    // List all tasks
+    let tasks = client.list_tasks(None).await?;
+    tracing::info!("List of tasks: {:?}", tasks);
+
+    client.disconnect().await
+}
 ```
 
 ## Learn By Example

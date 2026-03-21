@@ -37,7 +37,7 @@ async fn endless_tool() {
 }
 ```
 
-A tool marked with `task_support = "required"` must be called as a task (via [`call_tool_as_task()`](https://docs.rs/neva/latest/neva/client/struct.Client.html#method.call_tool_as_task) on the client side). Calling it as a regular tool will be rejected.
+A tool marked with `task_support = "required"` must be called as a task (via [`client.task().call_tool()`](https://docs.rs/neva/latest/neva/client/struct.TaskBuilder.html#method.call_tool) on the client side). Calling it as a regular tool will be rejected.
 
 ## Combining Tasks with Sampling and Elicitation
 
