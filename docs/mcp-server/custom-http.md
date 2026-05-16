@@ -34,6 +34,7 @@ http = "1.4"
 http-body-util = "0.1"
 tokio = { version = "1", features = ["full"] }
 tokio-util = "0.7"
+tracing-subscriber = "0.3"
 ```
 
 :::note
@@ -114,19 +115,14 @@ impl HttpEngine for AxumEngine {
     type SseEvent = Result<Event, Infallible>;
 
     async fn adapt_request(req: Self::Request) -> HttpRequest {
+        // `from_parts` preserves method, URI, version, headers AND
+        // extensions — including any `Arc<dyn Claims>` inserted by an
+        // upstream auth middleware. Dropping `parts.extensions` here
+        // would make every protected tool see the request as
+        // unauthenticated.
         let (parts, body) = req.into_parts();
         let bytes = body.collect().await.map(|c| c.to_bytes()).unwrap_or_default();
-
-        let mut builder = http::Request::builder()
-            .method(parts.method)
-            .uri(parts.uri)
-            .version(parts.version);
-        if let Some(headers) = builder.headers_mut() {
-            for (name, value) in parts.headers.iter() {
-                headers.append(name, value.clone());
-            }
-        }
-        builder.body(bytes).expect("valid request")
+        http::Request::from_parts(parts, bytes)
     }
 
     fn adapt_response(resp: HttpResponse) -> Self::Response {
@@ -221,7 +217,7 @@ async fn main() {
 
 ## Anatomy of the Adapter
 
-**Request adaptation.** `Body::collect()` buffers the inbound body fully — neva's neutral request type is `http::Request<Bytes>`, so streaming bodies are not supported on the request path. Header and URI plumbing is plain `http` crate work.
+**Request adaptation.** `Body::collect()` buffers the inbound body fully — neva's neutral request type is `http::Request<Bytes>`, so streaming bodies are not supported on the request path. Using `http::Request::from_parts(parts, bytes)` carries over the method, URI, version, headers, **and** request extensions in one move. Preserving extensions is mandatory for auth: the engine's auth middleware (covered below) stores `Arc<dyn Claims>` in the request extensions, and `dispatch_post` reads it back from the neutral request — a rebuild that drops `parts.extensions` would silently downgrade every authenticated call to unauthenticated.
 
 **Response adaptation.** Same idea in reverse: neva hands back `http::Response<Bytes>`, you rebuild axum's `Response` and return it.
 

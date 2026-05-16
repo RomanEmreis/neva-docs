@@ -34,6 +34,7 @@ http = "1.4"
 http-body-util = "0.1"
 tokio = { version = "1", features = ["full"] }
 tokio-util = "0.7"
+tracing-subscriber = "0.3"
 ```
 
 :::note
@@ -114,19 +115,14 @@ impl HttpEngine for AxumEngine {
     type SseEvent = Result<Event, Infallible>;
 
     async fn adapt_request(req: Self::Request) -> HttpRequest {
+        // `from_parts` сохраняет метод, URI, версию, заголовки И
+        // расширения (extensions) — включая `Arc<dyn Claims>`, который
+        // вставит auth-middleware выше по стеку. Если потерять
+        // `parts.extensions`, любой защищённый инструмент увидит
+        // запрос как неаутентифицированный.
         let (parts, body) = req.into_parts();
         let bytes = body.collect().await.map(|c| c.to_bytes()).unwrap_or_default();
-
-        let mut builder = http::Request::builder()
-            .method(parts.method)
-            .uri(parts.uri)
-            .version(parts.version);
-        if let Some(headers) = builder.headers_mut() {
-            for (name, value) in parts.headers.iter() {
-                headers.append(name, value.clone());
-            }
-        }
-        builder.body(bytes).expect("valid request")
+        http::Request::from_parts(parts, bytes)
     }
 
     fn adapt_response(resp: HttpResponse) -> Self::Response {
@@ -221,7 +217,7 @@ async fn main() {
 
 ## Из чего состоит адаптер
 
-**Адаптация запроса.** `Body::collect()` полностью буферизует входящее тело — нейтральный тип запроса в neva это `http::Request<Bytes>`, потоковые тела на пути запроса не поддерживаются. Работа с заголовками и URI — обычные операции крейта `http`.
+**Адаптация запроса.** `Body::collect()` полностью буферизует входящее тело — нейтральный тип запроса в neva это `http::Request<Bytes>`, потоковые тела на пути запроса не поддерживаются. `http::Request::from_parts(parts, bytes)` за один шаг переносит метод, URI, версию, заголовки **и** extensions запроса. Сохранять extensions обязательно для аутентификации: auth-middleware движка (описан ниже) кладёт в extensions `Arc<dyn Claims>`, а `dispatch_post` читает его уже из нейтрального запроса — если при пересборке потерять `parts.extensions`, любой аутентифицированный вызов молча превратится в неаутентифицированный.
 
 **Адаптация ответа.** Зеркально: neva возвращает `http::Response<Bytes>`, вы пересобираете `Response` axum и возвращаете его.
 
