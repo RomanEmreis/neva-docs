@@ -29,7 +29,7 @@ neva = { version = "...", features = ["full"] }
 | Компонент | Включает | Описание |
 |-----------|----------|----------|
 | `full` | `server-full` + `client-full` | Всё сразу — для приложений, которые запускают и сервер, и клиент |
-| `server-full` | `server-macros`, `tracing`, `http-server`, `server-tls`, `di`, `tasks` | Все возможности сервера |
+| `server-full` | `server-macros`, `tracing`, `http-server-volga`, `server-tls`, `di`, `tasks` | Все возможности сервера, включая HTTP-сервер по умолчанию на базе Volga |
 | `client-full` | `client-macros`, `tracing`, `http-client`, `client-tls`, `tasks` | Все возможности клиента |
 
 ### Компоненты сервера
@@ -38,8 +38,9 @@ neva = { version = "...", features = ["full"] }
 |-----------|----------|----------|
 | `server` | — | Базовая среда выполнения сервера: регистрация обработчиков инструментов, ресурсов и промптов, транспорт stdio |
 | `server-macros` | `server`, `macros` | Добавляет атрибутные макросы (`#[tool]`, `#[resource]`, `#[prompt]` и др.) |
-| `http-server` | `server` | Потоковый HTTP-транспорт с поддержкой аутентификации |
-| `server-tls` | — | Поддержка TLS для HTTP-сервера, включая автоматическую генерацию сертификата для разработки |
+| `http-server` | `server` | Абстракции потокового HTTP-транспорта, не привязанные к конкретному фреймворку — не тянет за собой HTTP-стек. Подключите свой (axum, hyper, actix-web, …), реализовав [`HttpEngine`](./mcp-server/custom-http) |
+| `http-server-volga` | `http-server` | Адаптер HTTP-сервера по умолчанию на базе [Volga](https://docs.rs/volga), включая JWT-аутентификацию |
+| `server-tls` | `http-server-volga` | Поддержка TLS для HTTP-сервера по умолчанию, включая автоматическую генерацию сертификата для разработки |
 
 ### Компоненты клиента
 
@@ -80,10 +81,24 @@ neva = { version = "...", features = ["server-macros", "tracing"] }
 ### HTTP-сервер без TLS
 
 ```toml
-neva = { version = "...", features = ["server-macros", "http-server", "tracing", "di", "tasks"] }
+neva = { version = "...", features = ["server-macros", "http-server-volga", "tracing", "di", "tasks"] }
 ```
 
-HTTP-транспорт без TLS — подходит для локальных или внутренних развёртываний за обратным прокси.
+HTTP-транспорт по умолчанию (на базе Volga) без TLS — подходит для локальных или внутренних развёртываний за обратным прокси.
+
+### HTTP-сервер на собственном стеке (axum / hyper / actix-web)
+
+```toml
+neva = { version = "...", features = ["server-macros", "http-server", "tracing", "di", "tasks"] }
+# плюс выбранный вами фреймворк
+axum = "0.8"
+```
+
+Флаг `http-server` поставляет только абстракции, не привязанные к конкретному фреймворку — без Volga и без зависимостей от HTTP-стеков. Вы реализуете [`HttpEngine`](./mcp-server/custom-http) для своего стека и подключаете его через `HttpServer::from_engine(...)`. Полное руководство — в разделе [Свой HTTP-стек](./mcp-server/custom-http).
+
+:::warning Ломающее изменение в v0.3.3
+До v0.3.3 флаг `http-server` транзитивно тянул за собой Volga. Начиная с v0.3.3 `http-server` не привязан к конкретному фреймворку и **не** включает HTTP-стек. Если вы используете встроенный сервер на Volga, перейдите на `http-server-volga` (или оставайтесь на `server-full`, который теперь сам выбирает `http-server-volga`).
+:::
 
 ### Минимальный HTTP-клиент
 
@@ -111,9 +126,11 @@ full
 │   ├── server-macros
 │   │   ├── server
 │   │   └── macros
-│   ├── http-server
-│   │   └── server
+│   ├── http-server-volga
+│   │   └── http-server
+│   │       └── server
 │   ├── server-tls
+│   │   └── http-server-volga
 │   ├── tracing
 │   ├── di
 │   └── tasks

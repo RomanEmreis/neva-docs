@@ -6,6 +6,14 @@ sidebar_position: 7
 
 Помимо `stdio`, Neva поддерживает **потоковый HTTP**-транспорт — двунаправленный транспортный уровень поверх HTTP, обеспечивающий удалённые подключения к MCP-серверу.
 
+Эта страница описывает **HTTP-сервер по умолчанию**, построенный на фреймворке [Volga](https://docs.rs/volga). Он включается флагами `server-full` или `http-server-volga` и не требует дополнительной настройки с вашей стороны.
+
+Если вам нужно разместить MCP-эндпоинт на другом HTTP-стеке — `axum`, `hyper`, `actix-web` или произвольном адаптере, — см. раздел [Свой HTTP-стек](./custom-http). Оба варианта используют одну и ту же конфигурацию `with_http(...)`, JWT-аутентификацию, проверки ролей/прав и семантику повтора SSE, описанные ниже.
+
+:::warning Ломающее изменение в v0.3.3
+Флаг компонента `http-server` теперь **не привязан к конкретному фреймворку** и больше не тянет за собой Volga. Чтобы оставить HTTP-сервер по умолчанию на Volga, используйте `http-server-volga` (или пресет `server-full`, который по-прежнему сам его подключает). Если у вас было `features = ["http-server"]` и нужно прежнее поведение из версий до v0.3.3, переименуйте флаг в `http-server-volga`.
+:::
+
 ## Базовая настройка
 
 Для запуска сервера на потоковом HTTP используйте [`with_http()`](https://docs.rs/neva/latest/neva/app/options/struct.McpOptions.html#method.with_http) в параметрах:
@@ -160,3 +168,6 @@ cargo run
 * [HTTP-сервер](https://github.com/RomanEmreis/neva/tree/main/examples/http)
 * [Защищённый сервер с JWT-аутентификацией](https://github.com/RomanEmreis/neva/tree/main/examples/protected-server)
 * [Сервер сэмплирования с TLS](https://github.com/RomanEmreis/neva/tree/main/examples/sampling/server)
+* [Свой HTTP-стек (axum)](https://github.com/RomanEmreis/neva/tree/main/examples/axum)
+* [Свой HTTP-стек (hyper)](https://github.com/RomanEmreis/neva/tree/main/examples/hyper)
+* [Свой HTTP-стек (actix-web)](https://github.com/RomanEmreis/neva/tree/main/examples/actix)
