@@ -6,6 +6,14 @@ sidebar_position: 7
 
 In addition to `stdio`, Neva supports **Streamable HTTP** transport — a bidirectional transport layer built on top of HTTP that enables remote MCP server connections.
 
+This page covers the **default** HTTP server, built on the [Volga](https://docs.rs/volga) framework. It is enabled by `server-full` or the `http-server-volga` feature flag and requires no extra wiring on your part.
+
+If you need to host the MCP endpoint on a different HTTP stack — `axum`, `hyper`, `actix-web`, or any custom adapter — see [Custom HTTP Stack](./custom-http). Both paths share the same `with_http(...)` configuration, JWT auth, role/permission gates, and SSE replay semantics described below.
+
+:::warning Breaking change in v0.3.3
+The `http-server` feature flag is now **engine-agnostic** and no longer pulls in Volga. To keep the default Volga-based server, depend on `http-server-volga` (or stay on the `server-full` preset, which still selects it for you). If you previously did `features = ["http-server"]` and want the same behavior as before v0.3.3, rename it to `http-server-volga`.
+:::
+
 ## Basic Setup
 
 To start a server on Streamable HTTP, use [`with_http()`](https://docs.rs/neva/latest/neva/app/options/struct.McpOptions.html#method.with_http) in your options:
@@ -160,3 +168,6 @@ Then open the Inspector and connect to `http://127.0.0.1:3000/mcp`.
 * [HTTP server](https://github.com/RomanEmreis/neva/tree/main/examples/http)
 * [Protected server with JWT auth](https://github.com/RomanEmreis/neva/tree/main/examples/protected-server)
 * [Sampling server with TLS](https://github.com/RomanEmreis/neva/tree/main/examples/sampling/server)
+* [Custom HTTP stack (axum)](https://github.com/RomanEmreis/neva/tree/main/examples/axum)
+* [Custom HTTP stack (hyper)](https://github.com/RomanEmreis/neva/tree/main/examples/hyper)
+* [Custom HTTP stack (actix-web)](https://github.com/RomanEmreis/neva/tree/main/examples/actix)
