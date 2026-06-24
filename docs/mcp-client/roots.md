@@ -5,7 +5,7 @@ sidebar_position: 5
 # Roots
 
 :::note Under `proto-2026-07-28-rc`
-Roots are removed in MCP 2026-07-28 — `Client::add_root*` and `publish_roots_changed` are `#[cfg]`-gated out under the RC flag. See [RC preview](/rc-preview).
+Roots are removed in MCP 2026-07-28 — `Client::add_root*` and `publish_roots_changed` are `#[cfg]`-gated out under the RC flag. See [RC preview](../rc-preview.md).
 :::
 
 

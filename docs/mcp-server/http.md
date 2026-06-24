@@ -5,7 +5,7 @@ sidebar_position: 7
 # HTTP Transport
 
 :::note Under `proto-2026-07-28-rc`
-The HTTP transport is request/response only — no SSE GET, no DELETE, no `Mcp-Session-Id` on the wire. Multi-instance deployments require `with_request_state_secret` and a shared `with_request_state_store`. See [RC preview](/rc-preview).
+The HTTP transport is request/response only — no SSE GET, no DELETE, no `Mcp-Session-Id` on the wire. Multi-instance deployments require `with_request_state_secret` and a shared `with_request_state_store`. See [RC preview](../rc-preview.md).
 :::
 
 

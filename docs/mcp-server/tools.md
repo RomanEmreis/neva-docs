@@ -5,7 +5,7 @@ sidebar_position: 2
 # Tools
 
 :::note Under `proto-2026-07-28-rc`
-`Tool.input_schema` / `output_schema` are full JSON Schema 2020-12 documents (`InputSchema` over `serde_json::Value`); the `#[tool]` macro emits them automatically. See [RC preview](/rc-preview).
+`Tool.input_schema` / `output_schema` are full JSON Schema 2020-12 documents (`InputSchema` over `serde_json::Value`); the `#[tool]` macro emits them automatically. See [RC preview](../rc-preview.md).
 :::
 
 

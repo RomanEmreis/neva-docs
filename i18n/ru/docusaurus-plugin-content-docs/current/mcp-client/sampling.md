@@ -5,7 +5,7 @@ sidebar_position: 6
 # Сэмплирование
 
 :::note Под флагом `proto-2026-07-28-rc`
-Sampling удалён в MCP 2026-07-28 — `Client::map_sampling` отключён под RC-флагом. См. [Превью RC](/rc-preview).
+Sampling удалён в MCP 2026-07-28 — `Client::map_sampling` отключён под RC-флагом. См. [Превью RC](../rc-preview.md).
 :::
 
 

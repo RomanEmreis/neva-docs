@@ -5,7 +5,7 @@ sidebar_position: 7
 # Elicitation
 
 :::note Under `proto-2026-07-28-rc`
-The client drives the MRTR retry loop automatically — your `ElicitationHandler` is invoked once per `input_required` round; `Client::call_tool` returns the final result. See [RC preview](/rc-preview).
+The client drives the MRTR retry loop automatically — your `ElicitationHandler` is invoked once per `input_required` round; `Client::call_tool` returns the final result. See [RC preview](../rc-preview.md).
 :::
 
 

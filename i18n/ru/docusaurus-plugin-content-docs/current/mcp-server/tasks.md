@@ -5,7 +5,7 @@ sidebar_position: 12
 # Задачи
 
 :::note Под флагом `proto-2026-07-28-rc`
-Tasks анонсируется как extension (`capabilities.extensions["io.modelcontextprotocol/tasks"]`); `with_tasks` — обёртка над регистрацией. Elicit в task-tool'е — `ctx.task().elicit(params)`. См. [Превью RC](/rc-preview).
+Tasks анонсируется как extension (`capabilities.extensions["io.modelcontextprotocol/tasks"]`); `with_tasks` — обёртка над регистрацией. Elicit в task-tool'е — `ctx.task().elicit(params)`. См. [Превью RC](../rc-preview.md).
 :::
 
 

@@ -5,7 +5,7 @@ sidebar_position: 5
 # Сэмплирование
 
 :::note Под флагом `proto-2026-07-28-rc`
-`sampling/createMessage` удалён в MCP 2026-07-28. Server-side sampling больше нет; реализуй через host-provided tool. См. [Превью RC](/rc-preview).
+`sampling/createMessage` удалён в MCP 2026-07-28. Server-side sampling больше нет; реализуй через host-provided tool. См. [Превью RC](../rc-preview.md).
 :::
 
 

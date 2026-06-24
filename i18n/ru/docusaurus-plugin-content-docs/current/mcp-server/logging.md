@@ -5,7 +5,7 @@ sidebar_position: 9
 # Логирование
 
 :::note Под флагом `proto-2026-07-28-rc`
-`logging/setLevel` и `notifications/message` удалены в MCP 2026-07-28. Используй телеметрию host'а. См. [Превью RC](/rc-preview).
+`logging/setLevel` и `notifications/message` удалены в MCP 2026-07-28. Используй телеметрию host'а. См. [Превью RC](../rc-preview.md).
 :::
 
 

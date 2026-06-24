@@ -5,7 +5,7 @@ sidebar_position: 10
 # Batch Requests
 
 :::note Under `proto-2026-07-28-rc`
-A batched request that elicits is driven through the MRTR retry loop in lock-step rounds — one transport write per round, slots returned in input order. Cap re-issues per slot via `McpOptions::with_max_mrtr_rounds`. See [RC preview](/rc-preview).
+A batched request that elicits is driven through the MRTR retry loop in lock-step rounds — one transport write per round, slots returned in input order. Cap re-issues per slot via `McpOptions::with_max_mrtr_rounds`. See [RC preview](../rc-preview.md).
 :::
 
 

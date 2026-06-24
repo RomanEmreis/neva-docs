@@ -5,7 +5,7 @@ sidebar_position: 6
 # Elicitation
 
 :::note Under `proto-2026-07-28-rc`
-`Context::elicit` takes a stable replay key (`ctx.elicit(key, params)`) and runs in the MRTR re-run model — handlers must be side-effect-free up to each elicit point; wrap effects in `ctx.once` / `ctx.memo` / `ctx.on_commit`. See [RC preview](/rc-preview).
+`Context::elicit` takes a stable replay key (`ctx.elicit(key, params)`) and runs in the MRTR re-run model — handlers must be side-effect-free up to each elicit point; wrap effects in `ctx.once` / `ctx.memo` / `ctx.on_commit`. See [RC preview](../rc-preview.md).
 :::
 
 
