@@ -5,7 +5,7 @@ sidebar_position: 7
 # HTTP-транспорт
 
 :::note Под флагом `proto-2026-07-28-rc`
-HTTP-транспорт — только request/response: ни SSE GET, ни DELETE, ни `Mcp-Session-Id`. Multi-instance деплой требует `with_request_state_secret` и общий `with_request_state_store`. См. [Превью RC](/rc-preview).
+HTTP-транспорт — только request/response: ни SSE GET, ни DELETE, ни `Mcp-Session-Id`. Multi-instance деплой требует `with_request_state_secret` и общий `with_request_state_store`. См. [Превью RC](../rc-preview.md).
 :::
 
 

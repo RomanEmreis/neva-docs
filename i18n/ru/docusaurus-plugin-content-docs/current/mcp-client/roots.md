@@ -5,7 +5,7 @@ sidebar_position: 5
 # Корневые каталоги
 
 :::note Под флагом `proto-2026-07-28-rc`
-Roots удалены в MCP 2026-07-28 — `Client::add_root*` и `publish_roots_changed` отключены под RC-флагом. См. [Превью RC](/rc-preview).
+Roots удалены в MCP 2026-07-28 — `Client::add_root*` и `publish_roots_changed` отключены под RC-флагом. См. [Превью RC](../rc-preview.md).
 :::
 
 

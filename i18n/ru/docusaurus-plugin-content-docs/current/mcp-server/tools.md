@@ -5,7 +5,7 @@ sidebar_position: 2
 # Инструменты
 
 :::note Под флагом `proto-2026-07-28-rc`
-`Tool.input_schema` / `output_schema` — полноценные JSON Schema 2020-12 (`InputSchema` поверх `serde_json::Value`); макрос `#[tool]` генерирует их автоматически. См. [Превью RC](/rc-preview).
+`Tool.input_schema` / `output_schema` — полноценные JSON Schema 2020-12 (`InputSchema` поверх `serde_json::Value`); макрос `#[tool]` генерирует их автоматически. См. [Превью RC](../rc-preview.md).
 :::
 
 

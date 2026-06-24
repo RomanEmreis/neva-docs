@@ -5,7 +5,7 @@ sidebar_position: 1
 # Basics
 
 :::note Under `proto-2026-07-28-rc`
-The `initialize`/`initialized` handshake is replaced by a single `server/discover` request; capabilities are advertised in `DiscoverResult`. See [RC preview](/rc-preview).
+The `initialize`/`initialized` handshake is replaced by a single `server/discover` request; capabilities are advertised in `DiscoverResult`. See [RC preview](../rc-preview.md).
 :::
 
 

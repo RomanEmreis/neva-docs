@@ -5,7 +5,7 @@ sidebar_position: 9
 # Logging
 
 :::note Under `proto-2026-07-28-rc`
-`logging/setLevel` and `notifications/message` are removed in MCP 2026-07-28. Use the host's own telemetry pipeline. See [RC preview](/rc-preview).
+`logging/setLevel` and `notifications/message` are removed in MCP 2026-07-28. Use the host's own telemetry pipeline. See [RC preview](../rc-preview.md).
 :::
 
 

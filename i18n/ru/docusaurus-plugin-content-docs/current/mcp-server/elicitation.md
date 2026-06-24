@@ -5,7 +5,7 @@ sidebar_position: 6
 # Получение данных
 
 :::note Под флагом `proto-2026-07-28-rc`
-`Context::elicit` принимает стабильный replay-ключ и работает в MRTR re-run модели — хендлер до elicit-точки должен быть без побочек; эффекты — через `ctx.once` / `ctx.memo` / `ctx.on_commit`. См. [Превью RC](/rc-preview).
+`Context::elicit` принимает стабильный replay-ключ и работает в MRTR re-run модели — хендлер до elicit-точки должен быть без побочек; эффекты — через `ctx.once` / `ctx.memo` / `ctx.on_commit`. См. [Превью RC](../rc-preview.md).
 :::
 
 

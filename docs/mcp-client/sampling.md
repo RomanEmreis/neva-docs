@@ -5,7 +5,7 @@ sidebar_position: 6
 # Sampling
 
 :::note Under `proto-2026-07-28-rc`
-Sampling is removed in MCP 2026-07-28 — `Client::map_sampling` is `#[cfg]`-gated out under the RC flag. See [RC preview](/rc-preview).
+Sampling is removed in MCP 2026-07-28 — `Client::map_sampling` is `#[cfg]`-gated out under the RC flag. See [RC preview](../rc-preview.md).
 :::
 
 

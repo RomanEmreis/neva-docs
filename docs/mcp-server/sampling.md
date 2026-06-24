@@ -5,7 +5,7 @@ sidebar_position: 5
 # Sampling
 
 :::note Under `proto-2026-07-28-rc`
-`sampling/createMessage` is removed in MCP 2026-07-28. Server-side sampling no longer exists; expose the capability as a host-provided tool instead. See [RC preview](/rc-preview).
+`sampling/createMessage` is removed in MCP 2026-07-28. Server-side sampling no longer exists; expose the capability as a host-provided tool instead. See [RC preview](../rc-preview.md).
 :::
 
 

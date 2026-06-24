@@ -5,7 +5,7 @@ sidebar_position: 10
 # Пакетные запросы
 
 :::note Под флагом `proto-2026-07-28-rc`
-Батч с elicit'ом проходит через MRTR retry-loop пошагово — один transport write на раунд, слоты возвращаются в порядке ввода. Лимит ретраев на слот — `McpOptions::with_max_mrtr_rounds`. См. [Превью RC](/rc-preview).
+Батч с elicit'ом проходит через MRTR retry-loop пошагово — один transport write на раунд, слоты возвращаются в порядке ввода. Лимит ретраев на слот — `McpOptions::with_max_mrtr_rounds`. См. [Превью RC](../rc-preview.md).
 :::
 
 
