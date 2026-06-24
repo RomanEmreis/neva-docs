@@ -4,6 +4,11 @@ sidebar_position: 10
 
 # Batch Requests
 
+:::note Under `proto-2026-07-28-rc`
+A batched request that elicits is driven through the MRTR retry loop in lock-step rounds — one transport write per round, slots returned in input order. Cap re-issues per slot via `McpOptions::with_max_mrtr_rounds`. See [RC preview](/rc-preview).
+:::
+
+
 Neva supports **JSON-RPC 2.0 batch requests** — a way to send multiple requests to the server in a single round trip and receive all responses at once.
 This is useful when you need to fetch several independent pieces of information (tools list, resources, prompt results, etc.) and want to minimize latency.
 

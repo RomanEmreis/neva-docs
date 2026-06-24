@@ -4,6 +4,11 @@ sidebar_position: 8
 
 # HTTP Transport
 
+:::note Under `proto-2026-07-28-rc`
+`Client::init()` remains as a back-compat alias for the new `Client::discover()`; the version is fixed to `2026-07-28` and sent on every POST. See [RC preview](/rc-preview).
+:::
+
+
 In addition to `stdio`, Neva clients support connecting to MCP servers over **Streamable HTTP** — a bidirectional transport layer suitable for remote servers.
 
 ## Connecting via HTTP

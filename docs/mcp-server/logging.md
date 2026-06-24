@@ -4,6 +4,11 @@ sidebar_position: 9
 
 # Logging
 
+:::note Under `proto-2026-07-28-rc`
+`logging/setLevel` and `notifications/message` are removed in MCP 2026-07-28. Use the host's own telemetry pipeline. See [RC preview](/rc-preview).
+:::
+
+
 Neva integrates with Rust's [`tracing`](https://docs.rs/tracing) ecosystem to emit structured log messages. When configured correctly, these log messages are automatically forwarded to connected clients as **MCP log notifications** (`notifications/message`).
 
 ## Setup

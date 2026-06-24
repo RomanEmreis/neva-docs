@@ -4,6 +4,11 @@ sidebar_position: 5
 
 # Sampling
 
+:::note Under `proto-2026-07-28-rc`
+`sampling/createMessage` is removed in MCP 2026-07-28. Server-side sampling no longer exists; expose the capability as a host-provided tool instead. See [RC preview](/rc-preview).
+:::
+
+
 The Model Context Protocol (MCP) provides a standardized way for servers to request [LLM sampling](https://modelcontextprotocol.io/specification/draft/client/sampling) (“completions” or “generations”) from language models via clients. This flow allows clients to maintain control over model access, selection, and permissions while enabling servers to leverage AI capabilities—with no server API keys necessary. Servers can request text, audio, or image-based interactions and optionally include context from MCP servers in their prompts.
 
 > **Important mental model**

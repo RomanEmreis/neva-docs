@@ -4,6 +4,11 @@ sidebar_position: 1
 
 # Основы
 
+:::note Под флагом `proto-2026-07-28-rc`
+Хендшейк `initialize`/`initialized` заменён одним запросом `server/discover`; capabilities — в `DiscoverResult`. См. [Превью RC](/rc-preview).
+:::
+
+
 Давайте создадим простой MCP-сервер с Neva и добавим обработчики инструментов, промптов и ресурсов.
 
 ## Создание приложения

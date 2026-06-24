@@ -4,6 +4,11 @@ sidebar_position: 5
 
 # Roots
 
+:::note Under `proto-2026-07-28-rc`
+Roots are removed in MCP 2026-07-28 — `Client::add_root*` and `publish_roots_changed` are `#[cfg]`-gated out under the RC flag. See [RC preview](/rc-preview).
+:::
+
+
 The Model Context Protocol (MCP) provides a standardized way for clients to expose filesystem “roots” to servers. [Roots](https://modelcontextprotocol.io/specification/draft/client/roots) define the boundaries of where servers can operate within the filesystem, allowing them to understand which directories and files they have access to. Servers can request the list of roots from supporting clients and receive notifications when that list changes.
 
 ## Configuring Roots

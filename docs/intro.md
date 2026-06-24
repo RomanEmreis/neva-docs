@@ -16,6 +16,13 @@ Neva provides everything you need to quickly build MCP clients and servers, full
 This project is currently in preview. Breaking changes can be introduced without prior notice.
 :::
 
+:::info MCP 2026-07-28 RC preview
+neva 0.4 ships opt-in support for the MCP 2026-07-28 Release Candidate
+behind the `proto-2026-07-28-rc` feature flag. This site documents the
+default (legacy) spec. See **[RC preview](./rc-preview)** for the
+RC surface, release notes, and deployment notes.
+:::
+
 ## Supported Platforms
 Neva runs on Rust stable on Linux, macOS, and Windows.
 
