@@ -4,6 +4,11 @@ sidebar_position: 7
 
 # Получение данных
 
+:::note Под флагом `proto-2026-07-28-rc`
+Клиент сам гоняет MRTR retry-loop — `ElicitationHandler` зовётся раз на каждый `input_required`-раунд; `Client::call_tool` возвращает финальный результат. См. [Превью RC](/rc-preview).
+:::
+
+
 В этом руководстве описывается, как клиент обрабатывает запросы на [получение данных (elicitation)](https://modelcontextprotocol.io/specification/draft/client/elicitation), отправляемые MCP-сервером.
 
 ## Включение поддержки получения данных

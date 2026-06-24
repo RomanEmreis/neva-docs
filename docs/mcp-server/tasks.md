@@ -4,6 +4,11 @@ sidebar_position: 12
 
 # Tasks
 
+:::note Under `proto-2026-07-28-rc`
+Tasks is advertised as an extension (`capabilities.extensions["io.modelcontextprotocol/tasks"]`); `with_tasks` thinly wraps the registration. Task-augmented elicit uses `ctx.task().elicit(params)`. See [RC preview](/rc-preview).
+:::
+
+
 Neva supports **long-running tasks** — a way to call tools asynchronously and manage their lifecycle. Tasks allow clients to execute tools that may take a long time or require additional interactions (such as sampling or elicitation), with optional TTL-based cancellation.
 
 ## Enabling Tasks on the Server

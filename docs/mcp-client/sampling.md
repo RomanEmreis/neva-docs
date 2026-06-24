@@ -4,6 +4,11 @@ sidebar_position: 6
 
 # Sampling
 
+:::note Under `proto-2026-07-28-rc`
+Sampling is removed in MCP 2026-07-28 — `Client::map_sampling` is `#[cfg]`-gated out under the RC flag. See [RC preview](/rc-preview).
+:::
+
+
 In MCP, the **client** is responsible for executing LLM sampling requests initiated by servers.
 Unlike traditional architectures, the client:
 * Owns model access and API keys

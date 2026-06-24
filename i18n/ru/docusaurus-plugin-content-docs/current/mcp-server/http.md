@@ -4,6 +4,11 @@ sidebar_position: 7
 
 # HTTP-транспорт
 
+:::note Под флагом `proto-2026-07-28-rc`
+HTTP-транспорт — только request/response: ни SSE GET, ни DELETE, ни `Mcp-Session-Id`. Multi-instance деплой требует `with_request_state_secret` и общий `with_request_state_store`. См. [Превью RC](/rc-preview).
+:::
+
+
 Помимо `stdio`, Neva поддерживает **потоковый HTTP**-транспорт — двунаправленный транспортный уровень поверх HTTP, обеспечивающий удалённые подключения к MCP-серверу.
 
 Эта страница описывает **HTTP-сервер по умолчанию**, построенный на фреймворке [Volga](https://docs.rs/volga). Он включается флагами `server-full` или `http-server-volga` и не требует дополнительной настройки с вашей стороны.

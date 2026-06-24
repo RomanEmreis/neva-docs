@@ -4,6 +4,11 @@ sidebar_position: 7
 
 # Elicitation
 
+:::note Under `proto-2026-07-28-rc`
+The client drives the MRTR retry loop automatically — your `ElicitationHandler` is invoked once per `input_required` round; `Client::call_tool` returns the final result. See [RC preview](/rc-preview).
+:::
+
+
 This guide explains how a client handles [elicitation](https://modelcontextprotocol.io/specification/draft/client/elicitation) requests sent by the MCP server.
 
 ## Enabling Elicitation Support

@@ -4,6 +4,11 @@ sidebar_position: 7
 
 # HTTP Transport
 
+:::note Under `proto-2026-07-28-rc`
+The HTTP transport is request/response only — no SSE GET, no DELETE, no `Mcp-Session-Id` on the wire. Multi-instance deployments require `with_request_state_secret` and a shared `with_request_state_store`. See [RC preview](/rc-preview).
+:::
+
+
 In addition to `stdio`, Neva supports **Streamable HTTP** transport — a bidirectional transport layer built on top of HTTP that enables remote MCP server connections.
 
 This page covers the **default** HTTP server, built on the [Volga](https://docs.rs/volga) framework. It is enabled by `server-full` or the `http-server-volga` feature flag and requires no extra wiring on your part.
