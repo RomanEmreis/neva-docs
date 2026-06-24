@@ -39,7 +39,7 @@ the RC path becomes the default and the current default moves under a
 
 ## Where to look right now
 
-* **[Release notes (v0.4.0)](https://github.com/RomanEmreis/neva/releases/tag/v0.4.0)** — narrative, migration, deployment notes.
+* **[Release notes (v0.4.0)](https://github.com/RomanEmreis/neva/releases/tag/0.4.0)** — narrative, migration, deployment notes.
 * **[`examples/mrtr`](https://github.com/RomanEmreis/neva/tree/main/examples/mrtr)** — end-to-end MRTR server + client.
 * **`cargo doc --features proto-2026-07-28-rc --open`** — generates the
   API reference for the RC surface in your own checkout.

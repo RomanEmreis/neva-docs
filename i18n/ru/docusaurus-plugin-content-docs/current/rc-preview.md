@@ -39,7 +39,7 @@ semver** и могут поменяться до финала спеки (зап
 
 ## Куда смотреть сейчас
 
-* **[Release notes (v0.4.0)](https://github.com/RomanEmreis/neva/releases/tag/v0.4.0)** — нарратив, миграция, деплой.
+* **[Release notes (v0.4.0)](https://github.com/RomanEmreis/neva/releases/tag/0.4.0)** — нарратив, миграция, деплой.
 * **[`examples/mrtr`](https://github.com/RomanEmreis/neva/tree/main/examples/mrtr)** — end-to-end MRTR-сервер и клиент.
 * **`cargo doc --features proto-2026-07-28-rc --open`** — сгенерирует
   API-референс RC-поверхности в твоём чекауте.
