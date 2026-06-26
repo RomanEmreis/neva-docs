@@ -21,16 +21,25 @@ function HomepageHeader() {
   const {siteConfig} = useDocusaurusContext();
   return (
     <header className={clsx('hero hero--primary', styles.heroBanner)}>
-      <div className="container">
-        <ThemedImage
-          width={300}
-          height={300}
-          sources={{
-            light: useBaseUrl('/img/logo.svg'),
-            dark: useBaseUrl('/img/logo_dark.svg'),
-          }}
-        />
-        <Heading as="h1" className="hero__title">
+      <div className={styles.heroScene} aria-hidden="true">
+        <div className={styles.stars} />
+        <div className={styles.sun} />
+        <div className={styles.grid} />
+      </div>
+      <div className={clsx('container', styles.heroContent)}>
+        <div className={styles.logoWrap}>
+          <ThemedImage
+            className={styles.logo}
+            width={280}
+            height={280}
+            sources={{
+              light: useBaseUrl('/img/logo.svg'),
+              dark: useBaseUrl('/img/logo.svg'),
+            }}
+            alt="Neva logo"
+          />
+        </div>
+        <Heading as="h1" className={clsx('hero__title', styles.heroTitle)}>
           {siteConfig.title}
         </Heading>
         <p className="hero__subtitle">
