@@ -162,11 +162,10 @@
 
 /* ---- Logo & text ----------------------------------------------------- */
 
-/* The glow is a static radial gradient behind the logo (not a CSS filter)
-   and the float runs directly on the <img>. A drop-shadow filter on the
-   moving element has to be re-rasterized every frame, which made the
-   motion stutter; a plain translate with no filter stays on the GPU
-   compositor and runs smoothly. */
+/* The logo itself stays still: a slow, tiny positional float reads as
+   stuttery on some browser/display combos (sub-pixel steps). Instead the
+   life comes from a gently pulsing glow behind it. Animating opacity is
+   always composited smoothly and has no position to step. */
 .logoWrap {
   position: relative;
   display: inline-block;
@@ -186,6 +185,7 @@
   );
   z-index: -1;
   pointer-events: none;
+  animation: logoGlow 5s ease-in-out infinite;
 }
 
 [data-theme='dark'] .logoWrap::before {
@@ -199,13 +199,11 @@
 
 .logo {
   display: block;
-  animation: floaty 7s ease-in-out infinite;
-  will-change: transform;
 }
 
-@keyframes floaty {
-  0%, 100% { transform: translateY(0); }
-  50% { transform: translateY(-9px); }
+@keyframes logoGlow {
+  0%, 100% { opacity: 0.55; }
+  50% { opacity: 1; }
 }
 
 .heroTitle {
@@ -218,7 +216,7 @@
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .logo,
+  .logoWrap::before,
   .stars {
     animation: none;
   }
