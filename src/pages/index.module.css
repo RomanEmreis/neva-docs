@@ -75,12 +75,15 @@
 }
 
 [data-theme='dark'] .sun {
+  width: 600px;
+  height: 600px;
   background: radial-gradient(
     circle at center,
-    rgba(255, 158, 214, 0.32) 0%,
-    rgba(181, 168, 245, 0.22) 38%,
-    rgba(91, 45, 99, 0) 70%
+    rgba(255, 158, 214, 0.16) 0%,
+    rgba(181, 168, 245, 0.1) 42%,
+    rgba(91, 45, 99, 0) 72%
   );
+  filter: blur(8px);
 }
 
 /* Receding neon perspective grid floor */
@@ -177,8 +180,8 @@
 }
 
 [data-theme='dark'] .logo {
-  filter: drop-shadow(0 0 15px rgba(200, 174, 255, 0.3))
-    drop-shadow(0 0 6px rgba(255, 158, 214, 0.2));
+  filter: drop-shadow(0 0 12px rgba(200, 174, 255, 0.22))
+    drop-shadow(0 0 5px rgba(255, 158, 214, 0.14));
 }
 
 @keyframes floaty {
