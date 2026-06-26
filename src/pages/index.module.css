@@ -93,15 +93,11 @@
   right: -50%;
   bottom: -2px;
   height: 60%;
-  background-image:
-    linear-gradient(to right, var(--neva-grid-line) 1px, transparent 1px),
-    linear-gradient(to bottom, var(--neva-grid-line) 1px, transparent 1px);
-  background-size: 44px 44px;
+  overflow: hidden;
   transform: perspective(340px) rotateX(62deg);
   transform-origin: bottom center;
   -webkit-mask-image: linear-gradient(to top, #000 0%, rgba(0, 0, 0, 0.55) 45%, transparent 88%);
   mask-image: linear-gradient(to top, #000 0%, rgba(0, 0, 0, 0.55) 45%, transparent 88%);
-  animation: gridScroll 5.5s linear infinite;
   --neva-grid-line: rgba(255, 255, 255, 0.32);
 }
 
@@ -109,9 +105,26 @@
   --neva-grid-line: rgba(200, 174, 255, 0.28);
 }
 
+/* The moving lines live on their own layer so the scroll runs as a
+   GPU-composited transform — no per-frame repaint, no jank. */
+.grid::after {
+  content: '';
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: -88px;
+  bottom: -88px;
+  background-image:
+    linear-gradient(to right, var(--neva-grid-line) 1px, transparent 1px),
+    linear-gradient(to bottom, var(--neva-grid-line) 1px, transparent 1px);
+  background-size: 44px 44px;
+  animation: gridScroll 11s linear infinite;
+  will-change: transform;
+}
+
 @keyframes gridScroll {
-  from { background-position: 0 0; }
-  to { background-position: 0 44px; }
+  from { transform: translateY(0); }
+  to { transform: translateY(44px); }
 }
 
 /* Thin glowing horizon line where the grid meets the sky */
@@ -177,6 +190,7 @@
   filter: drop-shadow(0 0 22px rgba(255, 255, 255, 0.35))
     drop-shadow(0 0 6px rgba(255, 196, 226, 0.45));
   animation: floaty 6s ease-in-out infinite;
+  will-change: transform;
 }
 
 [data-theme='dark'] .logo {
@@ -199,7 +213,7 @@
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .grid,
+  .grid::after,
   .stars,
   .logo {
     animation: none;
