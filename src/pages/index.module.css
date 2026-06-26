@@ -177,8 +177,8 @@
 }
 
 [data-theme='dark'] .logo {
-  filter: drop-shadow(0 0 26px rgba(200, 174, 255, 0.55))
-    drop-shadow(0 0 10px rgba(255, 158, 214, 0.4));
+  filter: drop-shadow(0 0 15px rgba(200, 174, 255, 0.3))
+    drop-shadow(0 0 6px rgba(255, 158, 214, 0.2));
 }
 
 @keyframes floaty {
