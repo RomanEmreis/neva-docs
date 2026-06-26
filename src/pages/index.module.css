@@ -86,14 +86,17 @@
   filter: blur(8px);
 }
 
-/* Receding neon perspective grid floor */
+/* Receding neon perspective grid floor (static — no animation) */
 .grid {
   position: absolute;
   left: -50%;
   right: -50%;
   bottom: -2px;
   height: 60%;
-  overflow: hidden;
+  background-image:
+    linear-gradient(to right, var(--neva-grid-line) 1px, transparent 1px),
+    linear-gradient(to bottom, var(--neva-grid-line) 1px, transparent 1px);
+  background-size: 44px 44px;
   transform: perspective(340px) rotateX(62deg);
   transform-origin: bottom center;
   -webkit-mask-image: linear-gradient(to top, #000 0%, rgba(0, 0, 0, 0.55) 45%, transparent 88%);
@@ -103,28 +106,6 @@
 
 [data-theme='dark'] .grid {
   --neva-grid-line: rgba(200, 174, 255, 0.28);
-}
-
-/* The moving lines live on their own layer so the scroll runs as a
-   GPU-composited transform — no per-frame repaint, no jank. */
-.grid::after {
-  content: '';
-  position: absolute;
-  left: 0;
-  right: 0;
-  top: -88px;
-  bottom: -88px;
-  background-image:
-    linear-gradient(to right, var(--neva-grid-line) 1px, transparent 1px),
-    linear-gradient(to bottom, var(--neva-grid-line) 1px, transparent 1px);
-  background-size: 44px 44px;
-  animation: gridScroll 11s linear infinite;
-  will-change: transform;
-}
-
-@keyframes gridScroll {
-  from { transform: translateY(0); }
-  to { transform: translateY(44px); }
 }
 
 /* Thin glowing horizon line where the grid meets the sky */
@@ -181,16 +162,21 @@
 
 /* ---- Logo & text ----------------------------------------------------- */
 
+/* The float runs on the wrapper (no filter) so the transform stays on the
+   compositor; the static glow lives on the inner logo and is rasterized
+   once. Keeping them on separate elements avoids re-running the
+   drop-shadow filter every frame, which was making the motion stutter. */
 .logoWrap {
   display: inline-block;
   margin-bottom: 0.5rem;
+  animation: floaty 7s ease-in-out infinite;
+  will-change: transform;
 }
 
 .logo {
+  display: block;
   filter: drop-shadow(0 0 22px rgba(255, 255, 255, 0.35))
     drop-shadow(0 0 6px rgba(255, 196, 226, 0.45));
-  animation: floaty 6s ease-in-out infinite;
-  will-change: transform;
 }
 
 [data-theme='dark'] .logo {
@@ -200,7 +186,7 @@
 
 @keyframes floaty {
   0%, 100% { transform: translateY(0); }
-  50% { transform: translateY(-10px); }
+  50% { transform: translateY(-9px); }
 }
 
 .heroTitle {
@@ -213,9 +199,8 @@
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .grid::after,
-  .stars,
-  .logo {
+  .logoWrap,
+  .stars {
     animation: none;
   }
 }
