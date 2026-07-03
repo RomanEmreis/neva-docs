@@ -7,7 +7,6 @@ import HomepageFeatures from '@site/src/components/HomepageFeatures';
 import Heading from '@theme/Heading';
 import MDXContent from '@theme/MDXContent';
 import useBaseUrl from '@docusaurus/useBaseUrl';
-import ThemedImage from '@theme/ThemedImage';
 import Translate from '@docusaurus/Translate';
 
 import ServerHello from './examples/server-hello.md';
@@ -28,14 +27,11 @@ function HomepageHeader() {
       </div>
       <div className={clsx('container', styles.heroContent)}>
         <div className={styles.logoWrap}>
-          <ThemedImage
+          <img
             className={styles.logo}
             width={280}
             height={280}
-            sources={{
-              light: useBaseUrl('/img/logo.svg'),
-              dark: useBaseUrl('/img/logo.svg'),
-            }}
+            src={useBaseUrl('/img/logo.svg')}
             alt="Neva logo"
           />
         </div>
