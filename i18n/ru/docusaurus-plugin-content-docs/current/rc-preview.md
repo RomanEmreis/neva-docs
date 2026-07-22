@@ -38,8 +38,14 @@ semver** и могут поменяться до финала спеки (зап
   макрос `#[tool]` генерирует полноценные 2020-12 документы.
 * **Фреймворк расширений.** Новый трейт `Extension`; **Tasks** —
   первый встроенный потребитель (id `io.modelcontextprotocol/tasks`).
-* **Удалено:** `logging/setLevel`, `notifications/message`. Вместо них —
-  собственная телеметрия host'а.
+* **Серверный логгинг вырезан на этапе компиляции.** RC-сборка neva
+  убирает и `logging/setLevel`, и серверный путь отправки
+  `notifications/message` (они под `#[cfg(not(proto-2026-07-28-rc))]`) —
+  вместо них используй собственную телеметрию host'а. Обрати внимание:
+  сама спека уже: черновик 2026-07-28 *удаляет* только `logging/setLevel`,
+  а `notifications/message` сохраняет как request-scoped, **deprecated**
+  уведомление, гейтящееся на `_meta["io.modelcontextprotocol/logLevel"]`.
+  Этот request-scoped путь neva пока не реализует.
 
 ## Виды input-запросов: elicitation, sampling, roots
 

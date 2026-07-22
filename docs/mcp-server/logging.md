@@ -5,7 +5,7 @@ sidebar_position: 9
 # Logging
 
 :::note Under `proto-2026-07-28-rc`
-`logging/setLevel` and `notifications/message` are removed in MCP 2026-07-28. Use the host's own telemetry pipeline. See [RC preview](../rc-preview.md).
+neva compiles out server-side logging entirely under the RC flag: both `logging/setLevel` and the `notifications/message` emission path are gated `#[cfg(not(proto-2026-07-28-rc))]`, so nothing on this page applies — use the host's own telemetry pipeline. The spec is narrower than neva here: the 2026-07-28 draft only removes `logging/setLevel` and keeps `notifications/message` as a request-scoped, **deprecated** notification gated on `_meta["io.modelcontextprotocol/logLevel"]`, which neva does not implement yet. See [RC preview](../rc-preview.md).
 :::
 
 

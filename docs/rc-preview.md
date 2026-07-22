@@ -37,8 +37,14 @@ the RC path becomes the default and the current default moves under a
   `#[tool]` macro emits full 2020-12 documents.
 * **Extensions framework.** New `Extension` trait; **Tasks** is the
   first built-in consumer (id `io.modelcontextprotocol/tasks`).
-* **Removed:** `logging/setLevel`, `notifications/message`. Use the
-  host's own telemetry pipeline instead.
+* **Server-side logging is compiled out.** neva's RC build drops both
+  `logging/setLevel` and the server's `notifications/message` emission
+  path (they are gated `#[cfg(not(proto-2026-07-28-rc))]`) — use the
+  host's own telemetry pipeline instead. Note the spec itself is narrower:
+  the 2026-07-28 draft only *removes* `logging/setLevel` and keeps
+  `notifications/message` as a request-scoped, **deprecated** notification
+  gated on `_meta["io.modelcontextprotocol/logLevel"]`. neva does not
+  implement that request-scoped path yet.
 
 ## Input-request kinds: elicitation, sampling, roots
 

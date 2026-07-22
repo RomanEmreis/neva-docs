@@ -5,7 +5,7 @@ sidebar_position: 9
 # Логирование
 
 :::note Под флагом `proto-2026-07-28-rc`
-`logging/setLevel` и `notifications/message` удалены в MCP 2026-07-28. Используй телеметрию host'а. См. [Превью RC](../rc-preview.md).
+Под RC-флагом neva полностью вырезает серверный логгинг на этапе компиляции: и `logging/setLevel`, и путь отправки `notifications/message` — под `#[cfg(not(proto-2026-07-28-rc))]`, так что ничего с этой страницы не применяется — используй собственную телеметрию host'а. Спека уже, чем поведение neva: черновик 2026-07-28 удаляет только `logging/setLevel`, а `notifications/message` сохраняет как request-scoped, **deprecated** уведомление, гейтящееся на `_meta["io.modelcontextprotocol/logLevel"]`, — этот путь neva пока не реализует. См. [Превью RC](../rc-preview.md).
 :::
 
 
