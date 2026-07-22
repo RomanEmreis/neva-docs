@@ -5,7 +5,7 @@ sidebar_position: 5
 # Корневые каталоги
 
 :::note Под флагом `proto-2026-07-28-rc`
-Roots удалены в MCP 2026-07-28 — `Client::add_root*` и `publish_roots_changed` отключены под RC-флагом. См. [Превью RC](../rc-preview.md).
+MCP 2026-07-28 убирает `roots/list` как capability-driven server→client *запрос* и переносит его на MRTR как **вид input-запроса, deprecated с рождения**. Roots — это конфигурируемые *данные*, а не хендлер: клиент отвечает на input-запрос сервера `roots/list` из списка, с которым он был собран, а непустой список заставляет его объявить `clientCapabilities.roots`. `Client::add_root*` снова доступны, но несут `#[deprecated]` (нужен `#[allow(deprecated)]`); на стороне сервера у аксессора появляется replay-ключ — `ctx.list_roots(key)`. Новым тулам стоит принимать нужные пути явными аргументами. См. [Виды input-запросов](../rc-preview.md#виды-input-запросов-elicitation-sampling-roots) и пример [`examples/roots/rc`](https://github.com/RomanEmreis/neva/tree/main/examples/roots/rc).
 :::
 
 

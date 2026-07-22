@@ -5,7 +5,7 @@ sidebar_position: 6
 # Сэмплирование
 
 :::note Под флагом `proto-2026-07-28-rc`
-Sampling удалён в MCP 2026-07-28 — `Client::map_sampling` отключён под RC-флагом. См. [Превью RC](../rc-preview.md).
+Под RC клиент больше не получает sampling как *push*-запрос. Вместо этого он исполняет MRTR input-запросы `sampling/createMessage` внутри своей round-trip-петли, поэтому вызывающий `call_tool` по-прежнему видит один вызов. `Client::map_sampling` снова доступен (регистрация хендлера объявляет `clientCapabilities.sampling`), но несёт `#[deprecated]` — весь этот вид deprecated с рождения. Макрос `#[sampling]`, показанный ниже, относится к легаси push-модели и **недоступен** под RC-флагом; регистрируй хендлер явным `map_sampling`. См. [Виды input-запросов](../rc-preview.md#виды-input-запросов-elicitation-sampling-roots) и пример [`examples/sampling/rc`](https://github.com/RomanEmreis/neva/tree/main/examples/sampling/rc).
 :::
 
 
