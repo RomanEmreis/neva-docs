@@ -5,7 +5,7 @@ sidebar_position: 5
 # Сэмплирование
 
 :::note Под флагом `proto-2026-07-28-rc`
-`sampling/createMessage` удалён в MCP 2026-07-28. Server-side sampling больше нет; реализуй через host-provided tool. См. [Превью RC](../rc-preview.md).
+MCP 2026-07-28 убирает `sampling/createMessage` как capability-driven server→client *запрос* и переносит эту способность на MRTR как **вид input-запроса, deprecated с рождения**. API ниже не изменился, но в сигнатуру добавляется стабильный replay-ключ — `ctx.sample(key, params)` — и работает он в re-run модели MRTR: хендлер перезапускается с начала на каждом раунде, поэтому оборачивай побочные эффекты вокруг точки sampling в `ctx.once` / `ctx.memo` / `ctx.on_commit`. Вызов несёт `#[deprecated]` (нужен `#[allow(deprecated)]`); для нового кода предпочтителен host-provided tool. См. [Виды input-запросов](../rc-preview.md#виды-input-запросов-elicitation-sampling-roots) и пример [`examples/sampling/rc`](https://github.com/RomanEmreis/neva/tree/main/examples/sampling/rc).
 :::
 
 

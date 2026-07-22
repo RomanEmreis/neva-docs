@@ -5,7 +5,7 @@ sidebar_position: 5
 # Sampling
 
 :::note Under `proto-2026-07-28-rc`
-`sampling/createMessage` is removed in MCP 2026-07-28. Server-side sampling no longer exists; expose the capability as a host-provided tool instead. See [RC preview](../rc-preview.md).
+MCP 2026-07-28 removes `sampling/createMessage` as a capability-driven server→client *request* and re-homes the ability onto MRTR as a **deprecated-on-arrival input-request kind**. The API below is unchanged, but the signature grows a stable replay key — `ctx.sample(key, params)` — and runs in the MRTR re-run model: the handler re-executes from the top each round, so guard side effects around the sampling point with `ctx.once` / `ctx.memo` / `ctx.on_commit`. The call carries `#[deprecated]` (needs `#[allow(deprecated)]`); prefer a host-provided tool for new code. See [Input-request kinds](../rc-preview.md#input-request-kinds-elicitation-sampling-roots) and the [`examples/sampling/rc`](https://github.com/RomanEmreis/neva/tree/main/examples/sampling/rc) example.
 :::
 
 

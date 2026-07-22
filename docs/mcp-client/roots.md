@@ -5,7 +5,7 @@ sidebar_position: 5
 # Roots
 
 :::note Under `proto-2026-07-28-rc`
-Roots are removed in MCP 2026-07-28 — `Client::add_root*` and `publish_roots_changed` are `#[cfg]`-gated out under the RC flag. See [RC preview](../rc-preview.md).
+MCP 2026-07-28 removes `roots/list` as a capability-driven server→client *request* and re-homes it onto MRTR as a **deprecated-on-arrival input-request kind**. Roots are configured *data*, not a handler: the client answers the server's `roots/list` input request from the list it was built with, and a non-empty list makes it declare `clientCapabilities.roots`. `Client::add_root*` are available again but carry `#[deprecated]` (need `#[allow(deprecated)]`); on the server side the accessor grows a replay key — `ctx.list_roots(key)`. New tools should take the paths they need as explicit arguments instead. See [Input-request kinds](../rc-preview.md#input-request-kinds-elicitation-sampling-roots) and the [`examples/roots/rc`](https://github.com/RomanEmreis/neva/tree/main/examples/roots/rc) example.
 :::
 
 
