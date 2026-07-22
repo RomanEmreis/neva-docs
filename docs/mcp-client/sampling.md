@@ -5,7 +5,7 @@ sidebar_position: 6
 # Sampling
 
 :::note Under `proto-2026-07-28-rc`
-Sampling is removed in MCP 2026-07-28 — `Client::map_sampling` is `#[cfg]`-gated out under the RC flag. See [RC preview](../rc-preview.md).
+Under the RC the client no longer receives sampling as a *push* request. Instead it fulfils MRTR `sampling/createMessage` input requests inside its own round-trip loop, so the caller of `call_tool` still sees a single call. `Client::map_sampling` is available again (registering a handler declares `clientCapabilities.sampling`), but it carries `#[deprecated]` — the whole kind is deprecated on arrival. The `#[sampling]` attribute macro shown below belongs to the legacy push model and is **not** available under the RC flag; wire the handler with an explicit `map_sampling` instead. See [Input-request kinds](../rc-preview.md#input-request-kinds-elicitation-sampling-roots) and the [`examples/sampling/rc`](https://github.com/RomanEmreis/neva/tree/main/examples/sampling/rc) example.
 :::
 
 
