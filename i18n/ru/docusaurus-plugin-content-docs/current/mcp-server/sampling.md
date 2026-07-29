@@ -28,11 +28,23 @@ Model Context Protocol (MCP) предоставляет стандартизир
 >   * как выполнять инструменты
 > * Сервер **никогда** не владеет ключами API и **никогда** не обращается к LLM напрямую
 
+:::note Импорт типов сэмплирования
+`neva::types` реэкспортирует типы сэмплирования только в сборках с `client`
+или `legacy-spec`, поэтому в обычной сборке `server-full` их **нет** в
+prelude. Импортируйте их из собственного модуля — как в примерах ниже и в
+апстримном [`examples/sampling`](https://github.com/RomanEmreis/neva/tree/main/examples/sampling):
+
+```rust
+use neva::types::sampling::{CreateMessageRequestParams, SamplingMessage};
+```
+:::
+
 ## Базовое использование
 
 Для использования сэмплирования внедрите [`Context`](https://docs.rs/neva/latest/neva/app/context/struct.Context.html) в обработчик инструмента и вызовите метод [`sample()`](https://docs.rs/neva/latest/neva/app/context/struct.Context.html#method.sample) с запросом и стабильным **replay-ключом**.
 ```rust
 use neva::prelude::*;
+use neva::types::sampling::CreateMessageRequestParams;
 
 #[tool]
 async fn generate_weather_report(mut ctx: Context, city: String) -> Result<String, Error> {
@@ -73,6 +85,7 @@ async fn generate_weather_report(mut ctx: Context, city: String) -> Result<Strin
 * Предпочтений модели
 ```rust
 use neva::prelude::*;
+use neva::types::sampling::{CreateMessageRequestParams, ModelPreferences};
 
 let model_pref = ModelPreferences::new()
     .with_hints(["claude-4.5-sonnet", "gpt-5"])
@@ -101,6 +114,7 @@ let params = CreateMessageRequestParams::new()
 Инструменты всегда выполняются **сервером**, а не клиентом или моделью.
 ```rust
 use neva::prelude::*;
+use neva::types::sampling::CreateMessageRequestParams;
 
 let Some(tool) = ctx.find_tool("get_weather").await else {
     return Err(ErrorCode::MethodNotFound.into());
@@ -119,6 +133,7 @@ let params = CreateMessageRequestParams::new()
 По умолчанию метод [with_tools()](https://docs.rs/neva/latest/neva/types/sampling/struct.CreateMessageRequestParams.html#method.with_tools) устанавливает `toolChoice` для LLM как `auto`. Это значение можно изменить с помощью метода [with_tool_choice()](https://docs.rs/neva/latest/neva/types/sampling/struct.CreateMessageRequestParams.html#method.with_tool_choice).
 ```rust
 use neva::prelude::*;
+use neva::types::sampling::{CreateMessageRequestParams, ToolChoiceMode};
 
 let Some(tool) = ctx.find_tool("get_weather").await else {
     return Err(ErrorCode::MethodNotFound.into());
@@ -144,6 +159,7 @@ let params = CreateMessageRequestParams::new()
 Метод `sample()` возвращает [CreateMessageResult](https://docs.rs/neva/latest/neva/types/sampling/struct.CreateMessageResult.html). Необходимо проверять поле [stop_reason](https://docs.rs/neva/latest/neva/types/sampling/struct.CreateMessageResult.html#structfield.stop_reason) и продолжать сэмплирование до достижения конечного состояния.
 ```rust
 use neva::prelude::*;
+use neva::types::sampling::{CreateMessageRequestParams, SamplingMessage, StopReason, ToolChoiceMode};
 
 #[tool]
 async fn generate_weather_report(mut ctx: Context, city: String) -> Result<String, Error> {
