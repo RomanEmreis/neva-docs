@@ -8,9 +8,17 @@
       longer a release candidate behind `proto-2026-07-28-rc`, it is the
       default protocol generation. Kept as a redirect so old links resolve.
 
-      The target is relative, so this file works for every locale: from
-      /neva-docs/docs/rc-preview/ it lands on /neva-docs/docs/spec-2026-07-28,
-      and from /neva-docs/ru/docs/rc-preview/ on the Russian page.
+      Served at the SLASHED url: /neva-docs/<locale?>/docs/rc-preview/
+      The base for relative hrefs is therefore .../docs/rc-preview/, so the
+      target needs `../`. Its sibling ../rc-preview.html covers the slashless
+      form, where the base is .../docs/ and the target needs `./` instead.
+      Keeping one file per url form means neither depends on whether the host
+      redirects between them.
+
+      Both targets stay relative so a single asset serves every locale:
+      Docusaurus copies static/ into each locale's output root, so this file
+      exists at /neva-docs/docs/... and /neva-docs/ru/docs/..., and the
+      relative href keeps the locale prefix it was reached through.
     -->
     <link rel="canonical" href="../spec-2026-07-28" />
     <meta http-equiv="refresh" content="0; url=../spec-2026-07-28" />

@@ -41,7 +41,7 @@ use neva::types::sampling::{CreateMessageRequestParams, SamplingMessage};
 
 To use sampling, inject [`Context`](https://docs.rs/neva/latest/neva/app/context/struct.Context.html) into your tool handler and call the [`sample()`](https://docs.rs/neva/latest/neva/app/context/struct.Context.html#method.sample)
 method with a prompt and a stable **replay key**.
-```rust
+```rust compile
 use neva::prelude::*;
 use neva::types::sampling::CreateMessageRequestParams;
 
@@ -80,7 +80,7 @@ The [СreateMessageRequestParams](https://docs.rs/neva/latest/neva/types/samplin
 * System prompt
 * Token limits
 * Model preferences
-```rust
+```rust compile-fragment
 use neva::prelude::*;
 use neva::types::sampling::{CreateMessageRequestParams, ModelPreferences};
 
@@ -109,7 +109,7 @@ The client may:
 If the client supports the `sampling.tools` capability, server can provide a list of tools for LLM to use during sampling. You may do it via [with_tools()](https://docs.rs/neva/latest/neva/types/sampling/struct.CreateMessageRequestParams.html#method.with_tools) method:
 
 Tools are always executed by the **server**, never by the client or the model.
-```rust
+```rust compile-fragment
 use neva::prelude::*;
 use neva::types::sampling::CreateMessageRequestParams;
 
@@ -128,7 +128,7 @@ let params = CreateMessageRequestParams::new()
 ### Configure the tool choice
 
 By default the [with_tools()](https://docs.rs/neva/latest/neva/types/sampling/struct.CreateMessageRequestParams.html#method.with_tools) set the `toolChoice` for LLM to `auto`. However you may change it with the [with_tool_choice()](https://docs.rs/neva/latest/neva/types/sampling/struct.CreateMessageRequestParams.html#method.with_tool_choice) method. 
-```rust
+```rust compile-fragment
 use neva::prelude::*;
 use neva::types::sampling::{CreateMessageRequestParams, ToolChoiceMode};
 
@@ -154,7 +154,7 @@ Below is a reference implementation of a sampling loop with tool execution.
 Most real-world MCP servers follow this pattern.
 
 The `sample()` method returns [CreateMessageResult](https://docs.rs/neva/latest/neva/types/sampling/struct.CreateMessageResult.html). You should inspect its [stop_reason](https://docs.rs/neva/latest/neva/types/sampling/struct.CreateMessageResult.html#structfield.stop_reason) and continue sampling until a terminal reason is reached.
-```rust
+```rust compile
 use neva::prelude::*;
 use neva::types::sampling::{CreateMessageRequestParams, SamplingMessage, StopReason, ToolChoiceMode};
 
