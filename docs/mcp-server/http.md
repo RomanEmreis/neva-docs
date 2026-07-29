@@ -4,16 +4,58 @@ sidebar_position: 7
 
 # HTTP Transport
 
-:::note Under `proto-2026-07-28-rc`
-The HTTP transport is request/response only — no SSE GET, no DELETE, no `Mcp-Session-Id` on the wire. Multi-instance deployments require `with_request_state_secret` and a shared `with_request_state_store`. See [RC preview](../rc-preview.md).
-:::
-
-
-In addition to `stdio`, Neva supports **Streamable HTTP** transport — a bidirectional transport layer built on top of HTTP that enables remote MCP server connections.
+In addition to `stdio`, Neva supports **Streamable HTTP** transport for remote MCP server connections.
 
 This page covers the **default** HTTP server, built on the [Volga](https://docs.rs/volga) framework. It is enabled by `server-full` or the `http-server-volga` feature flag and requires no extra wiring on your part.
 
-If you need to host the MCP endpoint on a different HTTP stack — `axum`, `hyper`, `actix-web`, or any custom adapter — see [Custom HTTP Stack](./custom-http). Both paths share the same `with_http(...)` configuration, JWT auth, role/permission gates, and SSE replay semantics described below.
+If you need to host the MCP endpoint on a different HTTP stack — `axum`, `hyper`, `actix-web`, or any custom adapter — see [Custom HTTP Stack](./custom-http). Both paths share the same `with_http(...)` configuration, JWT auth, and role/permission gates described below.
+
+## The Transport is Stateless
+
+Under [MCP 2026-07-28](../spec-2026-07-28.md#stateless-http-transport) the
+transport is request/response only:
+
+* No `Mcp-Session-Id` on the wire, and no session `DELETE`.
+* No standalone SSE `GET` stream for server-initiated pushes.
+* Every request carries the `MCP-Protocol-Version` header, plus mandatory
+  `_meta` keys for the protocol version and the client's capabilities.
+* Routing headers (`Mcp-Method`, `Mcp-Name`, `Mcp-Param-{name}`) must agree
+  with the body, or the request is rejected with `HeaderMismatch`
+  (`-32020`) and HTTP `400`.
+
+A `POST` still gets a `text/event-stream` reply when it opts into streaming —
+that is, when its `_meta` carries `io.modelcontextprotocol/logLevel` or a
+`progressToken`. The stream carries that request's
+[log](./logging) and [progress](./progress) notifications followed by its
+response. Every other `POST` gets a single JSON object.
+
+:::note Under `legacy-spec`
+The session-bound transport comes back: `Mcp-Session-Id`, session `DELETE`,
+and the standalone SSE `GET` stream with `Last-Event-ID` replay. See
+[Legacy spec](../legacy-spec.md).
+:::
+
+## Running More Than One Instance
+
+Because the transport is stateless, a multi round-trip request can land on
+any instance — so two shared resources become mandatory as soon as you run
+more than one:
+
+```rust
+App::new()
+    // Without this, cross-instance retries cannot decrypt `requestState`.
+    // neva warns at startup if it is missing.
+    .with_request_state_secret(std::env::var("MCP_STATE_SECRET").unwrap().as_bytes())
+    // Without this, a lost-response retry re-runs the handler and
+    // double-fires `on_commit`. The default store is per-process.
+    .with_request_state_store(my_redis_store)
+    .with_options(|opt| opt.with_default_http())
+    .run()
+    .await;
+```
+
+See [Deployment must-do for multi-instance HTTP](../spec-2026-07-28.md#deployment-must-do-for-multi-instance-http)
+for what the secret protects and how to rotate it.
 
 :::warning Breaking change in v0.3.3
 The `http-server` feature flag is now **engine-agnostic** and no longer pulls in Volga. To keep the default Volga-based server, depend on `http-server-volga` (or stay on the `server-full` preset, which still selects it for you). If you previously did `features = ["http-server"]` and want the same behavior as before v0.3.3, rename it to `http-server-volga`.

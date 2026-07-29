@@ -4,11 +4,6 @@ sidebar_position: 6
 
 # Получение данных
 
-:::note Под флагом `proto-2026-07-28-rc`
-`Context::elicit` принимает стабильный replay-ключ и работает в MRTR re-run модели — хендлер до elicit-точки должен быть без побочек; эффекты — через `ctx.once` / `ctx.memo` / `ctx.on_commit`. См. [Превью RC](../rc-preview.md).
-:::
-
-
 В этом руководстве описывается, как использовать [получение данных (elicitation)](https://modelcontextprotocol.io/specification/draft/client/elicitation) на стороне сервера для запроса дополнительного ввода от пользователя или выполнения внешних действий в процессе работы инструмента.
 
 ## Что такое получение данных?
@@ -16,7 +11,7 @@ sidebar_position: 6
 Получение данных позволяет серверному инструменту:
 * Запрашивать структурированный ввод от пользователя (формы с валидацией по схеме)
 * Просить клиент выполнить внешнее действие (например, открыть URL для оплаты)
-* Приостанавливать выполнение до тех пор, пока запрос не будет принят, отклонён или выполнен
+* Приостанавливать выполнение до тех пор, пока запрос не будет принят или отклонён
 
 Типичные сценарии применения:
 * Сбор контактных данных или параметров конфигурации
@@ -24,6 +19,30 @@ sidebar_position: 6
 * Платежи или OAuth-перенаправления
 
 Для использования получения данных внедрите [Context](https://docs.rs/neva/latest/neva/app/context/struct.Context.html) в обработчик инструмента и вызовите метод [elicit()](https://docs.rs/neva/latest/neva/app/context/struct.Context.html#method.elicit) с нужными параметрами запроса.
+
+## Модель повторного выполнения
+
+Получение данных — первоклассный
+[вид input-запроса MRTR](../spec-2026-07-28.md#multi-round-trip-requests-mrtr).
+Из этого следуют два практических правила:
+
+1. **`elicit` принимает стабильный replay-ключ** — `ctx.elicit(key, params)`.
+   По этому ключу ответ сопоставляется с местом вызова на следующем раунде.
+2. **Обработчик выполняется с самого начала на каждом раунде.** Код выше
+   точки `elicit` выполнится повторно, поэтому он должен быть без побочных
+   эффектов — либо обёрнут в `ctx.memo` (вычислить один раз), `ctx.once`
+   (выполнить один раз) или `ctx.on_commit` (отложить до финального
+   результата).
+
+Раунды прогоняет клиент внутри `call_tool`, поэтому вызывающий код видит
+один вызов.
+
+:::note Под флагом `legacy-spec`
+Получение данных работает как серверный push-запрос, управляемый
+возможностями: `ctx.elicit(params)` не принимает ключ, а обработчик
+приостанавливается, а не перезапускается. См.
+[Легаси-спецификация](../legacy-spec.md).
+:::
 
 ## Определение формы для получения данных
 
@@ -52,7 +71,9 @@ async fn generate_business_card(mut ctx: Context) -> Result<String, Error> {
     )
     .with_schema::<Contact>();
 
-    ctx.elicit(params.into())
+    // "contact" — replay-ключ: по нему ответ клиента сопоставляется
+    // с этим местом вызова на следующем раунде.
+    ctx.elicit("contact", params.into())
         .await?
         .map(format_contact)
 }
@@ -63,10 +84,36 @@ fn format_contact(c: Contact) -> String {
 ```
 
 ### Порядок выполнения:
-1. Сервер отправляет запрос формы
-2. Клиент получает данные и проводит их валидацию
-3. Инструмент возобновляет выполнение с валидированными данными
+1. Сервер отвечает `input_required`, передавая запрос формы
+2. Клиент получает его, формирует и валидирует данные и повторяет вызов
+3. Обработчик выполняется с начала; `ctx.elicit("contact", …)` воспроизводит ответ
 4. Результат преобразуется в выходные данные инструмента
+
+### Защита побочных эффектов {#guarding-side-effects}
+
+Всё дорогое или заметное снаружи выше точки `elicit` нужно оборачивать в
+примитив, потому что этот код выполняется на каждом раунде заново:
+
+```rust
+#[tool]
+async fn place_order(mut ctx: Context) -> Result<String, Error> {
+    // Вычисляется один раз, дальше воспроизводится.
+    let quote: u32 = ctx.memo("quote", async { Ok(fetch_quote().await) }).await?;
+
+    let params = ElicitRequestParams::form(format!("Доставка стоит ${quote}. Подтвердить?"))
+        .with_schema::<Contact>();
+    let contact: Contact = ctx.elicit("contact", params.into()).await?.content()
+        .ok_or_else(|| Error::new(ErrorCode::InvalidParams, "отклонено"))?;
+
+    // Выполнится не более одного раза за все раунды.
+    ctx.once("charge", async { charge_card().await }).await?;
+
+    // Выполнится ровно один раз, когда обработчик дойдёт до финального результата.
+    ctx.on_commit(async { send_receipt().await });
+
+    Ok(format!("Заказ подтверждён для {}", contact.name))
+}
+```
 
 ## Определение URL-запроса
 
@@ -79,22 +126,26 @@ async fn pay_a_bill(mut ctx: Context) -> Result<&'static str, Error> {
         "Please pay your bill using PayPal"
     );
 
-    let elicitation_id = params.id.clone();
-
-    ctx.elicit(params.into()).await?;
-
-    // Отправляем `notifications/elicitation/complete`
-    ctx.complete_elicitation(elicitation_id).await?;
+    ctx.elicit("payment", params.into()).await?;
 
     Ok("Payment successful")
 }
 ```
 
-После завершения внеполосного взаимодействия можно отправить уведомление `notifications/elicitation/complete`. Это позволяет клиентам программно реагировать при необходимости.
+:::warning Уведомлений о завершении больше нет
+MCP 2026-07-28 удалил `notifications/elicitation/complete` — **сигналом
+завершения является сам ответ на input-запрос**.
+`Context::complete_elicitation`, `Client::on_elicitation_completed` и
+`ElicitationCompleteParams` больше не существуют.
+
+URL-elicitation также лишился `elicitationId`: без серверного сигнала о
+завершении нечего сопоставлять. Сервер, которому нужно отслеживать запрос
+между повторами, кладёт собственный идентификатор в `requestState` —
+например, через `ctx.memo`.
+:::
 
 :::note
-* Сервер контролирует момент завершения запроса
-* Клиент только подтверждает принятие
+* Клиент подтверждает принятие; выполнение инструмента возобновляет ответ
 * Полезно для платежей, SSO, внешних подтверждений
 :::
 

@@ -4,11 +4,6 @@ sidebar_position: 10
 
 # Пакетные запросы
 
-:::note Под флагом `proto-2026-07-28-rc`
-Батч с elicit'ом проходит через MRTR retry-loop пошагово — один transport write на раунд, слоты возвращаются в порядке ввода. Лимит ретраев на слот — `McpOptions::with_max_mrtr_rounds`. См. [Превью RC](../rc-preview.md).
-:::
-
-
 Neva поддерживает **пакетные запросы JSON-RPC 2.0** — способ отправить несколько запросов к серверу за один сетевой обмен и получить все ответы сразу.
 Это удобно, когда нужно получить несколько независимых данных (список инструментов, ресурсы, результаты промптов и т.д.) и хочется минимизировать задержку.
 
@@ -53,8 +48,33 @@ async fn main() -> Result<(), Error> {
 | `.list_resource_templates()` | `client.list_resource_templates(None)` |
 | `.list_prompts()` | `client.list_prompts(None)` |
 | `.get_prompt(name, args)` | `client.get_prompt(name, args)` |
-| `.ping()` | `client.ping()` |
 | `.notify(method, params)` | уведомление без ожидания ответа |
+
+:::warning `ping` удалён
+MCP 2026-07-28 удалил метод `ping`, поэтому `BatchBuilder::ping` и
+`Client::ping` больше не существуют. Если нужна проверка живости,
+используйте [собственный обработчик](../mcp-server/basics#custom-handlers)
+под своим именем метода. Под флагом
+[`legacy-spec`](../legacy-spec.md) они возвращаются.
+:::
+
+## Пакеты и multi round-trip запросы
+
+Пакет, в котором происходит получение данных, проходит через цикл повторов
+[MRTR](../spec-2026-07-28.md#multi-round-trip-requests-mrtr) пошагово: одна
+запись в транспорт на раунд, а слоты возвращаются в порядке ввода независимо
+от того, сколько раундов потребовалось каждому. Число повторов на слот
+ограничивается через `McpOptions::with_max_mrtr_rounds`.
+
+:::note Заголовки маршрутизации на пакете отклоняются
+Ни один метод и ни одно имя не описывают пакет, поэтому `Mcp-Method` /
+`Mcp-Name` / `Mcp-Param-{name}` с ним отправлять **нельзя** — пакет с этими
+заголовками отклоняется целиком. Клиент neva не добавляет их за вас; это
+важно, если вы находитесь за прокси, который подставляет заголовки.
+
+Обязательные ключи `_meta` при этом действуют, и запросы внутри пакета
+проверяются по одному.
+:::
 
 ## Обработка ответов
 
@@ -88,11 +108,10 @@ let responses = client
     .call_tool("add", [("a", 40_i32), ("b", 2_i32)])
     .read_resource("notes://daily")
     .get_prompt("greeting", [("name", "Neva")])
-    .ping()
     .send()
     .await?;
 
-let [tools, resources, prompts, add_result, daily, greeting, ping] =
+let [tools, resources, prompts, add_result, daily, greeting] =
     responses.as_slice() else {
         return Err(Error::new(ErrorCode::InternalError, "неожиданное количество ответов"));
     };

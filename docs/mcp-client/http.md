@@ -4,12 +4,45 @@ sidebar_position: 8
 
 # HTTP Transport
 
-:::note Under `proto-2026-07-28-rc`
-`Client::init()` remains as a back-compat alias for the new `Client::discover()`; the version is fixed to `2026-07-28` and sent on every POST. See [RC preview](../rc-preview.md).
-:::
+In addition to `stdio`, Neva clients support connecting to MCP servers over **Streamable HTTP**.
 
+## What `connect()` Does
 
-In addition to `stdio`, Neva clients support connecting to MCP servers over **Streamable HTTP** — a bidirectional transport layer suitable for remote servers.
+`connect()` opens with a single **`server/discover`** request — there is no
+`initialize` / `initialized` handshake. `Client::discover()` is the explicit
+call; `Client::init()` remains as a back-compat alias.
+
+Every subsequent `POST` carries:
+
+* the `MCP-Protocol-Version` header, pinned to `2026-07-28`;
+* `_meta` with `io.modelcontextprotocol/protocolVersion` and
+  `io.modelcontextprotocol/clientCapabilities`;
+* the routing headers `Mcp-Method`, `Mcp-Name`, and any
+  `Mcp-Param-{name}` the called tool's schema asks for.
+
+Neva builds all of these for you. The server rejects a request whose headers
+and body disagree, so if you sit behind a proxy that rewrites headers, that
+is the first place to look at a sudden `400`.
+
+`Client::server_info` is read from `_meta["io.modelcontextprotocol/serverInfo"]`,
+which every result carries — it is no longer part of the discovery result.
+
+### Talking to a legacy server
+
+The client is **dual-mode**. If `server/discover` is rejected at the wire
+phase — `MethodNotFound`, `InvalidRequest`, or a non-JSON-RPC / unknown-code
+reply — it falls back to the legacy `initialize` handshake and speaks legacy
+to that peer for the rest of the connection: `Mcp-Session-Id`, the
+standalone SSE `GET` stream, server-push sampling/roots/logging, no MRTR and
+no routing headers.
+
+Network-level failures do **not** trigger the fallback. The switch is
+per-connection, monotonic, and decided before any other traffic — so you
+don't need a `legacy-spec` build just to reach an older server.
+
+`with_mcp_version(...)` still exists on the client, but it only selects
+**which legacy version the fallback negotiates**; it can never make
+`server/discover` reject a valid MCP 2026-07-28 server.
 
 ## Connecting via HTTP
 
@@ -106,5 +139,6 @@ async fn main() -> Result<(), Error> {
 
 ## Learn By Example
 
+* [MRTR client](https://github.com/RomanEmreis/neva/tree/main/examples/mrtr/client) — the round-trip loop end to end
 * [HTTP client (roots)](https://github.com/RomanEmreis/neva/tree/main/examples/roots/client)
-* [Sampling client with HTTPS + JWT](https://github.com/RomanEmreis/neva/tree/main/examples/sampling/client)
+* [Sampling client](https://github.com/RomanEmreis/neva/tree/main/examples/sampling/client)

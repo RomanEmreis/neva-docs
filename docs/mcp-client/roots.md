@@ -4,19 +4,28 @@ sidebar_position: 5
 
 # Roots
 
-:::note Under `proto-2026-07-28-rc`
-MCP 2026-07-28 removes `roots/list` as a capability-driven server→client *request* and re-homes it onto MRTR as a **deprecated-on-arrival input-request kind**. Roots are configured *data*, not a handler: the client answers the server's `roots/list` input request from the list it was built with, and a non-empty list makes it declare `clientCapabilities.roots`. `Client::add_root*` are available again but carry `#[deprecated]` (need `#[allow(deprecated)]`); on the server side the accessor grows a replay key — `ctx.list_roots(key)`. New tools should take the paths they need as explicit arguments instead. See [Input-request kinds](../rc-preview.md#input-request-kinds-elicitation-sampling-roots) and the [`examples/roots/rc`](https://github.com/RomanEmreis/neva/tree/main/examples/roots/rc) example.
+:::warning Deprecated on arrival
+MCP 2026-07-28 removed `roots/list` as a capability-driven server→client
+*request* and re-homed it onto MRTR as an
+[input-request kind](../spec-2026-07-28.md#input-request-kinds-elicitation-sampling-roots)
+— **already deprecated**. `Client::add_root` / `add_roots` carry
+`#[deprecated]` and need `#[allow(deprecated)]`.
+
+New tools should take the paths they need as explicit arguments instead.
 :::
 
+The Model Context Protocol (MCP) provides a standardized way for clients to expose filesystem “roots” to servers. [Roots](https://modelcontextprotocol.io/specification/draft/client/roots) define the boundaries of where servers can operate within the filesystem, allowing them to understand which directories and files they have access to.
 
-The Model Context Protocol (MCP) provides a standardized way for clients to expose filesystem “roots” to servers. [Roots](https://modelcontextprotocol.io/specification/draft/client/roots) define the boundaries of where servers can operate within the filesystem, allowing them to understand which directories and files they have access to. Servers can request the list of roots from supporting clients and receive notifications when that list changes.
+## Roots are Configured Data
 
-## Configuring Roots
+Roots are not a handler. The client answers the server's `roots/list` input
+request from the list it was built with, and a **non-empty list is what makes
+it declare `clientCapabilities.roots`** on every request — a server may only
+ask for a kind the client declared.
 
-You can specify one or more roots that will be exposed to the server.
-Roots may be added before or after connecting the client.
-* Roots added **before** `connect()` are sent during the initial handshake.
-* Roots added **after** `connect()` require the roots.listChanged capability.
+Because there is no `notifications/roots/list_changed` any more, the list a
+server sees is whatever the client holds when the request arrives. There is
+no push to subscribe to and no `roots.listChanged` capability to enable.
 
 ### Adding Roots
 ```rust
@@ -26,68 +35,56 @@ use neva::prelude::*;
 async fn main() -> Result<(), Error> {
     let mut client = Client::new()
         .with_options(|opt| opt
-            .with_stdio(
-                "cargo", 
-                ["run", "--manifest-path", "./neva-mcp-server/Cargo.toml"]));
+            .with_http(|http| http.bind("127.0.0.1:3001").with_endpoint("/mcp")));
 
-    // Add roots that should be available during the initial handshake
-    client.add_root("file:///home/user/projects/my_project", "My Project");
+    // Deprecated on arrival, like the whole roots kind.
+    #[allow(deprecated)]
+    client
+        .add_root("file:///home/user/projects/my_project", "My Project")
+        .add_root("file:///home/user/projects/my_another_project", "My Another Project");
 
     client.connect().await?;
 
-    // Add additional roots dynamically after connection
-    client.add_roots([
-        ("file:///home/user/projects/another_project", "My Another Project"),
-        ("file:///home/user/projects/one_more_project", "One More Project"),
-    ]);
-
-    // Call a tool, read a resource ....
+    // The MRTR round-trip happens inside this one call.
+    let result = client.call_tool("scan_workspace", ()).await?;
+    tracing::info!("Result: {:?}", result.content);
 
     client.disconnect().await
 }
 ```
 
-## Notifying the Server When the Root List Changes
-
-If roots are added or removed **after** the client has connected, enable the
-`roots.listChanged` capability so the server can be notified of updates.
-```rust
-let mut client = Client::new()
-    .with_options(|opt| opt
-        .with_roots(|roots| roots.with_list_changed())
-        .with_stdio(
-            "cargo", 
-            ["run", "--manifest-path", "./neva-mcp-server/Cargo.toml"]));
-```
-
-Enable `roots.listChanged` only if:
-* Roots are modified after `connect()`
-* The server relies on receiving root updates dynamically
-
-If all roots are known upfront, this capability is not required.
-
 ## Accessing Roots on the Server
 
-On the server side, roots provided by the client are available through the
-request `Context`. Roots may be received during the initial handshake or
-updated dynamically via the `roots.listChanged` capability.
-
-To access the current list of roots, inject [`Context`](https://docs.rs/neva/latest/neva/app/context/struct.Context.html)
-into your tool handler:
+Inject [`Context`](https://docs.rs/neva/latest/neva/app/context/struct.Context.html)
+into your tool handler and ask for the list with a stable **replay key**:
 
 ```rust
 #[tool]
-async fn roots_request(mut ctx: Context) -> Result<(), Error> {
-    let list = ctx.list_roots().await?;
+async fn scan_workspace(mut ctx: Context) -> Result<String, Error> {
+    // Round 1 unwinds the handler with `input_required` and a `roots/list`
+    // envelope; round 2 replays the answer from `requestState`.
+    #[allow(deprecated)]
+    let roots = ctx.list_roots("dirs").await?;
 
     // Each root contains a URI and a human-readable name
-    for root in list.roots {
+    for root in &roots.roots {
         tracing::info!(uri = %root.uri, name = %root.name);
     }
 
-    Ok(())
+    Ok(format!("{} root(s)", roots.roots.len()))
 }
 ```
+
+Everything above the `list_roots` point re-runs on the second round, so
+guard side effects with `ctx.memo` / `ctx.once` / `ctx.on_commit` — the same
+primitives that cover [elicitation](../mcp-server/elicitation#guarding-side-effects).
+
+:::note Under `legacy-spec`
+Roots are a push request: `ctx.list_roots()` takes no key, roots can be added
+after `connect()`, and the `roots.listChanged` capability
+(`with_roots(|r| r.with_list_changed())`) notifies the server of updates. See
+[Legacy spec](../legacy-spec.md).
+:::
 
 ## Learn By Example
 Here you may find the full [example](https://github.com/RomanEmreis/neva/tree/main/examples/roots).

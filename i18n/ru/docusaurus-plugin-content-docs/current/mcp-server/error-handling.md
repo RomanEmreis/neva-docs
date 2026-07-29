@@ -64,9 +64,13 @@ async fn read_file(uri: Uri, path: String) -> Result<ResourceContents, Error> {
 | Ситуация | Код ошибки |
 |----------|------------|
 | Имя инструмента не зарегистрировано | `MethodNotFound` (-32601) |
-| URI ресурса не совпал | `ResourceNotFound` (-32002) |
+| URI ресурса не совпал | `ErrorCode::RESOURCE_NOT_FOUND` — `InvalidParams` (-32602) |
 | Некорректное JSON-RPC сообщение | `ParseError` (-32700) |
 | Неверная структура запроса | `InvalidRequest` (-32600) |
+| Отсутствует обязательный ключ `_meta` | `InvalidParams` (-32602) + HTTP `400` |
+| Заголовок маршрутизации расходится с телом | `HeaderMismatch` (-32020) + HTTP `400` |
+| Запрос опирается на необъявленную возможность клиента | `MissingRequiredClientCapability` (-32021) + HTTP `400` |
+| Узел называет версию протокола, которую сервер не поддерживает | `UnsupportedProtocolVersion` (-32022) + HTTP `400` |
 
 ## Тип `Error`
 
@@ -87,7 +91,53 @@ let err = Error::new(ErrorCode::InvalidParams, "Missing required field: name");
 | `MethodNotFound` | -32601 | Метод не существует |
 | `InvalidParams` | -32602 | Параметры отсутствуют или имеют неверный тип |
 | `InternalError` | -32603 | Непредвиденный сбой на стороне сервера |
-| `ResourceNotFound` | -32002 | Запрошенный URI ресурса не существует |
+| `UrlElicitationRequiredError` | -32042 | Взаимодействие требует URL-elicitation |
+| `HeaderMismatch` | -32020 | Заголовок маршрутизации расходится с телом запроса |
+| `MissingRequiredClientCapability` | -32021 | Запросу нужна возможность, которую клиент не объявил |
+| `UnsupportedProtocolVersion` | -32022 | Запрошенная версия протокола не поддерживается |
+
+:::warning `ResourceNotFound` устарел
+MCP 2026-07-28 отказался от отдельного кода `-32002` — «ресурс не найден»
+теперь это `InvalidParams` (`-32602`). Вместо того чтобы называть вариант или
+жёстко указывать `InvalidParams`, ссылайтесь на зависящую от поколения
+константу
+[`ErrorCode::RESOURCE_NOT_FOUND`](https://docs.rs/neva/latest/neva/error/enum.ErrorCode.html),
+и код в протоколе будет соответствовать активному поколению автоматически:
+
+```rust
+let err = Error::new(ErrorCode::RESOURCE_NOT_FOUND, "no such resource");
+```
+
+Обработчик, который всё ещё возвращает старый вариант, продолжает работать —
+`wire_code()` подменяет код на выходе.
+:::
+
+### Ошибки протокола с полезной нагрузкой `data`
+
+Три кода из MCP 2026-07-28 несут структурированное поле `data`,
+определённое спецификацией; оно прикрепляется методом
+[`Error::with_data`](https://docs.rs/neva/latest/neva/error/struct.Error.html):
+
+```rust
+use neva::prelude::*;
+use serde_json::json;
+
+let err = Error::new(ErrorCode::UnsupportedProtocolVersion, "unsupported version")
+    .with_data(json!({
+        "supported": ["2026-07-28"],
+        "requested": "2025-06-18"
+    }));
+```
+
+| Код | Члены `data` |
+|---|---|
+| `HeaderMismatch` | — |
+| `MissingRequiredClientCapability` | `requiredCapabilities` |
+| `UnsupportedProtocolVersion` | `supported`, `requested` |
+
+Все три отвечают HTTP `400`. На HTTP-транспорте neva формирует их за вас;
+вручную их приходится создавать только в собственном
+[обработчике](./basics#custom-handlers) или [движке](./custom-http).
 
 ## Автоматические преобразования
 

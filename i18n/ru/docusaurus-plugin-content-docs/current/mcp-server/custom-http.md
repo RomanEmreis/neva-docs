@@ -27,7 +27,7 @@ sidebar_position: 8
 
 ```toml
 [dependencies]
-neva = { version = "0.3", features = ["http-server", "server-macros", "tracing", "di"] }
+neva = { version = "0.5", features = ["http-server", "server-macros", "tracing", "di"] }
 
 axum = "0.8"
 http = "1.4"
@@ -51,7 +51,7 @@ pub trait HttpEngine: Send + Sync + 'static {
     type Response: 'static;            // нативный ответ фреймворка
     type SseEvent: Send + 'static;     // нативное SSE-событие фреймворка
 
-    async fn adapt_request(req: Self::Request) -> HttpRequest;
+    async fn adapt_request(req: Self::Request) -> Result<HttpRequest, Error>;
     fn adapt_response(resp: HttpResponse) -> Self::Response;
 
     fn tracked_event(seq: u64, msg: &Message) -> Self::SseEvent;
@@ -75,16 +75,40 @@ pub trait HttpEngine: Send + Sync + 'static {
 * [`handlers::dispatch_delete`](https://docs.rs/neva/latest/neva/transport/http/core/handlers/fn.dispatch_delete.html) — обработка удаления сессии.
 * [`handlers::dispatch_get_sse`](https://docs.rs/neva/latest/neva/transport/http/core/handlers/fn.dispatch_get_sse.html) — обработка SSE GET-потока, включая повтор по `Last-Event-ID`.
 
-`dispatch_get_sse` возвращает [`SseResponse`](https://docs.rs/neva/latest/neva/transport/http/core/types/enum.SseResponse.html):
+Последние две компилируются в любой сборке, но в MCP 2026-07-28 транспорту
+без состояния обслуживать через них нечего.
+
+### `StreamResponse`: одна форма для обоих маршрутов
+
+Начиная с ревизии спецификации 2025-03-26 Streamable HTTP допускает, что
+ответ на POST — это либо одно JSON-тело, либо SSE-поток; а в MCP 2026-07-28
+именно так до клиента доходят уведомления [журнала](./logging) и
+[прогресса](./progress) в области запроса. Поэтому **`dispatch_post` и
+`dispatch_get_sse` возвращают один и тот же тип из двух вариантов**:
 
 ```rust
-enum SseResponse<S> {
+enum StreamResponse<S> {
     Stream { headers: http::HeaderMap, stream: S },
-    Status(HttpResponse),
+    Complete(HttpResponse),
 }
 ```
 
-`Stream` — живой SSE-поток; `Status` — ошибка/редирект уровня HTTP (просто прогоните через `adapt_response`).
+`Stream` — живой SSE-поток; `Complete` несёт полноценный JSON-ответ либо
+ошибку уровня HTTP (просто прогоните её через `adapt_response`).
+
+:::warning Переименовано в v0.5.0
+`SseResponse` стал `StreamResponse`, а его вариант `Status` — `Complete`: он
+несёт полноценные JSON-ответы, а не только статусы ошибок. Устаревший
+псевдоним `SseResponse` сохраняется на один релиз.
+
+Изменилась и форма `dispatch_post`: теперь он возвращает
+`Result<StreamResponse<impl Stream<Item = E::SseEvent>>, Error>` вместо
+`E::Response`, поэтому движки обрабатывают тот же самый match из двух
+вариантов, что уже был у их GET-маршрута. `handlers::handle_post` остаётся
+доступен как строительный блок только для JSON. Сборки без `tracing` — как и
+сборки с `legacy-spec` — всегда дают `Complete`, поэтому там поведение не
+меняется.
+:::
 
 ## Полный пример: адаптер на axum
 
@@ -114,15 +138,19 @@ impl HttpEngine for AxumEngine {
     type Response = Response;
     type SseEvent = Result<Event, Infallible>;
 
-    async fn adapt_request(req: Self::Request) -> HttpRequest {
+    async fn adapt_request(req: Self::Request) -> Result<HttpRequest, Error> {
         // `from_parts` сохраняет метод, URI, версию, заголовки И
         // расширения (extensions) — включая `Arc<dyn Claims>`, который
         // вставит auth-middleware выше по стеку. Если потерять
         // `parts.extensions`, любой защищённый инструмент увидит
         // запрос как неаутентифицированный.
         let (parts, body) = req.into_parts();
-        let bytes = body.collect().await.map(|c| c.to_bytes()).unwrap_or_default();
-        http::Request::from_parts(parts, bytes)
+        let bytes = body
+            .collect()
+            .await
+            .map(|c| c.to_bytes())
+            .map_err(|e| Error::new(ErrorCode::InternalError, e.to_string()))?;
+        Ok(http::Request::from_parts(parts, bytes))
     }
 
     fn adapt_response(resp: HttpResponse) -> Self::Response {
@@ -172,16 +200,37 @@ impl HttpEngine for AxumEngine {
 }
 
 async fn post_handler(State(ctx): State<HttpContext>, req: http::Request<Body>) -> Response {
-    handlers::dispatch_post::<AxumEngine>(req, &ctx).await
+    // Та же форма из двух вариантов, что и у `get_handler`: ответ на POST —
+    // это либо одно тело (`Complete`), либо SSE-поток (`Stream`) с
+    // уведомлениями этого запроса, за которыми идёт его ответ.
+    let outcome = match handlers::dispatch_post::<AxumEngine>(req, &ctx).await {
+        Ok(outcome) => outcome,
+        Err(e) => return internal_error(e),
+    };
+    stream_or_body(outcome)
 }
 
 async fn delete_handler(State(ctx): State<HttpContext>, req: http::Request<Body>) -> Response {
-    handlers::dispatch_delete::<AxumEngine>(req, &ctx).await
+    handlers::dispatch_delete::<AxumEngine>(req, &ctx)
+        .await
+        .unwrap_or_else(internal_error)
 }
 
 async fn get_handler(State(ctx): State<HttpContext>, req: http::Request<Body>) -> Response {
-    match handlers::dispatch_get_sse::<AxumEngine>(req, &ctx).await {
-        SseResponse::Stream { headers, stream } => {
+    let outcome = match handlers::dispatch_get_sse::<AxumEngine>(req, &ctx).await {
+        Ok(outcome) => outcome,
+        Err(e) => return internal_error(e),
+    };
+    stream_or_body(outcome)
+}
+
+/// Общий для обоих маршрутов match из двух вариантов.
+fn stream_or_body<S>(outcome: StreamResponse<S>) -> Response
+where
+    S: futures_util::Stream<Item = Result<Event, Infallible>> + Send + 'static,
+{
+    match outcome {
+        StreamResponse::Stream { headers, stream } => {
             let sse = Sse::new(stream).keep_alive(KeepAlive::default());
             let mut response: Response = sse.into_response();
             for (name, value) in headers.iter() {
@@ -189,8 +238,13 @@ async fn get_handler(State(ctx): State<HttpContext>, req: http::Request<Body>) -
             }
             response
         }
-        SseResponse::Status(resp) => AxumEngine::adapt_response(resp),
+        StreamResponse::Complete(resp) => AxumEngine::adapt_response(resp),
     }
+}
+
+/// Превращает `Error` адаптера движка в ответ axum со статусом 500.
+fn internal_error(err: Error) -> Response {
+    (axum::http::StatusCode::INTERNAL_SERVER_ERROR, err.to_string()).into_response()
 }
 
 #[tool]
@@ -208,16 +262,32 @@ async fn main() {
     App::new()
         .with_options(|opt| opt
             .with_name("Axum Example Server")
-            .set_http(http)
-            .with_mcp_version("2025-06-18"))
+            .set_http(http))
         .run()
         .await;
 }
 ```
 
+:::note
+`with_mcp_version(...)` **недоступен** на сервере в сборке по умолчанию —
+MCP 2026-07-28 зафиксирован, а набор поддерживаемых версий сервер объявляет
+через `server/discover`. Метод возвращается под
+[`legacy-spec`](../legacy-spec.md), где выбор версии имеет смысл.
+:::
+
+В MCP 2026-07-28 транспорт не хранит состояние, поэтому `delete_handler` и
+`get_handler` обслуживать нечего — маршруты существуют для сборок с
+`legacy-spec` и для движков, которым нужен один исходник на оба поколения.
+
 ## Из чего состоит адаптер
 
-**Адаптация запроса.** `Body::collect()` полностью буферизует входящее тело — нейтральный тип запроса в neva это `http::Request<Bytes>`, потоковые тела на пути запроса не поддерживаются. `http::Request::from_parts(parts, bytes)` за один шаг переносит метод, URI, версию, заголовки **и** extensions запроса. Сохранять extensions обязательно для аутентификации: auth-middleware движка (описан ниже) кладёт в extensions `Arc<dyn Claims>`, а `dispatch_post` читает его уже из нейтрального запроса — если при пересборке потерять `parts.extensions`, любой аутентифицированный вызов молча превратится в неаутентифицированный.
+**Адаптация запроса.** `Body::collect()` полностью буферизует входящее тело — нейтральный тип запроса в neva это `http::Request<Bytes>`, потоковые тела на пути запроса не поддерживаются. Тело, которое не удалось собрать, возвращается как `Err`, а обработчик маршрута превращает его в `500`. `http::Request::from_parts(parts, bytes)` за один шаг переносит метод, URI, версию, заголовки **и** extensions запроса. Сохранять extensions обязательно для аутентификации: auth-middleware движка (описан ниже) кладёт в extensions `Arc<dyn Claims>`, а `dispatch_post` читает его уже из нейтрального запроса — если при пересборке потерять `parts.extensions`, любой аутентифицированный вызов молча превратится в неаутентифицированный.
+
+Заголовки теперь важнее, чем раньше: `dispatch_post` сверяет `Mcp-Method`,
+`Mcp-Name` и `Mcp-Param-{name}` с телом запроса и отклоняет расхождение с
+`HeaderMismatch` (`-32020`) и HTTP `400`. Ваш адаптер обязан передавать
+входящие заголовки без изменений — если их потерять или переписать,
+корректные вызовы превратятся в `400`.
 
 **Адаптация ответа.** Зеркально: neva возвращает `http::Response<Bytes>`, вы пересобираете `Response` axum и возвращаете его.
 

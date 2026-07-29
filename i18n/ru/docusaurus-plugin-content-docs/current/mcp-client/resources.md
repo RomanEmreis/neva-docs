@@ -79,6 +79,21 @@ client.subscribe_to_resource("res://some-resource").await?;
 client.unsubscribe_from_resource("res://some-resource").await?;
 ```
 
+:::warning Доставка по HTTP-транспорту без состояния
+API подписки одинаково в обоих поколениях протокола, а вот доставка — нет.
+MCP 2026-07-28 убрал отдельный SSE-поток `GET`, поэтому у клиента,
+подключённого по HTTP, нет канала для уведомлений, возникших **вне** его
+собственного запроса: по потоку ответа `POST` идут только
+[логи](../mcp-server/logging#delivery) и
+[прогресс](../mcp-server/progress).
+
+По `stdio` уведомления по-прежнему перемежаются с выводом в stdout и
+доходят как раньше. По HTTP рассчитывайте на повторное чтение ресурса, а не
+на push — либо используйте сборку с
+[`legacy-spec`](../legacy-spec.md) на обеих сторонах, где сессионный
+SSE-поток сохраняется.
+:::
+
 ## Обучение на примерах
 Полный [пример](https://github.com/RomanEmreis/neva/tree/main/examples/client) доступен здесь.
 

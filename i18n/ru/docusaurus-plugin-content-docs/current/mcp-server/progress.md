@@ -22,7 +22,7 @@ async fn main() {
 
     App::new()
         .with_options(|opt| opt
-            .with_tasks(|tasks| tasks.with_all())
+            .with_tasks()
             .with_default_http())
         .run()
         .await;
@@ -31,6 +31,14 @@ async fn main() {
 
 :::tip
 [`with_tasks()`](https://docs.rs/neva/latest/neva/app/options/struct.McpOptions.html#method.with_tasks) включает функциональность [Задач](./tasks), необходимую для того, чтобы клиенты могли передавать `progressToken` вместе с вызовом инструмента. Подробнее см. в руководстве [Задачи](./tasks).
+:::
+
+:::note Доставка по HTTP-транспорту без состояния
+В транспорте MCP 2026-07-28 нет отдельного SSE-потока `GET`, поэтому
+уведомления о прогрессе идут по потоку ответа **того самого запроса**:
+`POST`, у которого в `_meta` есть `progressToken`, получает ответ
+`text/event-stream` со своими `notifications/progress`, а следом — сам
+ответ. См. [Логирование → Доставка](./logging#delivery).
 :::
 
 ## Отчёт о прогрессе из инструмента

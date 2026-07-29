@@ -64,9 +64,13 @@ Some errors are produced automatically by the framework, before any handler runs
 | Situation | Error code |
 |-----------|------------|
 | Tool name not registered | `MethodNotFound` (-32601) |
-| Resource URI not matched | `ResourceNotFound` (-32002) |
+| Resource URI not matched | `ErrorCode::RESOURCE_NOT_FOUND` — `InvalidParams` (-32602) |
 | Malformed JSON-RPC message | `ParseError` (-32700) |
 | Invalid request structure | `InvalidRequest` (-32600) |
+| Missing a mandatory `_meta` key | `InvalidParams` (-32602) + HTTP `400` |
+| A routing header disagrees with the body | `HeaderMismatch` (-32020) + HTTP `400` |
+| A request relies on an undeclared client capability | `MissingRequiredClientCapability` (-32021) + HTTP `400` |
+| The peer names a protocol version the server does not speak | `UnsupportedProtocolVersion` (-32022) + HTTP `400` |
 
 ## The `Error` Type
 
@@ -87,7 +91,52 @@ let err = Error::new(ErrorCode::InvalidParams, "Missing required field: name");
 | `MethodNotFound` | -32601 | Method does not exist |
 | `InvalidParams` | -32602 | Parameters are missing or wrong type |
 | `InternalError` | -32603 | Unexpected server-side failure |
-| `ResourceNotFound` | -32002 | Requested resource URI does not exist |
+| `UrlElicitationRequiredError` | -32042 | The interaction requires URL elicitation |
+| `HeaderMismatch` | -32020 | A routing header disagrees with the request body |
+| `MissingRequiredClientCapability` | -32021 | The request needs a capability the client did not declare |
+| `UnsupportedProtocolVersion` | -32022 | The requested protocol version is not supported |
+
+:::warning `ResourceNotFound` is deprecated
+MCP 2026-07-28 dropped the dedicated `-32002` code — "resource not found" is
+an `InvalidParams` (`-32602`) now. Reference the version-dependent constant
+[`ErrorCode::RESOURCE_NOT_FOUND`](https://docs.rs/neva/latest/neva/error/enum.ErrorCode.html)
+instead of naming the variant or hard-coding `InvalidParams`, and the wire
+code follows the active generation automatically:
+
+```rust
+let err = Error::new(ErrorCode::RESOURCE_NOT_FOUND, "no such resource");
+```
+
+A handler that still returns the old variant keeps working — `wire_code()`
+remaps it on the way out.
+:::
+
+### Protocol Errors with a `data` Payload
+
+The three MCP 2026-07-28 codes carry the structured `data` the spec defines,
+attached with
+[`Error::with_data`](https://docs.rs/neva/latest/neva/error/struct.Error.html):
+
+```rust
+use neva::prelude::*;
+use serde_json::json;
+
+let err = Error::new(ErrorCode::UnsupportedProtocolVersion, "unsupported version")
+    .with_data(json!({
+        "supported": ["2026-07-28"],
+        "requested": "2025-06-18"
+    }));
+```
+
+| Code | `data` members |
+|---|---|
+| `HeaderMismatch` | — |
+| `MissingRequiredClientCapability` | `requiredCapabilities` |
+| `UnsupportedProtocolVersion` | `supported`, `requested` |
+
+All three answer HTTP `400`. Neva raises them for you on the HTTP transport;
+you only construct them by hand in a custom
+[handler](./basics#custom-handlers) or [engine](./custom-http).
 
 ## Automatic Conversions
 

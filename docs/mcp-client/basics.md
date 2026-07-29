@@ -115,5 +115,21 @@ let resources = client
     .await?;
 ```
 
+Listings are ordered deterministically by name on the server side, so paging
+can no longer skip or repeat an entry. See
+[Listing Order](../mcp-server/tools#listing-order).
+
+## Caching
+
+Every list result — and `server/discover` and `resources/read` — carries
+`ttlMs` and `cacheScope`. Both are **mandatory** members under MCP
+2026-07-28 rather than optional hints, so a client can always tell how long
+a result stays fresh and who may share it:
+
+| `cacheScope` | Meaning |
+|---|---|
+| `private` | Cacheable only for this client (the default) |
+| `public` | Shareable across clients |
+
 ## Learn By Example
 Here you may find the full [example](https://github.com/RomanEmreis/neva/tree/main/examples/client)

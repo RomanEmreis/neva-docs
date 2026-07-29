@@ -79,6 +79,20 @@ client.subscribe_to_resource("res://some-resource").await?;
 client.unsubscribe_from_resource("res://some-resource").await?;
 ```
 
+:::warning Delivery over the stateless HTTP transport
+The subscription API is the same in both protocol generations, but delivery
+is not. MCP 2026-07-28 removed the standalone SSE `GET` stream, so an
+HTTP-connected client has no channel for notifications fired **outside** a
+request it made — only [logging](../mcp-server/logging#delivery) and
+[progress](../mcp-server/progress) ride the originating `POST`'s response
+stream.
+
+Over `stdio` notifications interleave on stdout and reach you as before.
+Over HTTP, plan on re-reading the resource rather than waiting for a push —
+or use a [`legacy-spec`](../legacy-spec.md) build on both ends, where the
+session-bound SSE stream still exists.
+:::
+
 ## Learn By Example
 Here you may find the full [example](https://github.com/RomanEmreis/neva/tree/main/examples/client)
 

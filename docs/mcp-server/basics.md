@@ -4,11 +4,6 @@ sidebar_position: 1
 
 # Basics
 
-:::note Under `proto-2026-07-28-rc`
-The `initialize`/`initialized` handshake is replaced by a single `server/discover` request; capabilities are advertised in `DiscoverResult`. See [RC preview](../rc-preview.md).
-:::
-
-
 Let's build a simple MCP server with Neva and add a tool, prompt and resource handlers.
 
 ## Create an app
@@ -112,11 +107,17 @@ The `command` parameter specifies the JSON-RPC method name to handle:
 ```rust
 use neva::prelude::*;
 
-#[handler(command = "ping")]
+#[handler(command = "custom/ping")]
 async fn ping_handler() {
     eprintln!("pong");
 }
 ```
+
+:::note
+MCP 2026-07-28 removed the protocol's own `ping` method, so a health-check
+method is now genuinely yours to define — pick a name outside the standard
+namespace, as above.
+:::
 
 Handler functions can accept any parameters that implement [`FromHandlerParams`](https://docs.rs/neva/latest/neva/app/handler/trait.FromHandlerParams.html):
 
@@ -155,6 +156,22 @@ async fn action_handler(req: Request) {
     tracing::info!("handling {}", req.method);
 }
 ```
+
+## How a Client Connects
+
+There is no `initialize` / `initialized` handshake. A client opens with a
+single **`server/discover`** request, and neva answers it for you — the
+`DiscoverResult` advertises the versions the server speaks
+(`supportedVersions`) plus its capabilities, assembled from what you
+registered and configured.
+
+Your server identifies itself in *every* result's `_meta`, under
+`io.modelcontextprotocol/serverInfo`, from the `with_name()` /
+`with_version()` values above.
+
+See [MCP 2026-07-28](../spec-2026-07-28.md#discovery-replaces-the-handshake)
+for the full picture, or [Legacy spec](../legacy-spec.md) if you need to
+serve pre-2026-07-28 clients.
 
 ## JSON-RPC 2.0 Batch Support
 

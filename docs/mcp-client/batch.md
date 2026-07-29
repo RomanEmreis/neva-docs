@@ -4,11 +4,6 @@ sidebar_position: 10
 
 # Batch Requests
 
-:::note Under `proto-2026-07-28-rc`
-A batched request that elicits is driven through the MRTR retry loop in lock-step rounds — one transport write per round, slots returned in input order. Cap re-issues per slot via `McpOptions::with_max_mrtr_rounds`. See [RC preview](../rc-preview.md).
-:::
-
-
 Neva supports **JSON-RPC 2.0 batch requests** — a way to send multiple requests to the server in a single round trip and receive all responses at once.
 This is useful when you need to fetch several independent pieces of information (tools list, resources, prompt results, etc.) and want to minimize latency.
 
@@ -53,8 +48,33 @@ async fn main() -> Result<(), Error> {
 | `.list_resource_templates()` | `client.list_resource_templates(None)` |
 | `.list_prompts()` | `client.list_prompts(None)` |
 | `.get_prompt(name, args)` | `client.get_prompt(name, args)` |
-| `.ping()` | `client.ping()` |
 | `.notify(method, params)` | fire-and-forget notification |
+
+:::warning `ping` is gone
+MCP 2026-07-28 removed the `ping` method, so `BatchBuilder::ping` and
+`Client::ping` no longer exist. Use a
+[custom handler](../mcp-server/basics#custom-handlers) under your own method
+name if you need a liveness probe. They come back under
+[`legacy-spec`](../legacy-spec.md).
+:::
+
+## Batches and Multi Round-Trip Requests
+
+A batched request that elicits is driven through the
+[MRTR](../spec-2026-07-28.md#multi-round-trip-requests-mrtr) retry loop in
+lock-step rounds: one transport write per round, and slots come back in
+input order regardless of how many rounds each one needed. Cap re-issues per
+slot with `McpOptions::with_max_mrtr_rounds`.
+
+:::note Routing headers on a batch are rejected
+No single method or name describes a batch, so `Mcp-Method` / `Mcp-Name` /
+`Mcp-Param-{name}` must **not** be sent with one — a batch carrying them is
+rejected outright. Neva's client omits them for you; the constraint matters
+if you sit behind a proxy that injects headers.
+
+The mandatory `_meta` keys still apply, and requests inside a batch are
+checked one by one.
+:::
 
 ## Processing Responses
 
@@ -88,11 +108,10 @@ let responses = client
     .call_tool("add", [("a", 40_i32), ("b", 2_i32)])
     .read_resource("notes://daily")
     .get_prompt("greeting", [("name", "Neva")])
-    .ping()
     .send()
     .await?;
 
-let [tools, resources, prompts, add_result, daily, greeting, ping] =
+let [tools, resources, prompts, add_result, daily, greeting] =
     responses.as_slice() else {
         return Err(Error::new(ErrorCode::InternalError, "unexpected number of responses"));
     };
