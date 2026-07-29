@@ -4,46 +4,84 @@ sidebar_position: 9
 
 # Логирование
 
-:::note Под флагом `proto-2026-07-28-rc`
-Под RC-флагом neva полностью вырезает серверный логгинг на этапе компиляции: и `logging/setLevel`, и путь отправки `notifications/message` — под `#[cfg(not(proto-2026-07-28-rc))]`, так что ничего с этой страницы не применяется — используй собственную телеметрию host'а. Спека уже, чем поведение neva: черновик 2026-07-28 удаляет только `logging/setLevel`, а `notifications/message` сохраняет как request-scoped, **deprecated** уведомление, гейтящееся на `_meta["io.modelcontextprotocol/logLevel"]`, — этот путь neva пока не реализует. См. [Превью RC](../rc-preview.md).
+Neva интегрируется с экосистемой [`tracing`](https://docs.rs/tracing) для Rust, обеспечивая структурированные журнальные сообщения. Когда клиент их запрашивает, эти сообщения пересылаются ему в виде **MCP-уведомлений журнала** (`notifications/message`).
+
+## Логирование действует в области запроса
+
+MCP 2026-07-28 удалил рукопожатие `logging/setLevel`. Договариваться о
+глобальном уровне логирования больше не нужно — вместо этого **каждый запрос
+подписывается сам**, передавая желаемую минимальную серьёзность в
+`_meta["io.modelcontextprotocol/logLevel"]`.
+
+Пока сервер обрабатывает этот запрос, он отправляет `notifications/message`
+с указанной серьёзностью и выше, а остальные подавляет. **Запрос, не
+указавший уровень, не порождает уведомлений журнала вообще.**
+
+Само уведомление `notifications/message` спецификация сохраняет, но помечает
+как **устаревшее** — оно существует для миграции. Для эксплуатационных задач
+лучше использовать собственный телеметрический конвейер хоста.
+
+:::note Под флагом `legacy-spec`
+Возвращается глобальная модель: `logging/setLevel`, а также
+`with_logging(handle)` и `set_log_level()`. В сборке по умолчанию этих API
+нет. См. [Легаси-спецификация](../legacy-spec.md).
 :::
-
-
-Neva интегрируется с экосистемой [`tracing`](https://docs.rs/tracing) для Rust, обеспечивая структурированные журнальные сообщения. При правильной настройке эти сообщения автоматически пересылаются подключённым клиентам в виде **MCP-уведомлений журнала** (`notifications/message`).
 
 ## Настройка
 
-Для включения MCP-уведомлений журнала настройте `tracing_subscriber` с форматтером Neva [`NotificationFormatter`](https://docs.rs/neva/latest/neva/types/notification/struct.NotificationFormatter.html) и зарегистрируйте дескриптор с помощью [`with_logging()`](https://docs.rs/neva/latest/neva/app/options/struct.McpOptions.html#method.with_logging):
+Добавьте слой уведомлений neva в реестр `tracing_subscriber`. Ни ручка
+перезагрузки, ни регистрация через `with_logging()` не нужны — слой сам
+определяет уровень, запрошенный для каждого события:
 
 ```rust
 use neva::prelude::*;
-use tracing_subscriber::{filter, reload, prelude::*};
+use neva::types::notification;
+use tracing_subscriber::prelude::*;
 
 #[tokio::main]
 async fn main() {
-    // Создаём перезагружаемый фильтр логов с начальным уровнем
-    let (filter, handle) = reload::Layer::new(filter::LevelFilter::DEBUG);
-
     tracing_subscriber::registry()
-        .with(filter)
-        .with(tracing_subscriber::fmt::layer()
-            .event_format(notification::NotificationFormatter)) // Направляем логи MCP-клиентам
+        .with(notification::fmt::layer()) // Направляем логи запросившему клиенту
         .init();
 
     App::new()
-        .with_options(|opt| opt
-            .with_stdio()
-            .with_logging(handle)) // Регистрируем дескриптор перезагрузки
+        .with_options(|opt| opt.with_default_http())
         .run()
         .await;
 }
 ```
 
-`reload::Layer` позволяет MCP-серверу динамически изменять уровень логирования во время выполнения — по запросу MCP-клиентов через метод `logging/setLevel`.
+Для **stdio** используйте форматтер
+[`NotificationFormatter`](https://docs.rs/neva/latest/neva/types/notification/struct.NotificationFormatter.html)
+из neva — любая поддерживаемая конфигурация stdio продолжает работать без
+изменений, включая подписчика только с форматтером:
+
+```rust
+tracing_subscriber::registry()
+    .with(tracing_subscriber::fmt::layer()
+        .event_format(notification::NotificationFormatter))
+    .init();
+```
+
+Если уровень нужно определять из типизированного расширения span, а не самим
+форматтером, добавьте рядом слой `notification::fmt::span_context()`.
+
+## Доставка {#delivery}
+
+Уведомления в области запроса идут по **потоку ответа того самого запроса**,
+как того требует спецификация:
+
+| Транспорт | Как приходят |
+|---|---|
+| `stdio` | Перемежаются с обычным выводом в stdout |
+| Streamable HTTP | `POST`, подписавшийся на поток, получает ответ `text/event-stream` со своими `notifications/message` и `notifications/progress`, а следом — сам ответ |
+
+Все остальные `POST` остаются одним JSON-объектом. Правило подавления — нет
+`logLevel`, нет `notifications/message` — действует на любом транспорте.
 
 ## Отправка журнальных сообщений из инструментов
 
-После настройки логирования используйте стандартные макросы `tracing` внутри обработчиков для отправки журнальных сообщений:
+Используйте стандартные макросы `tracing` внутри обработчиков:
 
 ```rust
 #[tool]
@@ -67,6 +105,25 @@ Neva сопоставляет уровни серьёзности `tracing` с �
 | `INFO` | `info` |
 | `DEBUG` | `debug` |
 | `TRACE` | `debug` |
+
+## Запрос логов со стороны клиента
+
+Клиент neva запрашивает логи через
+[`McpOptions::with_log_level`](https://docs.rs/neva/latest/neva/client/options/struct.McpOptions.html#method.with_log_level),
+который проставляет уровень в `_meta` каждого запроса:
+
+```rust
+use neva::prelude::*;
+use neva::types::notification::LoggingLevel;
+
+#[allow(deprecated)]
+let mut client = Client::new()
+    .with_options(|opt| opt
+        .with_log_level(LoggingLevel::Info)
+        .with_default_http());
+```
+
+Метод помечен `#[deprecated]` с момента появления — так же, как и сама схема.
 
 ## Уведомления о прогрессе через Tracing
 

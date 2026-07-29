@@ -4,12 +4,26 @@ sidebar_position: 7
 
 # Получение данных
 
-:::note Под флагом `proto-2026-07-28-rc`
-Клиент сам гоняет MRTR retry-loop — `ElicitationHandler` зовётся раз на каждый `input_required`-раунд; `Client::call_tool` возвращает финальный результат. См. [Превью RC](../rc-preview.md).
-:::
-
-
 В этом руководстве описывается, как клиент обрабатывает запросы на [получение данных (elicitation)](https://modelcontextprotocol.io/specification/draft/client/elicitation), отправляемые MCP-сервером.
+
+## Раунды прогоняет клиент
+
+В [MCP 2026-07-28](../spec-2026-07-28.md#multi-round-trip-requests-mrtr)
+получение данных — это не push-запрос, приходящий клиенту вне общего потока.
+Сервер отвечает на вызов инструмента статусом `input_required`; обработчик
+клиента формирует ответ и **повторяет вызов**, возвращая запечатанный
+`requestState`.
+
+Этот цикл neva выполняет за вас, внутри `call_tool`:
+
+* ваш обработчик вызывается один раз на каждый раунд `input_required`;
+* `Client::call_tool` возвращает только финальный результат — вызывающий код
+  видит один вызов;
+* именно регистрация обработчика заставляет клиента объявить
+  `clientCapabilities.elicitation`, а сервер может запросить только тот вид,
+  который клиент объявил;
+* число повторов на слот ограничивается через
+  [`McpOptions::with_max_mrtr_rounds`](https://docs.rs/neva/latest/neva/client/options/struct.McpOptions.html).
 
 ## Включение поддержки получения данных
 ```rust
@@ -72,21 +86,21 @@ async fn elicitation_handler(params: ElicitRequestParams) -> ElicitResult {
 Если пропустить [with_elicitation()](https://docs.rs/neva/latest/neva/client/options/struct.McpOptions.html#method.with_elicitation), [with_form()](https://docs.rs/neva/latest/neva/types/struct.ElicitationCapability.html#method.with_form) или [with_url()](https://docs.rs/neva/latest/neva/types/struct.ElicitationCapability.html#method.with_url), но объявить обработчик получения данных, это по умолчанию включит получение данных через форму.
 :::
 
-## Отслеживание завершения получения данных
-```rust
-client.on_elicitation_completed(async |n| {
-    let Some(params) = n.params::<ElicitationCompleteParams>() else {
-        println!("Unable to read params");
-        return;
-    };
+## Завершение получения данных
 
-    println!("Elicitation {} has been completed.", params.id);
-});
-```
-Это полезно для:
-* Обновления пользовательского интерфейса
-* Логирования
-* Отслеживания внешних процессов (платежи, аутентификация)
+:::warning Удалено в MCP 2026-07-28
+Уведомления `notifications/elicitation/complete` больше нет — **сигналом
+завершения является сам ответ на input-запрос**, поэтому
+`Client::on_elicitation_completed` и `ElicitationCompleteParams` не
+существуют. URL-elicitation также лишился `elicitationId`: без серверного
+сигнала о завершении нечего сопоставлять.
+
+Если вы использовали это уведомление для обновления интерфейса или аудита,
+привязывайтесь к самому обработчику — он выполняется ровно в момент, когда
+клиент отвечает.
+
+Под флагом [`legacy-spec`](../legacy-spec.md) эти API возвращаются.
+:::
 
 ## Обучение на примерах
 Полный рабочий пример доступен [здесь](https://github.com/RomanEmreis/neva/blob/main/examples/elicitation/client/src/main.rs).

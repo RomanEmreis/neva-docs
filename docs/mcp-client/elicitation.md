@@ -4,12 +4,26 @@ sidebar_position: 7
 
 # Elicitation
 
-:::note Under `proto-2026-07-28-rc`
-The client drives the MRTR retry loop automatically — your `ElicitationHandler` is invoked once per `input_required` round; `Client::call_tool` returns the final result. See [RC preview](../rc-preview.md).
-:::
-
-
 This guide explains how a client handles [elicitation](https://modelcontextprotocol.io/specification/draft/client/elicitation) requests sent by the MCP server.
+
+## The Client Drives the Round-Trips
+
+Under [MCP 2026-07-28](../spec-2026-07-28.md#multi-round-trip-requests-mrtr)
+elicitation is not a push request the client receives out of band. The
+server answers a tool call with `input_required`; the client's handler
+produces the answer and **re-issues the call**, carrying the sealed
+`requestState` back.
+
+Neva does that loop for you, inside `call_tool`:
+
+* your handler is invoked once per `input_required` round;
+* `Client::call_tool` returns only the final result — the caller sees a
+  single call;
+* registering a handler is what makes the client declare
+  `clientCapabilities.elicitation`, and a server may only ask for a kind the
+  client declared;
+* cap the re-issues per slot with
+  [`McpOptions::with_max_mrtr_rounds`](https://docs.rs/neva/latest/neva/client/options/struct.McpOptions.html).
 
 ## Enabling Elicitation Support
 ```rust
@@ -72,21 +86,20 @@ async fn elicitation_handler(params: ElicitRequestParams) -> ElicitResult {
 If you skip the [with_elicitation()](https://docs.rs/neva/latest/neva/client/options/struct.McpOptions.html#method.with_elicitation) or [with_form()](https://docs.rs/neva/latest/neva/types/struct.ElicitationCapability.html#method.with_form) or [with_url()](https://docs.rs/neva/latest/neva/types/struct.ElicitationCapability.html#method.with_url) but declare the elicitation handler this will enable form elicitation by default.
 :::
 
-## Observing Elicitation Completion
-```rust
-client.on_elicitation_completed(async |n| {
-    let Some(params) = n.params::<ElicitationCompleteParams>() else {
-        println!("Unable to read params");
-        return;
-    };
+## Elicitation Completion
 
-    println!("Elicitation {} has been completed.", params.id);
-});
-```
-This is useful for:
-* UI updates
-* Logging
-* Tracking external flows (payments, auth)
+:::warning Removed in MCP 2026-07-28
+There is no `notifications/elicitation/complete` any more — **answering the
+input request is the completion signal**, so
+`Client::on_elicitation_completed` and `ElicitationCompleteParams` no longer
+exist. URL elicitation also lost its `elicitationId`: with no
+server-initiated completion signal there is nothing to correlate.
+
+If you were using the notification for UI updates or audit logging, hook the
+handler itself instead — it runs exactly when the client answers.
+
+These APIs come back under [`legacy-spec`](../legacy-spec.md).
+:::
 
 ## Learn By Example
 A complete working example is available [here](https://github.com/RomanEmreis/neva/blob/main/examples/elicitation/client/src/main.rs).

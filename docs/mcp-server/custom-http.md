@@ -27,7 +27,7 @@ Use the engine-agnostic `http-server` feature — it ships only the abstractions
 
 ```toml
 [dependencies]
-neva = { version = "0.3", features = ["http-server", "server-macros", "tracing", "di"] }
+neva = { version = "0.5", features = ["http-server", "server-macros", "tracing", "di"] }
 
 axum = "0.8"
 http = "1.4"
@@ -51,7 +51,7 @@ pub trait HttpEngine: Send + Sync + 'static {
     type Response: 'static;            // framework-native response
     type SseEvent: Send + 'static;     // framework-native SSE event
 
-    async fn adapt_request(req: Self::Request) -> HttpRequest;
+    async fn adapt_request(req: Self::Request) -> Result<HttpRequest, Error>;
     fn adapt_response(resp: HttpResponse) -> Self::Response;
 
     fn tracked_event(seq: u64, msg: &Message) -> Self::SseEvent;
@@ -75,16 +75,39 @@ Inside your route handlers, three free helpers do everything else:
 * [`handlers::dispatch_delete`](https://docs.rs/neva/latest/neva/transport/http/core/handlers/fn.dispatch_delete.html) — handle session deletion.
 * [`handlers::dispatch_get_sse`](https://docs.rs/neva/latest/neva/transport/http/core/handlers/fn.dispatch_get_sse.html) — handle the SSE GET stream, including `Last-Event-ID` replay.
 
-`dispatch_get_sse` returns an [`SseResponse`](https://docs.rs/neva/latest/neva/transport/http/core/types/enum.SseResponse.html):
+The last two compile in either build, but under MCP 2026-07-28 the stateless
+transport gives them nothing to serve.
+
+### `StreamResponse`: one shape for both routes
+
+Streamable HTTP has allowed a POST reply to be either a single JSON body or
+an SSE stream since spec revision 2025-03-26, and under MCP 2026-07-28 that
+is how request-scoped [logging](./logging) and [progress](./progress)
+notifications reach the client. So **`dispatch_post` and `dispatch_get_sse`
+return the same two-arm type**:
 
 ```rust
-enum SseResponse<S> {
+enum StreamResponse<S> {
     Stream { headers: http::HeaderMap, stream: S },
-    Status(HttpResponse),
+    Complete(HttpResponse),
 }
 ```
 
-`Stream` is the live SSE feed; `Status` is an HTTP-level error/redirect (you just `adapt_response` it).
+`Stream` is a live SSE feed; `Complete` carries a full JSON reply or an
+HTTP-level error (you just `adapt_response` it).
+
+:::warning Renamed in v0.5.0
+`SseResponse` became `StreamResponse` and its `Status` variant became
+`Complete` — it carries full JSON replies, not just error statuses. A
+deprecated `SseResponse` alias remains for one release.
+
+`dispatch_post` also changed shape: it now returns
+`Result<StreamResponse<impl Stream<Item = E::SseEvent>>, Error>` rather than
+`E::Response`, so engines handle the same two-arm match their GET route
+already had. `handlers::handle_post` stays available as the JSON-only
+building block. Builds without `tracing` — and `legacy-spec` builds — always
+produce `Complete`, so the behavior is unchanged there.
+:::
 
 ## End-to-End: axum Adapter
 
@@ -114,15 +137,19 @@ impl HttpEngine for AxumEngine {
     type Response = Response;
     type SseEvent = Result<Event, Infallible>;
 
-    async fn adapt_request(req: Self::Request) -> HttpRequest {
+    async fn adapt_request(req: Self::Request) -> Result<HttpRequest, Error> {
         // `from_parts` preserves method, URI, version, headers AND
         // extensions — including any `Arc<dyn Claims>` inserted by an
         // upstream auth middleware. Dropping `parts.extensions` here
         // would make every protected tool see the request as
         // unauthenticated.
         let (parts, body) = req.into_parts();
-        let bytes = body.collect().await.map(|c| c.to_bytes()).unwrap_or_default();
-        http::Request::from_parts(parts, bytes)
+        let bytes = body
+            .collect()
+            .await
+            .map(|c| c.to_bytes())
+            .map_err(|e| Error::new(ErrorCode::InternalError, e.to_string()))?;
+        Ok(http::Request::from_parts(parts, bytes))
     }
 
     fn adapt_response(resp: HttpResponse) -> Self::Response {
@@ -172,16 +199,15 @@ impl HttpEngine for AxumEngine {
 }
 
 async fn post_handler(State(ctx): State<HttpContext>, req: http::Request<Body>) -> Response {
-    handlers::dispatch_post::<AxumEngine>(req, &ctx).await
-}
-
-async fn delete_handler(State(ctx): State<HttpContext>, req: http::Request<Body>) -> Response {
-    handlers::dispatch_delete::<AxumEngine>(req, &ctx).await
-}
-
-async fn get_handler(State(ctx): State<HttpContext>, req: http::Request<Body>) -> Response {
-    match handlers::dispatch_get_sse::<AxumEngine>(req, &ctx).await {
-        SseResponse::Stream { headers, stream } => {
+    // Same two-arm shape as `get_handler`: a POST reply is either a single
+    // body (`Complete`) or a request-scoped SSE stream (`Stream`) carrying
+    // the request's notifications followed by its response.
+    let outcome = match handlers::dispatch_post::<AxumEngine>(req, &ctx).await {
+        Ok(outcome) => outcome,
+        Err(e) => return internal_error(e),
+    };
+    match outcome {
+        StreamResponse::Stream { headers, stream } => {
             let sse = Sse::new(stream).keep_alive(KeepAlive::default());
             let mut response: Response = sse.into_response();
             for (name, value) in headers.iter() {
@@ -189,8 +215,37 @@ async fn get_handler(State(ctx): State<HttpContext>, req: http::Request<Body>) -
             }
             response
         }
-        SseResponse::Status(resp) => AxumEngine::adapt_response(resp),
+        StreamResponse::Complete(resp) => AxumEngine::adapt_response(resp),
     }
+}
+
+async fn delete_handler(State(ctx): State<HttpContext>, req: http::Request<Body>) -> Response {
+    handlers::dispatch_delete::<AxumEngine>(req, &ctx)
+        .await
+        .unwrap_or_else(internal_error)
+}
+
+async fn get_handler(State(ctx): State<HttpContext>, req: http::Request<Body>) -> Response {
+    let outcome = match handlers::dispatch_get_sse::<AxumEngine>(req, &ctx).await {
+        Ok(outcome) => outcome,
+        Err(e) => return internal_error(e),
+    };
+    match outcome {
+        StreamResponse::Stream { headers, stream } => {
+            let sse = Sse::new(stream).keep_alive(KeepAlive::default());
+            let mut response: Response = sse.into_response();
+            for (name, value) in headers.iter() {
+                response.headers_mut().insert(name, value.clone());
+            }
+            response
+        }
+        StreamResponse::Complete(resp) => AxumEngine::adapt_response(resp),
+    }
+}
+
+/// Translate a neva engine-adapter `Error` into a 500 axum response.
+fn internal_error(err: Error) -> Response {
+    (axum::http::StatusCode::INTERNAL_SERVER_ERROR, err.to_string()).into_response()
 }
 
 #[tool]
@@ -208,16 +263,33 @@ async fn main() {
     App::new()
         .with_options(|opt| opt
             .with_name("Axum Example Server")
-            .set_http(http)
-            .with_mcp_version("2025-06-18"))
+            .set_http(http))
         .run()
         .await;
 }
 ```
 
+:::note
+`with_mcp_version(...)` is **not** available on the server in the default
+build — MCP 2026-07-28 is pinned, and a server advertises the set it speaks
+through `server/discover`. The method returns under
+[`legacy-spec`](../legacy-spec.md), where version selection is meaningful.
+:::
+
+Under MCP 2026-07-28 the transport is stateless, so `delete_handler` and
+`get_handler` have nothing to serve — the routes exist for `legacy-spec`
+builds and for engines that want a single source file across both
+generations.
+
 ## Anatomy of the Adapter
 
-**Request adaptation.** `Body::collect()` buffers the inbound body fully — neva's neutral request type is `http::Request<Bytes>`, so streaming bodies are not supported on the request path. Using `http::Request::from_parts(parts, bytes)` carries over the method, URI, version, headers, **and** request extensions in one move. Preserving extensions is mandatory for auth: the engine's auth middleware (covered below) stores `Arc<dyn Claims>` in the request extensions, and `dispatch_post` reads it back from the neutral request — a rebuild that drops `parts.extensions` would silently downgrade every authenticated call to unauthenticated.
+**Request adaptation.** `Body::collect()` buffers the inbound body fully — neva's neutral request type is `http::Request<Bytes>`, so streaming bodies are not supported on the request path. A body that fails to collect surfaces as an `Err`, which the route handler turns into a `500`. Using `http::Request::from_parts(parts, bytes)` carries over the method, URI, version, headers, **and** request extensions in one move. Preserving extensions is mandatory for auth: the engine's auth middleware (covered below) stores `Arc<dyn Claims>` in the request extensions, and `dispatch_post` reads it back from the neutral request — a rebuild that drops `parts.extensions` would silently downgrade every authenticated call to unauthenticated.
+
+Headers matter more than they used to: `dispatch_post` validates
+`Mcp-Method`, `Mcp-Name`, and `Mcp-Param-{name}` against the body and
+rejects a mismatch with `HeaderMismatch` (`-32020`) and HTTP `400`. Your
+adapter must forward the inbound headers verbatim — dropping or rewriting
+them turns valid calls into `400`s.
 
 **Response adaptation.** Same idea in reverse: neva hands back `http::Response<Bytes>`, you rebuild axum's `Response` and return it.
 

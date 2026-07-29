@@ -4,10 +4,18 @@ sidebar_position: 5
 
 # Сэмплирование
 
-:::note Под флагом `proto-2026-07-28-rc`
-MCP 2026-07-28 убирает `sampling/createMessage` как capability-driven server→client *запрос* и переносит эту способность на MRTR как **вид input-запроса, deprecated с рождения**. API ниже не изменился, но в сигнатуру добавляется стабильный replay-ключ — `ctx.sample(key, params)` — и работает он в re-run модели MRTR: хендлер перезапускается с начала на каждом раунде, поэтому оборачивай побочные эффекты вокруг точки sampling в `ctx.once` / `ctx.memo` / `ctx.on_commit`. Вызов несёт `#[deprecated]` (нужен `#[allow(deprecated)]`); для нового кода предпочтителен host-provided tool. См. [Виды input-запросов](../rc-preview.md#виды-input-запросов-elicitation-sampling-roots) и пример [`examples/sampling/rc`](https://github.com/RomanEmreis/neva/tree/main/examples/sampling/rc).
-:::
+:::warning Устарело с момента появления
+MCP 2026-07-28 убрал `sampling/createMessage` как серверный запрос к клиенту,
+управляемый возможностями, и перенёс эту способность на
+[MRTR](../spec-2026-07-28.md#виды-input-запросов-elicitation-sampling-roots)
+в виде вида input-запроса — **сразу устаревшего**, в соответствии с
+12-месячным жизненным циклом самой спецификации. API на этой странице
+помечены `#[deprecated]` и существуют для миграции; местам вызова нужен
+`#[allow(deprecated)]`.
 
+Для нового кода предпочтительнее инструмент, предоставленный хостом, а не
+заимствование модели клиента.
+:::
 
 Model Context Protocol (MCP) предоставляет стандартизированный способ для серверов запрашивать у клиентов [сэмплирование LLM](https://modelcontextprotocol.io/specification/draft/client/sampling) («завершения» или «генерации»). Такая схема позволяет клиентам сохранять контроль над доступом к моделям, их выбором и разрешениями, одновременно давая серверам возможность использовать возможности ИИ — без необходимости хранить ключи API на стороне сервера. Серверы могут запрашивать текстовые, аудио и графические взаимодействия, а также опционально включать контекст из MCP-серверов в свои запросы.
 
@@ -20,11 +28,23 @@ Model Context Protocol (MCP) предоставляет стандартизир
 >   * как выполнять инструменты
 > * Сервер **никогда** не владеет ключами API и **никогда** не обращается к LLM напрямую
 
+:::note Импорт типов сэмплирования
+`neva::types` реэкспортирует типы сэмплирования только в сборках с `client`
+или `legacy-spec`, поэтому в обычной сборке `server-full` их **нет** в
+prelude. Импортируйте их из собственного модуля — как в примерах ниже и в
+апстримном [`examples/sampling`](https://github.com/RomanEmreis/neva/tree/main/examples/sampling):
+
+```rust
+use neva::types::sampling::{CreateMessageRequestParams, SamplingMessage};
+```
+:::
+
 ## Базовое использование
 
-Для использования сэмплирования внедрите [`Context`](https://docs.rs/neva/latest/neva/app/context/struct.Context.html) в обработчик инструмента и вызовите метод [`sample()`](https://docs.rs/neva/latest/neva/app/context/struct.Context.html#method.sample) с запросом.
+Для использования сэмплирования внедрите [`Context`](https://docs.rs/neva/latest/neva/app/context/struct.Context.html) в обработчик инструмента и вызовите метод [`sample()`](https://docs.rs/neva/latest/neva/app/context/struct.Context.html#method.sample) с запросом и стабильным **replay-ключом**.
 ```rust
 use neva::prelude::*;
+use neva::types::sampling::CreateMessageRequestParams;
 
 #[tool]
 async fn generate_weather_report(mut ctx: Context, city: String) -> Result<String, Error> {
@@ -32,11 +52,25 @@ async fn generate_weather_report(mut ctx: Context, city: String) -> Result<Strin
         .with_message(format!("What's the weather in {city}?"))
         .with_sys_prompt("You are a helpful assistant.");
 
-    let result = ctx.sample(params).await?;
+    // Первый раунд разворачивает обработчик с `input_required` и конвертом
+    // `sampling/createMessage`; второй — воспроизводит готовый ответ.
+    #[allow(deprecated)]
+    let result = ctx.sample("weather", params).await?;
 
     Ok(format!("{:?}", result.content))
 }
 ```
+
+Поскольку сэмплирование идёт по подложке MRTR, обработчик **выполняется с
+самого начала на каждом раунде**. Всё дорогое или заметное снаружи выше точки
+сэмплирования оборачивайте в `ctx.memo`, `ctx.once` или `ctx.on_commit` — те
+же примитивы, что и для
+[получения данных](./elicitation#guarding-side-effects).
+
+Сервер может запросить только тот вид, который объявил клиент: именно
+регистрация обработчика сэмплирования заставляет клиента выставить
+`clientCapabilities.sampling`. Запрос к клиенту, который его не объявил,
+приводит к ошибке, а не к подвисанию раунда.
 
 :::tip
 Если в вашем MCP-сервере уже объявлен подходящий шаблон промпта, можно использовать метод [prompt()](https://docs.rs/neva/latest/neva/app/context/struct.Context.html#method.prompt) объекта `Context` вместо передачи форматированной строки.
@@ -51,6 +85,7 @@ async fn generate_weather_report(mut ctx: Context, city: String) -> Result<Strin
 * Предпочтений модели
 ```rust
 use neva::prelude::*;
+use neva::types::sampling::{CreateMessageRequestParams, ModelPreferences};
 
 let model_pref = ModelPreferences::new()
     .with_hints(["claude-4.5-sonnet", "gpt-5"])
@@ -79,6 +114,7 @@ let params = CreateMessageRequestParams::new()
 Инструменты всегда выполняются **сервером**, а не клиентом или моделью.
 ```rust
 use neva::prelude::*;
+use neva::types::sampling::CreateMessageRequestParams;
 
 let Some(tool) = ctx.find_tool("get_weather").await else {
     return Err(ErrorCode::MethodNotFound.into());
@@ -97,6 +133,7 @@ let params = CreateMessageRequestParams::new()
 По умолчанию метод [with_tools()](https://docs.rs/neva/latest/neva/types/sampling/struct.CreateMessageRequestParams.html#method.with_tools) устанавливает `toolChoice` для LLM как `auto`. Это значение можно изменить с помощью метода [with_tool_choice()](https://docs.rs/neva/latest/neva/types/sampling/struct.CreateMessageRequestParams.html#method.with_tool_choice).
 ```rust
 use neva::prelude::*;
+use neva::types::sampling::{CreateMessageRequestParams, ToolChoiceMode};
 
 let Some(tool) = ctx.find_tool("get_weather").await else {
     return Err(ErrorCode::MethodNotFound.into());
@@ -122,6 +159,7 @@ let params = CreateMessageRequestParams::new()
 Метод `sample()` возвращает [CreateMessageResult](https://docs.rs/neva/latest/neva/types/sampling/struct.CreateMessageResult.html). Необходимо проверять поле [stop_reason](https://docs.rs/neva/latest/neva/types/sampling/struct.CreateMessageResult.html#structfield.stop_reason) и продолжать сэмплирование до достижения конечного состояния.
 ```rust
 use neva::prelude::*;
+use neva::types::sampling::{CreateMessageRequestParams, SamplingMessage, StopReason, ToolChoiceMode};
 
 #[tool]
 async fn generate_weather_report(mut ctx: Context, city: String) -> Result<String, Error> {
@@ -134,8 +172,12 @@ async fn generate_weather_report(mut ctx: Context, city: String) -> Result<Strin
         .with_sys_prompt("You are a helpful assistant.")
         .with_tools([tool]);
 
+    let mut step = 0;
     loop {
-        let result = ctx.sample(params.clone()).await?;
+        // Каждой итерации нужен **свой** replay-ключ — общий ключ вечно
+        // воспроизводил бы первый ответ вместо продвижения цикла.
+        #[allow(deprecated)]
+        let result = ctx.sample(format!("sample-{step}"), params.clone()).await?;
 
         if result.stop_reason == Some(StopReason::ToolUse) {
             // Получаем запросы на вызов инструментов из ответа сэмплирования
@@ -148,8 +190,13 @@ async fn generate_weather_report(mut ctx: Context, city: String) -> Result<Strin
                 .iter()
                 .fold(SamplingMessage::assistant(), |msg, tool| msg.with(tool.clone()));
 
-            // Вызываем инструменты, запрошенные LLM
-            let tool_results = ctx.use_tools(tools).await;
+            // Вызываем инструменты, запрошенные LLM, — через `memo`, чтобы
+            // они выполнились один раз. Без этого инструменты каждого
+            // предыдущего шага выполнялись бы заново на каждом следующем
+            // раунде, ведь обработчик стартует с начала.
+            let tool_results = ctx
+                .memo(format!("tools-{step}"), async { Ok(ctx.use_tools(tools).await) })
+                .await?;
 
             // Записываем результаты инструментов как сообщения пользователя
             let user_msg = tool_results
@@ -161,6 +208,8 @@ async fn generate_weather_report(mut ctx: Context, city: String) -> Result<Strin
                 .with_message(assistant_msg)
                 .with_message(user_msg)
                 .with_tool_choice(ToolChoiceMode::None);
+
+            step += 1;
         } else {
             // Останавливаемся при получении причины, отличной от вызова инструмента
             return Ok(format!("{:?}", result.content));
@@ -181,6 +230,15 @@ async fn generate_weather_report(mut ctx: Context, city: String) -> Result<Strin
 В продакшен-коде **всегда** следует:
 * Ограничивать количество итераций сэмплирования
 * Обрабатывать неожиданные причины остановки
+
+Каждая итерация — это полноценный раунд MRTR, то есть ещё один повтор
+запроса со стороны клиента. Клиенты ограничивают их числом
+`McpOptions::with_max_mrtr_rounds`.
+
+И ключ **на каждую итерацию** нужен не только вызову `sample`, но и любому
+побочному эффекту в теле цикла: обработчик стартует с начала на каждом
+раунде, поэтому незащищённый `ctx.use_tools` заново выполнял бы инструменты
+всех предыдущих шагов.
 :::
 
 ## Когда не использовать сэмплирование

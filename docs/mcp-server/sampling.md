@@ -4,10 +4,16 @@ sidebar_position: 5
 
 # Sampling
 
-:::note Under `proto-2026-07-28-rc`
-MCP 2026-07-28 removes `sampling/createMessage` as a capability-driven server→client *request* and re-homes the ability onto MRTR as a **deprecated-on-arrival input-request kind**. The API below is unchanged, but the signature grows a stable replay key — `ctx.sample(key, params)` — and runs in the MRTR re-run model: the handler re-executes from the top each round, so guard side effects around the sampling point with `ctx.once` / `ctx.memo` / `ctx.on_commit`. The call carries `#[deprecated]` (needs `#[allow(deprecated)]`); prefer a host-provided tool for new code. See [Input-request kinds](../rc-preview.md#input-request-kinds-elicitation-sampling-roots) and the [`examples/sampling/rc`](https://github.com/RomanEmreis/neva/tree/main/examples/sampling/rc) example.
-:::
+:::warning Deprecated on arrival
+MCP 2026-07-28 removed `sampling/createMessage` as a capability-driven
+server→client *request* and re-homed the ability onto
+[MRTR](../spec-2026-07-28.md#input-request-kinds-elicitation-sampling-roots)
+as an input-request kind — **already deprecated**, matching the spec's own
+12-month lifecycle. The APIs on this page carry `#[deprecated]` and exist for
+migration; call sites need `#[allow(deprecated)]`.
 
+For new code, prefer a host-provided tool over borrowing the client's model.
+:::
 
 The Model Context Protocol (MCP) provides a standardized way for servers to request [LLM sampling](https://modelcontextprotocol.io/specification/draft/client/sampling) (“completions” or “generations”) from language models via clients. This flow allows clients to maintain control over model access, selection, and permissions while enabling servers to leverage AI capabilities—with no server API keys necessary. Servers can request text, audio, or image-based interactions and optionally include context from MCP servers in their prompts.
 
@@ -20,12 +26,24 @@ The Model Context Protocol (MCP) provides a standardized way for servers to requ
 >   * how tools are executed
 > * Server **never** owns API keys and **never** talks to LLMs directly
 
+:::note Importing the sampling types
+`neva::types` re-exports the sampling types only on `client` / `legacy-spec`
+builds, so on a plain `server-full` build they are **not** in the prelude.
+Import them from their own module — the snippets below do, as does the
+upstream [`examples/sampling`](https://github.com/RomanEmreis/neva/tree/main/examples/sampling):
+
+```rust
+use neva::types::sampling::{CreateMessageRequestParams, SamplingMessage};
+```
+:::
+
 ## Basic Usage
 
 To use sampling, inject [`Context`](https://docs.rs/neva/latest/neva/app/context/struct.Context.html) into your tool handler and call the [`sample()`](https://docs.rs/neva/latest/neva/app/context/struct.Context.html#method.sample)
-method with a prompt.
-```rust
+method with a prompt and a stable **replay key**.
+```rust compile
 use neva::prelude::*;
+use neva::types::sampling::CreateMessageRequestParams;
 
 #[tool]
 async fn generate_weather_report(mut ctx: Context, city: String) -> Result<String, Error> {
@@ -33,11 +51,23 @@ async fn generate_weather_report(mut ctx: Context, city: String) -> Result<Strin
         .with_message(format!("What's the weather in {city}?"))
         .with_sys_prompt("You are a helpful assistant.");
 
-    let result = ctx.sample(params).await?;
+    // Round 1 unwinds the handler with `input_required` and a
+    // `sampling/createMessage` envelope; round 2 replays the completion.
+    #[allow(deprecated)]
+    let result = ctx.sample("weather", params).await?;
 
     Ok(format!("{:?}", result.content))
 }
 ```
+
+Because sampling rides the MRTR substrate, the handler **re-runs from the
+top on every round**. Guard anything expensive or externally visible above
+the sampling point with `ctx.memo`, `ctx.once`, or `ctx.on_commit` — the same
+primitives that cover [elicitation](./elicitation#guarding-side-effects).
+
+A server may only ask for a kind the client declared: registering a sampling
+handler is what makes a client set `clientCapabilities.sampling`. Asking an
+undeclared client reports an error rather than stalling the round-trip.
 
 :::tip
 If you already have an appropriate prompt template declared in your MCP server, you may use the [prompt()](https://docs.rs/neva/latest/neva/app/context/struct.Context.html#method.prompt) method of `Context` instead of passing formatted string.
@@ -50,8 +80,9 @@ The [СreateMessageRequestParams](https://docs.rs/neva/latest/neva/types/samplin
 * System prompt
 * Token limits
 * Model preferences
-```rust
+```rust compile-fragment
 use neva::prelude::*;
+use neva::types::sampling::{CreateMessageRequestParams, ModelPreferences};
 
 let model_pref = ModelPreferences::new()
     .with_hints(["claude-4.5-sonnet", "gpt-5"])
@@ -78,8 +109,9 @@ The client may:
 If the client supports the `sampling.tools` capability, server can provide a list of tools for LLM to use during sampling. You may do it via [with_tools()](https://docs.rs/neva/latest/neva/types/sampling/struct.CreateMessageRequestParams.html#method.with_tools) method:
 
 Tools are always executed by the **server**, never by the client or the model.
-```rust
+```rust compile-fragment
 use neva::prelude::*;
+use neva::types::sampling::CreateMessageRequestParams;
 
 let Some(tool) = ctx.find_tool("get_weather").await else {
     return Err(ErrorCode::MethodNotFound.into());
@@ -96,8 +128,9 @@ let params = CreateMessageRequestParams::new()
 ### Configure the tool choice
 
 By default the [with_tools()](https://docs.rs/neva/latest/neva/types/sampling/struct.CreateMessageRequestParams.html#method.with_tools) set the `toolChoice` for LLM to `auto`. However you may change it with the [with_tool_choice()](https://docs.rs/neva/latest/neva/types/sampling/struct.CreateMessageRequestParams.html#method.with_tool_choice) method. 
-```rust
+```rust compile-fragment
 use neva::prelude::*;
+use neva::types::sampling::{CreateMessageRequestParams, ToolChoiceMode};
 
 let Some(tool) = ctx.find_tool("get_weather").await else {
     return Err(ErrorCode::MethodNotFound.into());
@@ -121,8 +154,9 @@ Below is a reference implementation of a sampling loop with tool execution.
 Most real-world MCP servers follow this pattern.
 
 The `sample()` method returns [CreateMessageResult](https://docs.rs/neva/latest/neva/types/sampling/struct.CreateMessageResult.html). You should inspect its [stop_reason](https://docs.rs/neva/latest/neva/types/sampling/struct.CreateMessageResult.html#structfield.stop_reason) and continue sampling until a terminal reason is reached.
-```rust
+```rust compile
 use neva::prelude::*;
+use neva::types::sampling::{CreateMessageRequestParams, SamplingMessage, StopReason, ToolChoiceMode};
 
 #[tool]
 async fn generate_weather_report(mut ctx: Context, city: String) -> Result<String, Error> {
@@ -134,9 +168,13 @@ async fn generate_weather_report(mut ctx: Context, city: String) -> Result<Strin
         .with_message(format!("What's the weather in {city}?"))
         .with_sys_prompt("You are a helpful assistant.")
         .with_tools([tool]);
-    
+
+    let mut step = 0;
     loop {
-        let result = ctx.sample(params.clone()).await?;
+        // Each iteration needs its **own** replay key — a shared key would
+        // replay the first completion forever instead of advancing the loop.
+        #[allow(deprecated)]
+        let result = ctx.sample(format!("sample-{step}"), params.clone()).await?;
 
         if result.stop_reason == Some(StopReason::ToolUse) {
             // Getting the tool use requests from sampling response
@@ -149,8 +187,12 @@ async fn generate_weather_report(mut ctx: Context, city: String) -> Result<Strin
                 .iter()
                 .fold(SamplingMessage::assistant(), |msg, tool| msg.with(tool.clone()));
 
-            // Calling tools that LLM requested
-            let tool_results = ctx.use_tools(tools).await;
+            // Calling tools that LLM requested — behind `memo`, so they run
+            // once. Without it every earlier step's tools would execute again
+            // on each later round, because the handler restarts from the top.
+            let tool_results = ctx
+                .memo(format!("tools-{step}"), async { Ok(ctx.use_tools(tools).await) })
+                .await?;
 
             // Logging the tools results as user messages
             let user_msg = tool_results
@@ -162,6 +204,8 @@ async fn generate_weather_report(mut ctx: Context, city: String) -> Result<Strin
                 .with_message(assistant_msg)
                 .with_message(user_msg)
                 .with_tool_choice(ToolChoiceMode::None);
+
+            step += 1;
         } else {
             // Stopping if we get a reason different from tool use
             return Ok(format!("{:?}", result.content));
@@ -182,6 +226,14 @@ This mirrors LLM training data and allows the client to reconstruct full context
 In production code you **should** always:
 * Limit the number of sampling iterations
 * Handle unexpected stop reasons
+
+Each iteration is a full MRTR round-trip, so it also costs a client
+re-issue. Clients cap those with `McpOptions::with_max_mrtr_rounds`.
+
+And every side effect in the loop body needs a **per-iteration** key, not
+just the `sample` call: the handler restarts from the top on each round, so
+an unguarded `ctx.use_tools` would re-execute every earlier step's tools
+each time round.
 :::
 
 ## When Not to Use Sampling

@@ -1,0 +1,58 @@
+name: CI
+
+on:
+  pull_request:
+  push:
+    branches:
+      - main
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  # The site build doubles as the link checker: docusaurus.config.ts sets
+  # `onBrokenLinks: 'throw'`, so a dangling internal link fails here rather
+  # than on the deploy that runs after merge.
+  build:
+    name: Build site
+    # On main, deploy.yml already builds before publishing — no need to do it
+    # twice. This job exists to gate pull requests.
+    if: github.event_name == 'pull_request'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+      - run: npm ci
+      - run: npm run build
+
+  # Compiles the doc snippets marked `compile` / `compile-fragment` against
+  # the published neva crate. See ci/check-snippets.py for the conventions.
+  snippets:
+    name: Compile Rust snippets
+    runs-on: ubuntu-latest
+    env:
+      # bump alongside the version the docs describe
+      NEVA_VERSION: "0.5"
+      # The generated crates live in a temp dir outside the repo, so point
+      # cargo at a fixed path we can actually cache.
+      CARGO_TARGET_DIR: ${{ github.workspace }}/.snippet-target
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+      - name: Cache cargo registry and snippet target dir
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.cargo/registry
+            ~/.cargo/git
+            ${{ env.CARGO_TARGET_DIR }}
+          # No Cargo.lock to key on — the inputs are the neva version and the
+          # generator itself.
+          key: snippets-${{ runner.os }}-neva${{ env.NEVA_VERSION }}-${{ hashFiles('ci/check-snippets.py') }}
+          restore-keys: |
+            snippets-${{ runner.os }}-neva${{ env.NEVA_VERSION }}-
+      - run: python3 ci/check-snippets.py

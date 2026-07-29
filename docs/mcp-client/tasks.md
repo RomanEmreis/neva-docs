@@ -18,7 +18,7 @@ use neva::prelude::*;
 async fn main() -> Result<(), Error> {
     let mut client = Client::new()
         .with_options(|opt| opt
-            .with_tasks(|t| t.with_all())
+            .with_tasks()
             .with_default_http());
 
     client.connect().await?;
@@ -28,6 +28,16 @@ async fn main() -> Result<(), Error> {
     client.disconnect().await
 }
 ```
+
+Tasks is an extension under MCP 2026-07-28, and its capability is an empty
+object — advertising it *is* the declaration — so `with_tasks()` takes no
+closure.
+
+:::note Under `legacy-spec`
+The 2025-11-25 surface applies: `with_tasks(|t| t.with_all())` configures a
+`cancel` / `list` / `requests` sub-tree, and client-hosted tasks exist. See
+[Legacy spec](../legacy-spec.md).
+:::
 
 ## Calling a Tool as a Task
 
@@ -67,29 +77,42 @@ let result = client
     .call_tool("generate_weather_report", args).await;
 ```
 
-## Listing Active Tasks
+## Polling a Task
 
-Use [`list_tasks()`](https://docs.rs/neva/latest/neva/client/struct.Client.html#method.list_tasks) to retrieve the current list of running or completed tasks:
+`tasks/get` is the single polling method. It returns a `DetailedTask` — the
+status plus, depending on it, the outstanding `inputRequests`, the terminal
+`result`, or the `error`. `tasks/update` answers those input requests, and
+`tasks/cancel` acknowledges with an empty result (cancellation is
+cooperative, so the outcome is learned by polling).
+
+`client.task().call_tool(...)` drives that loop for you and resolves to the
+terminal outcome, so most code never issues the methods directly.
+
+:::warning There is no `tasks/list`
+`tasks/list` and `tasks/result` were removed in MCP 2026-07-28, and so was
+`Client::list_tasks`. A task id is a durable handle the requestor already
+holds, so **enumeration is your job** — keep the ids you care about and poll
+them individually.
+:::
+
+On the wire, `ttl` serializes as `ttlMs` and `poll_interval` as
+`pollIntervalMs`; `ttl` is nullable, meaning "unlimited". The status
+notification is `notifications/tasks`.
+
+:::note
+Opting into `notifications/tasks` is the spec's `subscriptions/listen`
+mechanism, which does not exist in neva yet and is tracked separately. Poll
+with `tasks/get` in the meantime.
+:::
+
+## Handling Elicitation in Tasks
+
+Task-capable tools may ask for input mid-execution. Register an
+[elicitation](/docs/mcp-client/elicitation) handler with the
+`#[elicitation]` macro; the framework invokes it when the server-side tool
+calls `ctx.task().elicit()` during task execution.
 
 ```rust
-let tasks = client.list_tasks(None).await?;
-println!("{:?}", tasks);
-```
-
-## Handling Sampling and Elicitation in Tasks
-
-Task-capable tools may trigger [sampling](/docs/mcp-client/sampling) or [elicitation](/docs/mcp-client/elicitation) mid-execution.
-To support these interactions, register handlers using the `#[sampling]` and `#[elicitation]` macros. The framework invokes them automatically when the server-side tool calls `ctx.sample()` or `ctx.elicit()` during task execution.
-
-```rust
-#[sampling]
-async fn sampling_handler(params: CreateMessageRequestParams) -> CreateMessageResult {
-    CreateMessageResult::assistant()
-        .with_model("gpt-5")
-        .with_content("Response text")
-        .end_turn()
-}
-
 #[elicitation]
 async fn elicitation_handler(params: ElicitRequestParams) -> ElicitResult {
     match params {
@@ -98,6 +121,13 @@ async fn elicitation_handler(params: ElicitRequestParams) -> ElicitResult {
     }
 }
 ```
+
+:::warning No task-augmented sampling
+MCP 2026-07-28 removed the server-push `sampling/createMessage` request, so
+there is no task-augmented sampling to answer.
+[Sampling](/docs/mcp-client/sampling) now rides the MRTR substrate, which
+never mixes with the task substrate — the one re-runs, the other suspends.
+:::
 
 ## Learn By Example
 

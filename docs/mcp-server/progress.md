@@ -22,7 +22,7 @@ async fn main() {
 
     App::new()
         .with_options(|opt| opt
-            .with_tasks(|tasks| tasks.with_all())
+            .with_tasks()
             .with_default_http())
         .run()
         .await;
@@ -31,6 +31,14 @@ async fn main() {
 
 :::tip
 [`with_tasks()`](https://docs.rs/neva/latest/neva/app/options/struct.McpOptions.html#method.with_tasks) enables the [Tasks](./tasks) feature, which is required for clients to issue a `progressToken` alongside a tool call. See the [Tasks](./tasks) guide for more details.
+:::
+
+:::note Delivery over stateless HTTP
+The MCP 2026-07-28 transport has no standalone SSE `GET` stream, so progress
+notifications flow on the **originating request's** response stream: a
+`POST` whose `_meta` carries a `progressToken` gets a `text/event-stream`
+reply with its `notifications/progress` followed by the response. See
+[Logging → Delivery](./logging#delivery).
 :::
 
 ## Reporting Progress from a Tool

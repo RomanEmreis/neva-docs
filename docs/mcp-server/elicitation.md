@@ -4,11 +4,6 @@ sidebar_position: 6
 
 # Elicitation
 
-:::note Under `proto-2026-07-28-rc`
-`Context::elicit` takes a stable replay key (`ctx.elicit(key, params)`) and runs in the MRTR re-run model — handlers must be side-effect-free up to each elicit point; wrap effects in `ctx.once` / `ctx.memo` / `ctx.on_commit`. See [RC preview](../rc-preview.md).
-:::
-
-
 This guide explains how to use [elicitation](https://modelcontextprotocol.io/specification/draft/client/elicitation) on the server side to request additional user input or external actions during tool execution.
 
 ## What is Elicitation?
@@ -16,14 +11,37 @@ This guide explains how to use [elicitation](https://modelcontextprotocol.io/spe
 Elicitation allows a server tool to:
 * Request structured user input (forms with schema validation)
 * Ask the client to perform an external action (e.g. open a payment URL)
-* Pause execution until the elicitation is accepted, rejected, or completed
+* Pause execution until the elicitation is accepted or rejected
 
 Typical use cases:
 * Collecting contact or configuration data
 * User confirmation steps
 * Payments or OAuth-style redirects
 
-To use elicitation, inject [Context](https://docs.rs/neva/latest/neva/app/context/struct.Context.html) into your tool handler and call the [elicit()](https://docs.rs/neva/latest/neva/app/context/struct.Context.html#method.elicit) method with either form of URL elicit request params.
+To use elicitation, inject [Context](https://docs.rs/neva/latest/neva/app/context/struct.Context.html) into your tool handler and call the [elicit()](https://docs.rs/neva/latest/neva/app/context/struct.Context.html#method.elicit) method with either form or URL elicit request params.
+
+## The Re-Run Model
+
+Elicitation is the first-class
+[MRTR input-request kind](../spec-2026-07-28.md#multi-round-trip-requests-mrtr).
+Two consequences shape every handler that elicits:
+
+1. **`elicit` takes a stable replay key** — `ctx.elicit(key, params)`. The
+   key is how the answer is matched back to this call site on the next
+   round.
+2. **The handler re-runs from the top on every round.** Code above an elicit
+   point executes again, so it must be side-effect-free — or wrapped in
+   `ctx.memo` (compute once), `ctx.once` (run once), or `ctx.on_commit`
+   (defer to the final result).
+
+The client drives the rounds inside `call_tool`, so its caller still sees a
+single call.
+
+:::note Under `legacy-spec`
+Elicitation is a capability-driven server→client push request instead:
+`ctx.elicit(params)` takes no key, and the handler suspends rather than
+re-running. See [Legacy spec](../legacy-spec.md).
+:::
 
 ## Defining a Form Elicitation
 
@@ -52,7 +70,9 @@ async fn generate_business_card(mut ctx: Context) -> Result<String, Error> {
     )
     .with_schema::<Contact>();
 
-    ctx.elicit(params.into())
+    // "contact" is the replay key: it matches the client's answer
+    // back to this call site on the next round.
+    ctx.elicit("contact", params.into())
         .await?
         .map(format_contact)
 }
@@ -63,10 +83,36 @@ fn format_contact(c: Contact) -> String {
 ```
 
 ### Execution flow:
-1. Server sends a form elicitation request
-2. Client receives and validates the data
-3. Tool resumes with the validated payload
+1. Server replies `input_required`, carrying the form elicitation request
+2. Client receives it, produces and validates the data, and retries the call
+3. The handler re-runs from the top; `ctx.elicit("contact", …)` replays the answer
 4. The result is mapped to the tool output
+
+### Guarding side effects
+
+Anything expensive or externally visible above an elicit point needs a
+primitive, because that code runs again on every round:
+
+```rust
+#[tool]
+async fn place_order(mut ctx: Context) -> Result<String, Error> {
+    // Computed once, replayed on later rounds.
+    let quote: u32 = ctx.memo("quote", async { Ok(fetch_quote().await) }).await?;
+
+    let params = ElicitRequestParams::form(format!("Shipping is ${quote}. Confirm?"))
+        .with_schema::<Contact>();
+    let contact: Contact = ctx.elicit("contact", params.into()).await?.content()
+        .ok_or_else(|| Error::new(ErrorCode::InvalidParams, "declined"))?;
+
+    // Runs at most once across all rounds.
+    ctx.once("charge", async { charge_card().await }).await?;
+
+    // Runs exactly once, when the handler reaches its final result.
+    ctx.on_commit(async { send_receipt().await });
+
+    Ok(format!("Order confirmed for {}", contact.name))
+}
+```
 
 ## Defining a URL Elicitation
 
@@ -79,22 +125,26 @@ async fn pay_a_bill(mut ctx: Context) -> Result<&'static str, Error> {
         "Please pay your bill using PayPal"
     );
 
-    let elicitation_id = params.id.clone();
-
-    ctx.elicit(params.into()).await?;
-
-    // Send the `notifications/elicitation/complete`
-    ctx.complete_elicitation(elicitation_id).await?;
+    ctx.elicit("payment", params.into()).await?;
 
     Ok("Payment successful")
 }
 ```
 
-You may also send a `notifications/elicitation/complete` notification when an out-of-band interaction is completed. This allows clients to react programmatically if appropriate.
+:::warning Completion notifications are gone
+MCP 2026-07-28 removed `notifications/elicitation/complete` — **answering
+the input request is the completion signal**. `Context::complete_elicitation`,
+`Client::on_elicitation_completed`, and `ElicitationCompleteParams` no longer
+exist.
+
+URL elicitation also lost its `elicitationId`: with no server-initiated
+completion signal there is nothing to correlate. A server that needs to
+track an elicitation across retries encodes its own identifier in
+`requestState` — for example via `ctx.memo`.
+:::
 
 :::note
-* The server controls when the elicitation is considered completed
-* The client only confirms acceptance
+* The client confirms acceptance; the answer is what resumes the tool
 * Useful for payments, SSO, external confirmations
 :::
 

@@ -4,11 +4,6 @@ sidebar_position: 1
 
 # Основы
 
-:::note Под флагом `proto-2026-07-28-rc`
-Хендшейк `initialize`/`initialized` заменён одним запросом `server/discover`; capabilities — в `DiscoverResult`. См. [Превью RC](../rc-preview.md).
-:::
-
-
 Давайте создадим простой MCP-сервер с Neva и добавим обработчики инструментов, промптов и ресурсов.
 
 ## Создание приложения
@@ -103,7 +98,7 @@ async fn get_res(uri: Uri, name: String) -> ResourceContents {
 }
 ```
 
-## Произвольные обработчики
+## Произвольные обработчики {#custom-handlers}
 
 Используйте [`#[handler]`](https://docs.rs/neva/latest/neva/attr.handler.html) для обработки любого сырого JSON-RPC метода — в том числе нестандартных методов, выходящих за рамки спецификации MCP. Это полезно для реализации собственных расширений протокола или сообщений координации между серверами.
 
@@ -112,11 +107,17 @@ async fn get_res(uri: Uri, name: String) -> ResourceContents {
 ```rust
 use neva::prelude::*;
 
-#[handler(command = "ping")]
+#[handler(command = "custom/ping")]
 async fn ping_handler() {
     eprintln!("pong");
 }
 ```
+
+:::note
+MCP 2026-07-28 удалил собственный метод протокола `ping`, поэтому метод для
+проверки живости теперь действительно ваш — выбирайте имя за пределами
+стандартного пространства имён, как выше.
+:::
 
 Функции-обработчики могут принимать любые параметры, реализующие [`FromHandlerParams`](https://docs.rs/neva/latest/neva/app/handler/trait.FromHandlerParams.html):
 
@@ -155,6 +156,22 @@ async fn action_handler(req: Request) {
     tracing::info!("handling {}", req.method);
 }
 ```
+
+## Как подключается клиент
+
+Рукопожатия `initialize` / `initialized` больше нет. Клиент открывает
+соединение единственным запросом **`server/discover`**, и neva отвечает на
+него за вас: `DiscoverResult` объявляет версии, которые поддерживает сервер
+(`supportedVersions`), и его возможности, собранные из того, что вы
+зарегистрировали и настроили.
+
+Сервер представляется в `_meta` **каждого** результата, под ключом
+`io.modelcontextprotocol/serverInfo`, — по значениям `with_name()` /
+`with_version()` выше.
+
+Подробнее — [MCP 2026-07-28](../spec-2026-07-28.md#discovery-вместо-рукопожатия),
+а если нужно обслуживать клиентов до 2026-07-28 — см.
+[Легаси-спецификация](../legacy-spec.md).
 
 ## Поддержка пакетных запросов JSON-RPC 2.0
 

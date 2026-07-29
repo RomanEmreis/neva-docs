@@ -4,19 +4,28 @@ sidebar_position: 5
 
 # Корневые каталоги
 
-:::note Под флагом `proto-2026-07-28-rc`
-MCP 2026-07-28 убирает `roots/list` как capability-driven server→client *запрос* и переносит его на MRTR как **вид input-запроса, deprecated с рождения**. Roots — это конфигурируемые *данные*, а не хендлер: клиент отвечает на input-запрос сервера `roots/list` из списка, с которым он был собран, а непустой список заставляет его объявить `clientCapabilities.roots`. `Client::add_root*` снова доступны, но несут `#[deprecated]` (нужен `#[allow(deprecated)]`); на стороне сервера у аксессора появляется replay-ключ — `ctx.list_roots(key)`. Новым тулам стоит принимать нужные пути явными аргументами. См. [Виды input-запросов](../rc-preview.md#виды-input-запросов-elicitation-sampling-roots) и пример [`examples/roots/rc`](https://github.com/RomanEmreis/neva/tree/main/examples/roots/rc).
+:::warning Устарело с момента появления
+MCP 2026-07-28 убрал `roots/list` как серверный запрос к клиенту, управляемый
+возможностями, и перенёс его на MRTR в виде
+[вида input-запроса](../spec-2026-07-28.md#виды-input-запросов-elicitation-sampling-roots)
+— **сразу устаревшего**. `Client::add_root` / `add_roots` помечены
+`#[deprecated]` и требуют `#[allow(deprecated)]`.
+
+Новым инструментам лучше принимать нужные пути явными аргументами.
 :::
 
+Model Context Protocol (MCP) предоставляет стандартизированный способ для клиентов предоставлять серверам файловые «корневые каталоги». [Корневые каталоги](https://modelcontextprotocol.io/specification/draft/client/roots) определяют границы, в пределах которых серверы могут работать в файловой системе, позволяя им понять, к каким директориям и файлам у них есть доступ.
 
-Model Context Protocol (MCP) предоставляет стандартизированный способ для клиентов предоставлять серверам файловые «корневые каталоги». [Корневые каталоги](https://modelcontextprotocol.io/specification/draft/client/roots) определяют границы, в пределах которых серверы могут работать в файловой системе, позволяя им понять, к каким директориям и файлам у них есть доступ. Серверы могут запрашивать список корневых каталогов у поддерживающих клиентов и получать уведомления при изменении этого списка.
+## Корневые каталоги — это конфигурируемые данные
 
-## Настройка корневых каталогов
+Корневые каталоги — не обработчик. Клиент отвечает на input-запрос сервера
+`roots/list` из того списка, с которым он был собран, а **непустой список
+заставляет его объявить `clientCapabilities.roots`** в каждом запросе:
+сервер может запросить только тот вид, который клиент объявил.
 
-Можно указать один или несколько корневых каталогов, которые будут предоставлены серверу.
-Корневые каталоги можно добавлять до или после подключения клиента.
-* Корневые каталоги, добавленные **до** `connect()`, отправляются при первоначальном рукопожатии.
-* Корневые каталоги, добавленные **после** `connect()`, требуют возможности `roots.listChanged`.
+Поскольку уведомления `notifications/roots/list_changed` больше нет, сервер
+видит тот список, который есть у клиента в момент прихода запроса.
+Подписываться не на что, и возможность `roots.listChanged` включать не нужно.
 
 ### Добавление корневых каталогов
 ```rust
@@ -26,68 +35,57 @@ use neva::prelude::*;
 async fn main() -> Result<(), Error> {
     let mut client = Client::new()
         .with_options(|opt| opt
-            .with_stdio(
-                "cargo",
-                ["run", "--manifest-path", "./neva-mcp-server/Cargo.toml"]));
+            .with_http(|http| http.bind("127.0.0.1:3001").with_endpoint("/mcp")));
 
-    // Добавляем корневые каталоги, доступные при первоначальном рукопожатии
-    client.add_root("file:///home/user/projects/my_project", "My Project");
+    // Устарело с момента появления, как и весь вид roots.
+    #[allow(deprecated)]
+    client
+        .add_root("file:///home/user/projects/my_project", "My Project")
+        .add_root("file:///home/user/projects/my_another_project", "My Another Project");
 
     client.connect().await?;
 
-    // Динамически добавляем дополнительные корневые каталоги после подключения
-    client.add_roots([
-        ("file:///home/user/projects/another_project", "My Another Project"),
-        ("file:///home/user/projects/one_more_project", "One More Project"),
-    ]);
-
-    // Вызов инструмента, чтение ресурса ....
+    // Раунд MRTR происходит внутри этого единственного вызова.
+    let result = client.call_tool("scan_workspace", ()).await?;
+    tracing::info!("Result: {:?}", result.content);
 
     client.disconnect().await
 }
 ```
 
-## Уведомление сервера об изменении списка корневых каталогов
-
-Если корневые каталоги добавляются или удаляются **после** подключения клиента, включите
-возможность `roots.listChanged`, чтобы сервер мог получать уведомления об изменениях.
-```rust
-let mut client = Client::new()
-    .with_options(|opt| opt
-        .with_roots(|roots| roots.with_list_changed())
-        .with_stdio(
-            "cargo",
-            ["run", "--manifest-path", "./neva-mcp-server/Cargo.toml"]));
-```
-
-Включайте `roots.listChanged` только если:
-* Корневые каталоги изменяются после `connect()`
-* Сервер рассчитывает на динамическое получение обновлений корневых каталогов
-
-Если все корневые каталоги известны заранее, эта возможность не требуется.
-
 ## Доступ к корневым каталогам на сервере
 
-На стороне сервера корневые каталоги, предоставленные клиентом, доступны через
-`Context` запроса. Корневые каталоги могут быть получены при первоначальном рукопожатии или
-динамически обновляться через возможность `roots.listChanged`.
-
-Для доступа к текущему списку корневых каталогов внедрите [`Context`](https://docs.rs/neva/latest/neva/app/context/struct.Context.html)
-в обработчик инструмента:
+Внедрите [`Context`](https://docs.rs/neva/latest/neva/app/context/struct.Context.html)
+в обработчик инструмента и запросите список со стабильным **replay-ключом**:
 
 ```rust
 #[tool]
-async fn roots_request(mut ctx: Context) -> Result<(), Error> {
-    let list = ctx.list_roots().await?;
+async fn scan_workspace(mut ctx: Context) -> Result<String, Error> {
+    // Первый раунд разворачивает обработчик с `input_required` и конвертом
+    // `roots/list`; второй — воспроизводит ответ из `requestState`.
+    #[allow(deprecated)]
+    let roots = ctx.list_roots("dirs").await?;
 
     // Каждый корневой каталог содержит URI и человекочитаемое имя
-    for root in list.roots {
+    for root in &roots.roots {
         tracing::info!(uri = %root.uri, name = %root.name);
     }
 
-    Ok(())
+    Ok(format!("корневых каталогов: {}", roots.roots.len()))
 }
 ```
+
+Весь код выше точки `list_roots` выполняется на втором раунде заново,
+поэтому побочные эффекты оборачивайте в `ctx.memo` / `ctx.once` /
+`ctx.on_commit` — те же примитивы, что и для
+[получения данных](../mcp-server/elicitation#guarding-side-effects).
+
+:::note Под флагом `legacy-spec`
+Корневые каталоги работают как push-запрос: `ctx.list_roots()` не принимает
+ключ, их можно добавлять после `connect()`, а возможность
+`roots.listChanged` (`with_roots(|r| r.with_list_changed())`) уведомляет
+сервер об изменениях. См. [Легаси-спецификация](../legacy-spec.md).
+:::
 
 ## Обучение на примерах
 Полный [пример](https://github.com/RomanEmreis/neva/tree/main/examples/roots) доступен здесь.

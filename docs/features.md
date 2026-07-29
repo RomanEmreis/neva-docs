@@ -29,8 +29,11 @@ neva = { version = "...", features = ["full"] }
 | Feature | Includes | Description |
 |---------|----------|-------------|
 | `full` | `server-full` + `client-full` | Everything — for apps that run both a server and a client |
-| `server-full` | `server-macros`, `tracing`, `http-server-volga`, `server-tls`, `di`, `tasks` | All server capabilities, including the default Volga-based HTTP server |
-| `client-full` | `client-macros`, `tracing`, `http-client`, `client-tls`, `tasks` | All client capabilities |
+| `server-full` | `server-macros`, `tracing`, `http-server-volga`, `server-tls`, `server-oauth`, `di`, `tasks` | All server capabilities, including the default Volga-based HTTP server |
+| `client-full` | `client-macros`, `tracing`, `http-client`, `client-tls`, `client-oauth`, `tasks` | All client capabilities |
+
+Note that `full` is *every* feature **except** the protocol-generation flag
+below — it is the default build, which is also what `docs.rs` publishes.
 
 ### Server Features
 
@@ -41,6 +44,7 @@ neva = { version = "...", features = ["full"] }
 | `http-server` | `server` | Engine-agnostic Streamable HTTP abstractions — pulls in no HTTP framework. Plug in your own stack (axum, hyper, actix-web, …) by implementing [`HttpEngine`](./mcp-server/custom-http) |
 | `http-server-volga` | `http-server` | Default [Volga](https://docs.rs/volga)-based HTTP server adapter, including JWT auth |
 | `server-tls` | `http-server-volga` | TLS support for the default HTTP server, including automatic dev certificate generation |
+| `server-oauth` | `http-server` | OAuth 2.1 protected-resource metadata and token validation on the server |
 
 ### Client Features
 
@@ -50,6 +54,7 @@ neva = { version = "...", features = ["full"] }
 | `client-macros` | `client`, `macros` | Adds attribute macros (`#[sampling]`, `#[elicitation]`) |
 | `http-client` | `client` | Streamable HTTP transport and SSE stream support |
 | `client-tls` | — | TLS support for the HTTP client (rustls) |
+| `client-oauth` | `http-client` | Client-side OAuth 2.1 authorization: discovery, dynamic registration, authorization code + PKCE |
 
 ### Shared Features
 
@@ -59,6 +64,20 @@ neva = { version = "...", features = ["full"] }
 | `di` | [Dependency injection](./mcp-server/di) — service container with singleton, scoped, and transient lifetimes |
 | `tasks` | [Task-augmented requests](./mcp-server/tasks) — long-running async tool execution with polling |
 | `tracing` | Structured logging via the [`tracing`](https://docs.rs/tracing) ecosystem and MCP log notifications |
+
+### Protocol Generation
+
+| Feature | Description |
+|---------|-------------|
+| `legacy-spec` | Switches the build from [MCP 2026-07-28](./spec-2026-07-28) (the default) back to the previous generation, MCP 2024-11-05 … 2025-11-25 |
+
+:::warning `legacy-spec` is a switch, not an addition
+Enabling `legacy-spec` compiles the 2026-07-28 surface **out** — the two
+generations never coexist in one build. And because Cargo features are
+additive, `--all-features` turns it on and therefore exercises the *legacy*
+profile; the default profile needs an explicit list such as
+`--features "server-full client-full"`. See [Legacy spec](./legacy-spec).
+:::
 
 ## Common Configurations
 
@@ -131,6 +150,8 @@ full
 │   │       └── server
 │   ├── server-tls
 │   │   └── http-server-volga
+│   ├── server-oauth
+│   │   └── http-server
 │   ├── tracing
 │   ├── di
 │   └── tasks
@@ -141,6 +162,10 @@ full
     ├── http-client
     │   └── client
     ├── client-tls
+    ├── client-oauth
+    │   └── http-client
     ├── tracing
     └── tasks
+
+legacy-spec   (orthogonal: selects the protocol generation, not a capability)
 ```

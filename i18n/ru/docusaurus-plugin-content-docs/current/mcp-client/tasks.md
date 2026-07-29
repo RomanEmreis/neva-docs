@@ -18,7 +18,7 @@ use neva::prelude::*;
 async fn main() -> Result<(), Error> {
     let mut client = Client::new()
         .with_options(|opt| opt
-            .with_tasks(|t| t.with_all())
+            .with_tasks()
             .with_default_http());
 
     client.connect().await?;
@@ -28,6 +28,16 @@ async fn main() -> Result<(), Error> {
     client.disconnect().await
 }
 ```
+
+В MCP 2026-07-28 Tasks — это расширение, и его возможность представлена
+пустым объектом (само объявление и есть декларация), поэтому `with_tasks()`
+не принимает замыкание.
+
+:::note Под флагом `legacy-spec`
+Действует поверхность 2025-11-25: `with_tasks(|t| t.with_all())` настраивает
+поддерево `cancel` / `list` / `requests`, и существуют задачи на стороне
+клиента. См. [Легаси-спецификация](../legacy-spec.md).
+:::
 
 ## Вызов инструмента как задачи
 
@@ -67,29 +77,42 @@ let result = client
     .call_tool("generate_weather_report", args).await;
 ```
 
-## Получение списка активных задач
+## Опрос задачи
 
-Используйте [`list_tasks()`](https://docs.rs/neva/latest/neva/client/struct.Client.html#method.list_tasks) для получения текущего списка выполняющихся или завершённых задач:
+`tasks/get` — единственный метод опроса. Он возвращает `DetailedTask`:
+статус и, в зависимости от него, незакрытые `inputRequests`, финальный
+`result` либо `error`. `tasks/update` отвечает на эти input-запросы, а
+`tasks/cancel` подтверждает пустым результатом (отмена кооперативная,
+поэтому итог узнаётся опросом).
+
+`client.task().call_tool(...)` прогоняет этот цикл за вас и разрешается
+финальным исходом, поэтому обращаться к методам напрямую обычно не нужно.
+
+:::warning `tasks/list` больше нет
+`tasks/list` и `tasks/result` удалены в MCP 2026-07-28, вместе с ними —
+`Client::list_tasks`. Идентификатор задачи — это долговременный дескриптор,
+который у запросившей стороны уже есть, поэтому **перечисление — ваша
+задача**: храните нужные идентификаторы и опрашивайте их по отдельности.
+:::
+
+В протоколе `ttl` сериализуется как `ttlMs`, а `poll_interval` — как
+`pollIntervalMs`; `ttl` допускает `null` в значении «без ограничения».
+Уведомление о статусе называется `notifications/tasks`.
+
+:::note
+Подписка на `notifications/tasks` — это механизм `subscriptions/listen` из
+спецификации, которого в neva пока нет; он отслеживается отдельно. Пока
+опрашивайте задачу через `tasks/get`.
+:::
+
+## Обработка получения данных в задачах
+
+Инструменты с поддержкой задач могут запросить ввод в процессе выполнения.
+Зарегистрируйте обработчик [получения данных](/docs/mcp-client/elicitation)
+макросом `#[elicitation]`; фреймворк вызовет его, когда серверный инструмент
+обратится к `ctx.task().elicit()` в ходе выполнения задачи.
 
 ```rust
-let tasks = client.list_tasks(None).await?;
-println!("{:?}", tasks);
-```
-
-## Обработка сэмплирования и получения данных в задачах
-
-Инструменты с поддержкой задач могут инициировать [сэмплирование](/docs/mcp-client/sampling) или [получение данных](/docs/mcp-client/elicitation) в процессе выполнения.
-Для поддержки этих взаимодействий зарегистрируйте обработчики с помощью макросов `#[sampling]` и `#[elicitation]`. Фреймворк вызывает их автоматически, когда серверный инструмент обращается к `ctx.sample()` или `ctx.elicit()` в ходе выполнения задачи.
-
-```rust
-#[sampling]
-async fn sampling_handler(params: CreateMessageRequestParams) -> CreateMessageResult {
-    CreateMessageResult::assistant()
-        .with_model("gpt-5")
-        .with_content("Response text")
-        .end_turn()
-}
-
 #[elicitation]
 async fn elicitation_handler(params: ElicitRequestParams) -> ElicitResult {
     match params {
@@ -98,6 +121,14 @@ async fn elicitation_handler(params: ElicitRequestParams) -> ElicitResult {
     }
 }
 ```
+
+:::warning Сэмплирования, расширенного задачей, нет
+MCP 2026-07-28 убрал серверный push-запрос `sampling/createMessage`, поэтому
+отвечать на сэмплирование в рамках задачи не приходится.
+[Сэмплирование](/docs/mcp-client/sampling) теперь идёт по подложке MRTR,
+которая никогда не смешивается с подложкой задач: одна перезапускается,
+другая приостанавливается.
+:::
 
 ## Обучение на примерах
 

@@ -16,11 +16,14 @@ Neva provides everything you need to quickly build MCP clients and servers, full
 This project is currently in preview. Breaking changes can be introduced without prior notice.
 :::
 
-:::info MCP 2026-07-28 RC preview
-neva 0.4 ships opt-in support for the MCP 2026-07-28 Release Candidate
-behind the `proto-2026-07-28-rc` feature flag. This site documents the
-default (legacy) spec. See **[RC preview](./rc-preview)** for the
-RC surface, release notes, and deployment notes.
+:::info MCP 2026-07-28 is the default
+Since **neva 0.5.0** a plain build speaks MCP **2026-07-28**, and this site
+documents that generation. The previous one (MCP 2024-11-05 … 2025-11-25)
+moved behind the [`legacy-spec`](./legacy-spec) feature.
+
+Read **[MCP 2026-07-28](./spec-2026-07-28)** for the narrative, and
+**[Legacy spec](./legacy-spec#migrating-to-050)** if you are upgrading
+from 0.4.x.
 :::
 
 ## Supported Platforms

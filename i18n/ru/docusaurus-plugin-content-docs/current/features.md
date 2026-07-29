@@ -29,8 +29,12 @@ neva = { version = "...", features = ["full"] }
 | Компонент | Включает | Описание |
 |-----------|----------|----------|
 | `full` | `server-full` + `client-full` | Всё сразу — для приложений, которые запускают и сервер, и клиент |
-| `server-full` | `server-macros`, `tracing`, `http-server-volga`, `server-tls`, `di`, `tasks` | Все возможности сервера, включая HTTP-сервер по умолчанию на базе Volga |
-| `client-full` | `client-macros`, `tracing`, `http-client`, `client-tls`, `tasks` | Все возможности клиента |
+| `server-full` | `server-macros`, `tracing`, `http-server-volga`, `server-tls`, `server-oauth`, `di`, `tasks` | Все возможности сервера, включая HTTP-сервер по умолчанию на базе Volga |
+| `client-full` | `client-macros`, `tracing`, `http-client`, `client-tls`, `client-oauth`, `tasks` | Все возможности клиента |
+
+Обратите внимание: `full` — это *все* компоненты, **кроме** флага поколения
+протокола (см. ниже). Это и есть сборка по умолчанию, которую публикует
+`docs.rs`.
 
 ### Компоненты сервера
 
@@ -41,6 +45,7 @@ neva = { version = "...", features = ["full"] }
 | `http-server` | `server` | Абстракции потокового HTTP-транспорта, не привязанные к конкретному фреймворку — не тянет за собой HTTP-стек. Подключите свой (axum, hyper, actix-web, …), реализовав [`HttpEngine`](./mcp-server/custom-http) |
 | `http-server-volga` | `http-server` | Адаптер HTTP-сервера по умолчанию на базе [Volga](https://docs.rs/volga), включая JWT-аутентификацию |
 | `server-tls` | `http-server-volga` | Поддержка TLS для HTTP-сервера по умолчанию, включая автоматическую генерацию сертификата для разработки |
+| `server-oauth` | `http-server` | Метаданные защищённого ресурса OAuth 2.1 и проверка токенов на сервере |
 
 ### Компоненты клиента
 
@@ -50,6 +55,7 @@ neva = { version = "...", features = ["full"] }
 | `client-macros` | `client`, `macros` | Добавляет атрибутные макросы (`#[sampling]`, `#[elicitation]`) |
 | `http-client` | `client` | Потоковый HTTP-транспорт и поддержка SSE-потоков |
 | `client-tls` | — | Поддержка TLS для HTTP-клиента (rustls) |
+| `client-oauth` | `http-client` | Авторизация OAuth 2.1 на стороне клиента: discovery, динамическая регистрация, authorization code + PKCE |
 
 ### Общие компоненты
 
@@ -59,6 +65,21 @@ neva = { version = "...", features = ["full"] }
 | `di` | [Внедрение зависимостей](./mcp-server/di) — контейнер сервисов с жизненными циклами singleton, scoped и transient |
 | `tasks` | [Задачи с расширенными запросами](./mcp-server/tasks) — долгосрочное асинхронное выполнение инструментов с опросом |
 | `tracing` | Структурированное логирование через экосистему [`tracing`](https://docs.rs/tracing) и MCP-уведомления журнала |
+
+### Поколение протокола
+
+| Компонент | Описание |
+|-----------|----------|
+| `legacy-spec` | Переключает сборку с [MCP 2026-07-28](./spec-2026-07-28) (поколение по умолчанию) обратно на предыдущее — MCP 2024-11-05 … 2025-11-25 |
+
+:::warning `legacy-spec` — переключатель, а не добавка
+Включение `legacy-spec` компилирует поверхность 2026-07-28 **прочь** — два
+поколения никогда не сосуществуют в одной сборке. А поскольку флаги Cargo
+аддитивны, `--all-features` включает его и потому проверяет именно
+*легаси*-профиль; профилю по умолчанию нужен явный список, например
+`--features "server-full client-full"`. См.
+[Легаси-спецификация](./legacy-spec).
+:::
 
 ## Типовые конфигурации
 
@@ -131,6 +152,8 @@ full
 │   │       └── server
 │   ├── server-tls
 │   │   └── http-server-volga
+│   ├── server-oauth
+│   │   └── http-server
 │   ├── tracing
 │   ├── di
 │   └── tasks
@@ -141,6 +164,10 @@ full
     ├── http-client
     │   └── client
     ├── client-tls
+    ├── client-oauth
+    │   └── http-client
     ├── tracing
     └── tasks
+
+legacy-spec   (ортогонален: выбирает поколение протокола, а не возможность)
 ```

@@ -4,10 +4,18 @@ sidebar_position: 6
 
 # Sampling
 
-:::note Under `proto-2026-07-28-rc`
-Under the RC the client no longer receives sampling as a *push* request. Instead it fulfils MRTR `sampling/createMessage` input requests inside its own round-trip loop, so the caller of `call_tool` still sees a single call. `Client::map_sampling` is available again (registering a handler declares `clientCapabilities.sampling`), but it carries `#[deprecated]` — the whole kind is deprecated on arrival. The `#[sampling]` attribute macro shown below belongs to the legacy push model and is **not** available under the RC flag; wire the handler with an explicit `map_sampling` instead. See [Input-request kinds](../rc-preview.md#input-request-kinds-elicitation-sampling-roots) and the [`examples/sampling/rc`](https://github.com/RomanEmreis/neva/tree/main/examples/sampling/rc) example.
-:::
+:::warning Deprecated on arrival
+MCP 2026-07-28 removed sampling as a capability-driven *push* request. The
+client now fulfils `sampling/createMessage`
+[input requests](../spec-2026-07-28.md#input-request-kinds-elicitation-sampling-roots)
+inside its own MRTR round-trip loop, so the caller of `call_tool` still sees
+a single call.
 
+The whole kind is deprecated on arrival: `Client::map_sampling` carries
+`#[deprecated]` and needs `#[allow(deprecated)]`. And the **`#[sampling]`
+attribute macro is not available in the default build** — it belongs to the
+legacy push model. Wire the handler with an explicit `map_sampling`.
+:::
 
 In MCP, the **client** is responsible for executing LLM sampling requests initiated by servers.
 Unlike traditional architectures, the client:
@@ -38,24 +46,57 @@ let mut client = Client::new()
 * [with_sampling()](https://docs.rs/neva/latest/neva/client/options/struct.McpOptions.html#method.with_sampling) enables sampling support
 * [with_tools()](https://docs.rs/neva/latest/neva/types/struct.SamplingCapability.html#method.with_tools) allows tool calls during sampling
 
+Registering a handler is what makes the client declare
+`clientCapabilities.sampling` on every request; a server may only ask for a
+kind the client declared, and asking an undeclared client is reported rather
+than left to stall the round-trip.
+
 ## Sampling Handler
 
-To support sampling, a client must define a handler annotated with [#[sampling]](https://docs.rs/neva/latest/neva/attr.sampling.html) attribute macro.
-This handler receives a [CreateMessageRequestParams](https://docs.rs/neva/latest/neva/types/sampling/struct.CreateMessageRequestParams.html) object and returns a
+Register the handler with
+[`Client::map_sampling`](https://docs.rs/neva/latest/neva/client/struct.Client.html#method.map_sampling).
+It receives a [CreateMessageRequestParams](https://docs.rs/neva/latest/neva/types/sampling/struct.CreateMessageRequestParams.html) and returns a
 [CreateMessageResult](https://docs.rs/neva/latest/neva/types/sampling/struct.CreateMessageResult.html).
 
 ```rust
 use neva::prelude::*;
+use neva::types::sampling::{CreateMessageRequestParams, CreateMessageResult};
 
-#[sampling]
-async fn sampling_handler(params: CreateMessageRequestParams) -> CreateMessageResult {
-    println!("Received sampling request: {:?}", params);
-
+async fn complete(params: CreateMessageRequestParams) -> CreateMessageResult {
     // Client-side sampling logic goes here
+    CreateMessageResult::assistant()
+        .with_model("o3-mini")
+        .with_content("...")
+        .end_turn()
+}
+
+#[tokio::main]
+async fn main() -> Result<(), Error> {
+    let mut client = Client::new()
+        .with_options(|opt| opt.with_default_http());
+
+    // Deprecated on arrival, like the whole sampling kind.
+    #[allow(deprecated)]
+    client.map_sampling(complete);
+
+    client.connect().await?;
+
+    // The MRTR round-trips happen inside this one call.
+    let result = client.call_tool("summarize_report", [("topic", "EMEA")]).await?;
+
+    client.disconnect().await
 }
 ```
 
-The handler is invoked every time a server calls [Context::sample()](https://docs.rs/neva/latest/neva/app/context/struct.Context.html#method.sample).
+The handler is invoked once per round in which the server calls
+[Context::sample()](https://docs.rs/neva/latest/neva/app/context/struct.Context.html#method.sample).
+
+:::note Under `legacy-spec`
+Sampling is a server→client push request, and the
+[`#[sampling]`](https://docs.rs/neva/latest/neva/attr.sampling.html)
+attribute macro registers the handler for you. See
+[Legacy spec](../legacy-spec.md).
+:::
 
 ## Inspecting Sampling Requests
 

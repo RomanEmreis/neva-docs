@@ -37,3 +37,15 @@
 | bearer token | токен Bearer | JWT-токен для аутентификации HTTP |
 | structured output | структурированный вывод | Ответ инструмента в формате JSON |
 | TTL (time-to-live) | TTL (время жизни) | Таймаут задачи |
+| protocol generation | поколение протокола | Ревизия спецификации MCP, которую собирает крейт (2026-07-28 или легаси) |
+| legacy spec | легаси-спецификация | Поколение MCP 2024-11-05 … 2025-11-25, за флагом `legacy-spec` |
+| discovery | discovery | Запрос `server/discover`; не переводится |
+| multi round-trip request (MRTR) | multi round-trip запрос (MRTR) | Запрос, в котором обработчик приостанавливается за вводом от клиента; аббревиатура не переводится |
+| round | раунд | Одна итерация цикла MRTR |
+| input request | input-запрос | Запрос данных у клиента внутри MRTR (elicitation, sampling, roots) |
+| replay key | replay-ключ | Стабильный ключ, по которому ответ сопоставляется с местом вызова |
+| request state | состояние запроса (`requestState`) | Запечатанный блоб, переносящий прогресс между раундами |
+| routing header | заголовок маршрутизации | `Mcp-Method`, `Mcp-Name`, `Mcp-Param-{name}` |
+| extension | расширение | Механизм расширения MCP; Tasks — первое встроенное |
+| cache scope | область кэширования | `public` / `private` в `CacheableResult` |
+| deprecated | устаревший | Помеченный `#[deprecated]`; сохранён для миграции |

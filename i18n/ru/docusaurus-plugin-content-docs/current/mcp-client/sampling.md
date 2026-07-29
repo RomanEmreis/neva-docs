@@ -4,8 +4,18 @@ sidebar_position: 6
 
 # Сэмплирование
 
-:::note Под флагом `proto-2026-07-28-rc`
-Под RC клиент больше не получает sampling как *push*-запрос. Вместо этого он исполняет MRTR input-запросы `sampling/createMessage` внутри своей round-trip-петли, поэтому вызывающий `call_tool` по-прежнему видит один вызов. `Client::map_sampling` снова доступен (регистрация хендлера объявляет `clientCapabilities.sampling`), но несёт `#[deprecated]` — весь этот вид deprecated с рождения. Макрос `#[sampling]`, показанный ниже, относится к легаси push-модели и **недоступен** под RC-флагом; регистрируй хендлер явным `map_sampling`. См. [Виды input-запросов](../rc-preview.md#виды-input-запросов-elicitation-sampling-roots) и пример [`examples/sampling/rc`](https://github.com/RomanEmreis/neva/tree/main/examples/sampling/rc).
+:::warning Устарело с момента появления
+MCP 2026-07-28 убрал сэмплирование как *push*-запрос, управляемый
+возможностями. Теперь клиент обрабатывает
+[input-запросы](../spec-2026-07-28.md#виды-input-запросов-elicitation-sampling-roots)
+`sampling/createMessage` внутри собственного цикла раундов MRTR, поэтому
+вызывающий `call_tool` по-прежнему видит один вызов.
+
+Весь этот вид устарел с момента появления: `Client::map_sampling` помечен
+`#[deprecated]` и требует `#[allow(deprecated)]`. Кроме того, **атрибутный
+макрос `#[sampling]` недоступен в сборке по умолчанию** — он относится к
+легаси-модели с серверным push. Регистрируйте обработчик явным вызовом
+`map_sampling`.
 :::
 
 
@@ -38,24 +48,56 @@ let mut client = Client::new()
 * [with_sampling()](https://docs.rs/neva/latest/neva/client/options/struct.McpOptions.html#method.with_sampling) включает поддержку сэмплирования
 * [with_tools()](https://docs.rs/neva/latest/neva/types/struct.SamplingCapability.html#method.with_tools) разрешает вызовы инструментов в процессе сэмплирования
 
+Именно регистрация обработчика заставляет клиента объявлять
+`clientCapabilities.sampling` в каждом запросе; сервер может запросить только
+тот вид, который клиент объявил, а запрос к необъявившему клиенту приводит к
+ошибке, а не к подвисанию раунда.
+
 ## Обработчик сэмплирования
 
-Для поддержки сэмплирования клиент должен определить обработчик, помеченный атрибутным макросом [#[sampling]](https://docs.rs/neva/latest/neva/attr.sampling.html).
-Этот обработчик получает объект [CreateMessageRequestParams](https://docs.rs/neva/latest/neva/types/sampling/struct.CreateMessageRequestParams.html) и возвращает
+Зарегистрируйте обработчик через
+[`Client::map_sampling`](https://docs.rs/neva/latest/neva/client/struct.Client.html#method.map_sampling).
+Он получает [CreateMessageRequestParams](https://docs.rs/neva/latest/neva/types/sampling/struct.CreateMessageRequestParams.html) и возвращает
 [CreateMessageResult](https://docs.rs/neva/latest/neva/types/sampling/struct.CreateMessageResult.html).
 
 ```rust
 use neva::prelude::*;
+use neva::types::sampling::{CreateMessageRequestParams, CreateMessageResult};
 
-#[sampling]
-async fn sampling_handler(params: CreateMessageRequestParams) -> CreateMessageResult {
-    println!("Received sampling request: {:?}", params);
-
+async fn complete(params: CreateMessageRequestParams) -> CreateMessageResult {
     // Здесь логика сэмплирования на стороне клиента
+    CreateMessageResult::assistant()
+        .with_model("o3-mini")
+        .with_content("...")
+        .end_turn()
+}
+
+#[tokio::main]
+async fn main() -> Result<(), Error> {
+    let mut client = Client::new()
+        .with_options(|opt| opt.with_default_http());
+
+    // Устарело с момента появления, как и весь вид sampling.
+    #[allow(deprecated)]
+    client.map_sampling(complete);
+
+    client.connect().await?;
+
+    // Раунды MRTR происходят внутри этого единственного вызова.
+    let result = client.call_tool("summarize_report", [("topic", "EMEA")]).await?;
+
+    client.disconnect().await
 }
 ```
 
-Обработчик вызывается каждый раз, когда сервер вызывает [Context::sample()](https://docs.rs/neva/latest/neva/app/context/struct.Context.html#method.sample).
+Обработчик вызывается один раз на каждый раунд, в котором сервер вызывает [Context::sample()](https://docs.rs/neva/latest/neva/app/context/struct.Context.html#method.sample).
+
+:::note Под флагом `legacy-spec`
+Сэмплирование работает как серверный push-запрос, а атрибутный макрос
+[`#[sampling]`](https://docs.rs/neva/latest/neva/attr.sampling.html)
+регистрирует обработчик за вас. См.
+[Легаси-спецификация](../legacy-spec.md).
+:::
 
 ## Анализ запросов на сэмплирование
 
