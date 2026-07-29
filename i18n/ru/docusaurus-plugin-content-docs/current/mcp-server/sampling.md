@@ -161,8 +161,7 @@ async fn generate_weather_report(mut ctx: Context, city: String) -> Result<Strin
         // Каждой итерации нужен **свой** replay-ключ — общий ключ вечно
         // воспроизводил бы первый ответ вместо продвижения цикла.
         #[allow(deprecated)]
-        let result = ctx.sample(format!("weather-{step}"), params.clone()).await?;
-        step += 1;
+        let result = ctx.sample(format!("sample-{step}"), params.clone()).await?;
 
         if result.stop_reason == Some(StopReason::ToolUse) {
             // Получаем запросы на вызов инструментов из ответа сэмплирования
@@ -175,8 +174,13 @@ async fn generate_weather_report(mut ctx: Context, city: String) -> Result<Strin
                 .iter()
                 .fold(SamplingMessage::assistant(), |msg, tool| msg.with(tool.clone()));
 
-            // Вызываем инструменты, запрошенные LLM
-            let tool_results = ctx.use_tools(tools).await;
+            // Вызываем инструменты, запрошенные LLM, — через `memo`, чтобы
+            // они выполнились один раз. Без этого инструменты каждого
+            // предыдущего шага выполнялись бы заново на каждом следующем
+            // раунде, ведь обработчик стартует с начала.
+            let tool_results = ctx
+                .memo(format!("tools-{step}"), async { Ok(ctx.use_tools(tools).await) })
+                .await?;
 
             // Записываем результаты инструментов как сообщения пользователя
             let user_msg = tool_results
@@ -188,6 +192,8 @@ async fn generate_weather_report(mut ctx: Context, city: String) -> Result<Strin
                 .with_message(assistant_msg)
                 .with_message(user_msg)
                 .with_tool_choice(ToolChoiceMode::None);
+
+            step += 1;
         } else {
             // Останавливаемся при получении причины, отличной от вызова инструмента
             return Ok(format!("{:?}", result.content));
@@ -212,6 +218,11 @@ async fn generate_weather_report(mut ctx: Context, city: String) -> Result<Strin
 Каждая итерация — это полноценный раунд MRTR, то есть ещё один повтор
 запроса со стороны клиента. Клиенты ограничивают их числом
 `McpOptions::with_max_mrtr_rounds`.
+
+И ключ **на каждую итерацию** нужен не только вызову `sample`, но и любому
+побочному эффекту в теле цикла: обработчик стартует с начала на каждом
+раунде, поэтому незащищённый `ctx.use_tools` заново выполнял бы инструменты
+всех предыдущих шагов.
 :::
 
 ## Когда не использовать сэмплирование

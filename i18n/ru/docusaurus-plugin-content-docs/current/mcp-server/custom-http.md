@@ -207,7 +207,17 @@ async fn post_handler(State(ctx): State<HttpContext>, req: http::Request<Body>) 
         Ok(outcome) => outcome,
         Err(e) => return internal_error(e),
     };
-    stream_or_body(outcome)
+    match outcome {
+        StreamResponse::Stream { headers, stream } => {
+            let sse = Sse::new(stream).keep_alive(KeepAlive::default());
+            let mut response: Response = sse.into_response();
+            for (name, value) in headers.iter() {
+                response.headers_mut().insert(name, value.clone());
+            }
+            response
+        }
+        StreamResponse::Complete(resp) => AxumEngine::adapt_response(resp),
+    }
 }
 
 async fn delete_handler(State(ctx): State<HttpContext>, req: http::Request<Body>) -> Response {
@@ -221,14 +231,6 @@ async fn get_handler(State(ctx): State<HttpContext>, req: http::Request<Body>) -
         Ok(outcome) => outcome,
         Err(e) => return internal_error(e),
     };
-    stream_or_body(outcome)
-}
-
-/// Общий для обоих маршрутов match из двух вариантов.
-fn stream_or_body<S>(outcome: StreamResponse<S>) -> Response
-where
-    S: futures_util::Stream<Item = Result<Event, Infallible>> + Send + 'static,
-{
     match outcome {
         StreamResponse::Stream { headers, stream } => {
             let sse = Sse::new(stream).keep_alive(KeepAlive::default());

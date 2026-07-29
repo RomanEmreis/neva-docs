@@ -158,8 +158,7 @@ async fn generate_weather_report(mut ctx: Context, city: String) -> Result<Strin
         // Each iteration needs its **own** replay key — a shared key would
         // replay the first completion forever instead of advancing the loop.
         #[allow(deprecated)]
-        let result = ctx.sample(format!("weather-{step}"), params.clone()).await?;
-        step += 1;
+        let result = ctx.sample(format!("sample-{step}"), params.clone()).await?;
 
         if result.stop_reason == Some(StopReason::ToolUse) {
             // Getting the tool use requests from sampling response
@@ -172,8 +171,12 @@ async fn generate_weather_report(mut ctx: Context, city: String) -> Result<Strin
                 .iter()
                 .fold(SamplingMessage::assistant(), |msg, tool| msg.with(tool.clone()));
 
-            // Calling tools that LLM requested
-            let tool_results = ctx.use_tools(tools).await;
+            // Calling tools that LLM requested — behind `memo`, so they run
+            // once. Without it every earlier step's tools would execute again
+            // on each later round, because the handler restarts from the top.
+            let tool_results = ctx
+                .memo(format!("tools-{step}"), async { Ok(ctx.use_tools(tools).await) })
+                .await?;
 
             // Logging the tools results as user messages
             let user_msg = tool_results
@@ -185,6 +188,8 @@ async fn generate_weather_report(mut ctx: Context, city: String) -> Result<Strin
                 .with_message(assistant_msg)
                 .with_message(user_msg)
                 .with_tool_choice(ToolChoiceMode::None);
+
+            step += 1;
         } else {
             // Stopping if we get a reason different from tool use
             return Ok(format!("{:?}", result.content));
@@ -208,6 +213,11 @@ In production code you **should** always:
 
 Each iteration is a full MRTR round-trip, so it also costs a client
 re-issue. Clients cap those with `McpOptions::with_max_mrtr_rounds`.
+
+And every side effect in the loop body needs a **per-iteration** key, not
+just the `sample` call: the handler restarts from the top on each round, so
+an unguarded `ctx.use_tools` would re-execute every earlier step's tools
+each time round.
 :::
 
 ## When Not to Use Sampling
