@@ -100,10 +100,11 @@ On the wire, `ttl` serializes as `ttlMs` and `poll_interval` as
 notification is `notifications/tasks`.
 
 :::note
-`notifications/tasks` is opted into through the spec's
+In the spec, `notifications/tasks` is opted into through the
 [`subscriptions/listen`](./subscriptions) mechanism. neva implements
 `subscriptions/listen` as of 0.5.1, but task status is not one of its filter
-categories yet, so poll with `tasks/get` for now.
+categories yet — nothing carries the notification, so **poll with
+`tasks/get`**.
 :::
 
 ## Handling Elicitation in Tasks

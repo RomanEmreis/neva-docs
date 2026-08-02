@@ -81,10 +81,12 @@ async fn main() -> Result<(), Error> {
 | `with_resources_changed()` | `resourcesListChanged` | `notifications/resources/list_changed` |
 | `with_resource(uri)` / `with_resources(uris)` | `resourceSubscriptions` | `notifications/resources/updated` для этих URI |
 
-Всё остальное остаётся в области запроса и подписки не требует:
-[логи](../mcp-server/logging#delivery), [прогресс](../mcp-server/progress),
-статус задач и elicitation идут по потоку ответа того запроса, который их
-породил.
+[Логи](../mcp-server/logging#delivery) и
+[прогресс](../mcp-server/progress) подписки не требуют — они остаются в
+области запроса и идут по потоку ответа того запроса, который их породил.
+`notifications/tasks` в спецификации *является* категорией подписки, но в
+фильтре neva его пока нет, поэтому [статус задачи](./tasks) по-прежнему
+узнают опросом `tasks/get`.
 
 ## Обработчики — сначала, и после `connect()`
 

@@ -78,10 +78,14 @@ The registry lives on the shared `McpOptions`, so a `Context` belonging to any
 in-flight request reaches every live stream — a notification is not confined to
 the request that produced it.
 
-Progress, task status and elicitation notifications are **not** subscribable
-and keep their request-scoped behavior: they ride the response stream of the
-request that triggered them. See
-[Logging → Delivery](./logging#delivery).
+Log and progress notifications are **not** subscribable and keep their
+request-scoped behavior: they ride the response stream of the request that
+triggered them — see [Logging → Delivery](./logging#delivery).
+
+`notifications/tasks` is a subscription category in the spec, but it is not in
+`SubscriptionFilter` yet, so `Context::task_changed` has no stream to reach in
+a default build and clients learn task status by polling
+[`tasks/get`](./tasks).
 
 ## Asking who is listening
 

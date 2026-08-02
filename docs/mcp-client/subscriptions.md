@@ -81,10 +81,12 @@ for, and an omitted field means exactly "not subscribed":
 | `with_resources_changed()` | `resourcesListChanged` | `notifications/resources/list_changed` |
 | `with_resource(uri)` / `with_resources(uris)` | `resourceSubscriptions` | `notifications/resources/updated` for those URIs |
 
-Everything else stays request-scoped and needs no subscription:
-[logging](../mcp-server/logging#delivery), [progress](../mcp-server/progress),
-task status and elicitation all ride the response stream of the request that
-triggered them.
+[Logging](../mcp-server/logging#delivery) and
+[progress](../mcp-server/progress) need no subscription — they stay
+request-scoped and ride the response stream of the request that triggered
+them. `notifications/tasks` *is* a subscription category in the spec, but not
+in neva's filter yet, so [task status](./tasks) is still learned by polling
+`tasks/get`.
 
 ## Handlers come first — and after `connect()`
 
