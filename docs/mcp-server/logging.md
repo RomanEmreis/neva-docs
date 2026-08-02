@@ -77,8 +77,14 @@ stream**, per the spec:
 | `stdio` | Interleaved on stdout |
 | Streamable HTTP | The `POST` that opted in gets a `text/event-stream` reply carrying its `notifications/message` and `notifications/progress`, followed by the response |
 
-Every other `POST` stays a single JSON object. The suppression rule — no
-`logLevel`, no `notifications/message` — holds on every transport.
+Every other `POST` stays a single JSON object — except a
+[`subscriptions/listen`](./subscriptions) request, which streams for its own
+reasons. Logs are **not** subscribable: they belong to the request that asked
+for them, so a listen stream carries its own request-scoped logs and no one
+else's.
+
+The suppression rule — no `logLevel`, no `notifications/message` — holds on
+every transport.
 
 ## Emitting Log Messages from Tools
 

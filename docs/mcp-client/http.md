@@ -27,6 +27,10 @@ is the first place to look at a sudden `400`.
 `Client::server_info` is read from `_meta["io.modelcontextprotocol/serverInfo"]`,
 which every result carries — it is no longer part of the discovery result.
 
+There is no standalone SSE `GET` stream to open: server-initiated
+notifications arrive on a [`subscriptions/listen`](./subscriptions) request
+the client opens for them, whose `POST` reply is itself the stream.
+
 ### Talking to a legacy server
 
 The client is **dual-mode**. If `server/discover` is rejected at the wire

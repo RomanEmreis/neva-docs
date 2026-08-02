@@ -199,10 +199,32 @@ async fn update_resource(mut ctx: Context, uri: Uri) -> Result<(), Error> {
 }
 ```
 
-Each of these operations automatically notifies the client if it is subscribed to the corresponding events:
+Each of these operations automatically notifies every client subscribed to the
+corresponding event:
 
 * `notifications/resources/list_changed` — when a resource has been added or removed
 * `notifications/resources/updated` — when a resource has been updated
+
+Delivery goes to the live [`subscriptions/listen`](./subscriptions) streams
+whose filter admits the notification, so the server needs `listChanged` and
+`subscribe` advertised for a client to be able to ask for them:
+
+```rust
+App::new()
+    .with_options(|opt| opt
+        .with_resources(|res| res.with_list_changed().with_subscribe()));
+```
+
+Use
+[`ctx.is_subscribed(&uri)`](https://docs.rs/neva/latest/neva/app/context/struct.Context.html#method.is_subscribed)
+to skip work nobody is listening for.
+
+:::note Under `legacy-spec`
+The `resources/subscribe` / `resources/unsubscribe` RPC pair comes back, and
+with it `Context::subscribe_to_resource` / `unsubscribe_from_resource`. Those
+methods do not exist in the default build — the client owns the subscription
+now. See [Subscriptions](./subscriptions) and [Legacy spec](../legacy-spec.md).
+:::
 
 ## Learn By Example
 Here you may find the full [example](https://github.com/RomanEmreis/neva/tree/main/examples/server).
@@ -212,3 +234,4 @@ Here you may find the full [example](https://github.com/RomanEmreis/neva/tree/ma
 * [Handling large resources](https://github.com/RomanEmreis/neva/tree/main/examples/large_resources_server)
 * [Pagination](https://github.com/RomanEmreis/neva/tree/main/examples/pagination)
 * [Resource updates](https://github.com/RomanEmreis/neva/tree/main/examples/updates)
+* [Subscriptions](https://github.com/RomanEmreis/neva/tree/main/examples/subscriptions)

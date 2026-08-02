@@ -100,9 +100,11 @@ let result = client
 Уведомление о статусе называется `notifications/tasks`.
 
 :::note
-Подписка на `notifications/tasks` — это механизм `subscriptions/listen` из
-спецификации, которого в neva пока нет; он отслеживается отдельно. Пока
-опрашивайте задачу через `tasks/get`.
+Подписка на `notifications/tasks` оформляется через механизм
+[`subscriptions/listen`](./subscriptions) из спецификации. Сам
+`subscriptions/listen` в neva реализован начиная с 0.5.1, но статус задач пока
+не входит в категории его фильтра, поэтому опрашивайте задачу через
+`tasks/get`.
 :::
 
 ## Обработка получения данных в задачах

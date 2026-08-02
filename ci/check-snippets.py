@@ -94,7 +94,7 @@ def parse_meta(meta: str) -> tuple[str | None, str | None]:
 
 def render(mode: str, body: str) -> str:
     if mode == "compile":
-        if re.search(r"^\s*fn main\s*\(", body, re.M):
+        if re.search(r"^\s*(async\s+)?fn main\s*\(", body, re.M):
             return body
         return body + "\nfn main() {}\n"
     uses, rest = [], []

@@ -50,48 +50,51 @@ async fn main() -> Result<(), Error> {
 
 ## Подписка на обновления ресурсов
 
-Когда список доступных ресурсов изменяется на сервере и MCP-сервер объявил `listChanged`,
-публикуется уведомление `notifications/resources/list_changed`.
-На стороне клиента можно подписаться на него следующим образом:
+Изменения ресурсов несут два уведомления:
+`notifications/resources/list_changed` — когда меняется сам список (сервер
+должен объявить `listChanged`), и `notifications/resources/updated` — когда
+меняется конкретный ресурс (сервер должен объявить `subscribe`).
+
+Регистрируйте обработчики **после `connect()`** — они проверяют то, что
+объявляет сервер, а это неизвестно, пока не выполнен discovery:
 
 ```rust
 client.on_resources_changed(|_: Notification| async {
     println!("Resource list has been updated");
 });
-```
 
-Кроме того, когда конкретный ресурс обновляется на сервере,
-отправляется уведомление `notifications/resources/updated`.
-Для подписки или отписки от этих обновлений используйте:
-
-```rust
 client.on_resource_changed(|n: Notification| async move {
     let params = n.params::<SubscribeRequestParams>()
         .expect("Expected SubscribeRequestParams");
 
     println!("Resource '{}' has been updated", params.uri);
 });
+```
 
-client.subscribe_to_resource("res://some-resource").await?;
+Одних обработчиков мало: в MCP 2026-07-28 клиент запрашивает уведомления
+потоком `subscriptions/listen`, где и живёт подписка на конкретный ресурс:
+
+```rust
+let mut subscription = client
+    .listen(SubscriptionFilter::new()
+        .with_resources_changed()
+        .with_resource("res://some-resource"))
+    .await?;
 
 // ...
 
-client.unsubscribe_from_resource("res://some-resource").await?;
+subscription.cancel().await?;
 ```
 
-:::warning Доставка по HTTP-транспорту без состояния
-API подписки одинаково в обоих поколениях протокола, а вот доставка — нет.
-MCP 2026-07-28 убрал отдельный SSE-поток `GET`, поэтому у клиента,
-подключённого по HTTP, нет канала для уведомлений, возникших **вне** его
-собственного запроса: по потоку ответа `POST` идут только
-[логи](../mcp-server/logging#delivery) и
-[прогресс](../mcp-server/progress).
+О фильтре, подтверждении и жизненном цикле подписки см.
+[Подписки](./subscriptions).
 
-По `stdio` уведомления по-прежнему перемежаются с выводом в stdout и
-доходят как раньше. По HTTP рассчитывайте на повторное чтение ресурса, а не
-на push — либо используйте сборку с
-[`legacy-spec`](../legacy-spec.md) на обеих сторонах, где сессионный
-SSE-поток сохраняется.
+:::note Замена `subscribe_to_resource`
+`client.subscribe_to_resource(uri)` / `unsubscribe_from_resource(uri)` — это
+легаси-пара. Они остаются скомпилированными (двойной режим по-прежнему
+достаёт до легаси-серверов), но на узле 2026-07-28 отвечают
+`MethodNotFound`. Используйте `SubscriptionFilter::with_resource(uri)`, как
+выше.
 :::
 
 ## Обучение на примерах
@@ -99,4 +102,5 @@ SSE-поток сохраняется.
 
 ### Дополнительные примеры
 
-* [Подписка на обновления ресурсов](https://github.com/RomanEmreis/neva/tree/main/examples/subscription)
+* [Подписки (MCP 2026-07-28)](https://github.com/RomanEmreis/neva/tree/main/examples/subscriptions)
+* [Подписка на обновления ресурсов (легаси)](https://github.com/RomanEmreis/neva/tree/main/examples/subscription)

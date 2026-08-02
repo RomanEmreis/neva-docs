@@ -16,18 +16,23 @@ Under [MCP 2026-07-28](../spec-2026-07-28.md#stateless-http-transport) the
 transport is request/response only:
 
 * No `Mcp-Session-Id` on the wire, and no session `DELETE`.
-* No standalone SSE `GET` stream for server-initiated pushes.
+* No standalone SSE `GET` stream — server-initiated pushes ride a
+  [`subscriptions/listen`](./subscriptions) request the client opens itself.
 * Every request carries the `MCP-Protocol-Version` header, plus mandatory
   `_meta` keys for the protocol version and the client's capabilities.
 * Routing headers (`Mcp-Method`, `Mcp-Name`, `Mcp-Param-{name}`) must agree
   with the body, or the request is rejected with `HeaderMismatch`
   (`-32020`) and HTTP `400`.
 
-A `POST` still gets a `text/event-stream` reply when it opts into streaming —
-that is, when its `_meta` carries `io.modelcontextprotocol/logLevel` or a
-`progressToken`. The stream carries that request's
-[log](./logging) and [progress](./progress) notifications followed by its
-response. Every other `POST` gets a single JSON object.
+A `POST` gets a `text/event-stream` reply in three cases:
+
+| The `POST` | The stream carries |
+|---|---|
+| Its `_meta` carries `io.modelcontextprotocol/logLevel` | that request's [log](./logging) notifications, then its response |
+| Its `_meta` carries a `progressToken` | that request's [progress](./progress) notifications, then its response |
+| It is a [`subscriptions/listen`](./subscriptions) request | the acknowledgment, then every notification the filter admits, until the stream ends |
+
+Every other `POST` gets a single JSON object.
 
 :::note Under `legacy-spec`
 The session-bound transport comes back: `Mcp-Session-Id`, session `DELETE`,
