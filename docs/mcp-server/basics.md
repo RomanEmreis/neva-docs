@@ -138,7 +138,7 @@ Available built-in parameter types:
 
 | Type | Provides |
 |------|----------|
-| `Context` | Current session context (send sampling requests, subscribe to resources, etc.) |
+| `Context` | Current request context (mutate the tool/prompt/resource registries, notify [subscribers](./subscriptions), ask the client for input, etc.) |
 | `Request` | Raw JSON-RPC request (method, params, headers, claims) |
 | `RequestId` | The request's identifier |
 | `RuntimeMcpOptions` | Server configuration at runtime |

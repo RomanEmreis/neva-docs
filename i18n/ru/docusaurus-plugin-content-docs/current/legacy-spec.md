@@ -45,6 +45,13 @@ neva = { version = "0.5", features = ["server-full", "legacy-spec"] }
   `SseResponse` сохраняется на один релиз.
 * **Удалённые вызовы** — `ping`, `complete_elicitation`,
   `on_elicitation_completed`, `with_logging` / `set_log_level`.
+* **Подписки на ресурсы** — `resources/subscribe` / `resources/unsubscribe`
+  свёрнуты в фильтр
+  [`subscriptions/listen`](./spec-2026-07-28#подписки). Замените
+  `client.subscribe_to_resource(uri)` на
+  `client.listen(SubscriptionFilter::new().with_resource(uri))`, а из
+  серверных обработчиков уберите `ctx.subscribe_to_resource(..)` — подпиской
+  теперь владеет клиент. См. [Подписки](./mcp-client/subscriptions).
 * **Сэмплирование и корневые каталоги** — по-прежнему доступны, но как
   [виды input-запросов MRTR](./spec-2026-07-28#виды-input-запросов-elicitation-sampling-roots)
   и с пометкой `#[deprecated]`. Атрибутный макрос `#[sampling]` относится к
@@ -64,6 +71,7 @@ neva = { version = "0.5", features = ["server-full", "legacy-spec"] }
 | Инструменты | Легаси-тип `ToolSchema` (не JSON Schema 2020-12) |
 | Задачи | Поверхность 2025-11-25: `tasks/list`, `tasks/result`, поддерево возможностей `cancel`/`list`/`requests`, `with_tasks(\|t\| …)`, задачи на стороне клиента |
 | Уведомления | `ping`, `notifications/roots/list_changed`, `notifications/elicitation/complete` |
+| Подписки | Пара RPC-методов `resources/subscribe` / `resources/unsubscribe`, `Context::subscribe_to_resource` / `unsubscribe_from_resource` и `resource::commands::{SUBSCRIBE, UNSUBSCRIBE}` — состояние подписки на сервере вместо потока `subscriptions/listen` |
 | Запросы | Нет обязательных ключей `_meta`, нет проверки заголовков маршрутизации, нет `resultType` |
 
 Всё остальное — DI, промежуточные обработчики, типы содержимого,

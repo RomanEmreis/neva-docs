@@ -50,47 +50,51 @@ You can access individual resource fields using the following methods:
 
 ## Subscribing to resource updates
 
-When the list of available resources changes on the server, and the MCP server has declared `listChanged`,
-it will publish a `notifications/resources/list_changed` notification.
-On the client side, you can subscribe to it as follows:
+Two notifications carry resource changes: `notifications/resources/list_changed`
+when the list itself changes (the server must have declared `listChanged`),
+and `notifications/resources/updated` when a specific resource changes (the
+server must have declared `subscribe`).
+
+Register the handlers **after `connect()`** — they assert on what the server
+advertises, which is not known until discovery has run:
 
 ```rust
 client.on_resources_changed(|_: Notification| async {
     println!("Resource list has been updated");
 });
-```
 
-Additionally, when a specific resource is updated on the server,
-a `notifications/resources/updated` notification is sent.
-You can subscribe or unsubscribe from these updates using:
-
-```rust
 client.on_resource_changed(|n: Notification| async move {
     let params = n.params::<SubscribeRequestParams>()
         .expect("Expected SubscribeRequestParams");
 
     println!("Resource '{}' has been updated", params.uri); 
 });
+```
 
-client.subscribe_to_resource("res://some-resource").await?;
+Handlers alone do not make notifications arrive: under MCP 2026-07-28 the
+client asks for them with a `subscriptions/listen` stream, which is where the
+per-resource subscription lives:
+
+```rust
+let mut subscription = client
+    .listen(SubscriptionFilter::new()
+        .with_resources_changed()
+        .with_resource("res://some-resource"))
+    .await?;
 
 // ...
 
-client.unsubscribe_from_resource("res://some-resource").await?;
+subscription.cancel().await?;
 ```
 
-:::warning Delivery over the stateless HTTP transport
-The subscription API is the same in both protocol generations, but delivery
-is not. MCP 2026-07-28 removed the standalone SSE `GET` stream, so an
-HTTP-connected client has no channel for notifications fired **outside** a
-request it made — only [logging](../mcp-server/logging#delivery) and
-[progress](../mcp-server/progress) ride the originating `POST`'s response
-stream.
+See [Subscriptions](./subscriptions) for the filter, the acknowledgment, and
+the subscription's lifecycle.
 
-Over `stdio` notifications interleave on stdout and reach you as before.
-Over HTTP, plan on re-reading the resource rather than waiting for a push —
-or use a [`legacy-spec`](../legacy-spec.md) build on both ends, where the
-session-bound SSE stream still exists.
+:::note Replacing `subscribe_to_resource`
+`client.subscribe_to_resource(uri)` / `unsubscribe_from_resource(uri)` are the
+legacy pair. They stay compiled — the dual-mode fallback still reaches legacy
+peers — but reject a 2026-07-28 peer with `MethodNotFound`. Use
+`SubscriptionFilter::with_resource(uri)` instead, as above.
 :::
 
 ## Learn By Example
@@ -98,4 +102,5 @@ Here you may find the full [example](https://github.com/RomanEmreis/neva/tree/ma
 
 ### Additional examples
 
-* [Subscription to the resource updates](https://github.com/RomanEmreis/neva/tree/main/examples/subscription)
+* [Subscriptions (MCP 2026-07-28)](https://github.com/RomanEmreis/neva/tree/main/examples/subscriptions)
+* [Subscription to the resource updates (legacy)](https://github.com/RomanEmreis/neva/tree/main/examples/subscription)

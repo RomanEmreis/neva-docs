@@ -45,6 +45,12 @@ Beyond the flag, the code changes worth checking:
   alias remains for one release.
 * **Removed calls** — `ping`, `complete_elicitation`,
   `on_elicitation_completed`, `with_logging` / `set_log_level`.
+* **Resource subscriptions** — `resources/subscribe` / `resources/unsubscribe`
+  are folded into the [`subscriptions/listen`](./spec-2026-07-28#subscriptions)
+  filter. Replace `client.subscribe_to_resource(uri)` with
+  `client.listen(SubscriptionFilter::new().with_resource(uri))`, and drop
+  `ctx.subscribe_to_resource(..)` from server handlers — the client owns the
+  subscription now. See [Subscriptions](./mcp-client/subscriptions).
 * **Sampling & roots** — still available, but as
   [MRTR input-request kinds](./spec-2026-07-28#input-request-kinds-elicitation-sampling-roots)
   and `#[deprecated]`. The `#[sampling]` attribute macro belongs to the
@@ -64,6 +70,7 @@ Beyond the flag, the code changes worth checking:
 | Tools | The legacy `ToolSchema` (not JSON Schema 2020-12) |
 | Tasks | The 2025-11-25 surface: `tasks/list`, `tasks/result`, the `cancel`/`list`/`requests` capability sub-tree, `with_tasks(|t| …)`, client-hosted tasks |
 | Notifications | `ping`, `notifications/roots/list_changed`, `notifications/elicitation/complete` |
+| Subscriptions | The `resources/subscribe` / `resources/unsubscribe` RPC pair, `Context::subscribe_to_resource` / `unsubscribe_from_resource`, and `resource::commands::{SUBSCRIBE, UNSUBSCRIBE}` — server-side subscription state instead of a `subscriptions/listen` stream |
 | Requests | No mandatory `_meta` keys, no routing-header validation, no `resultType` |
 
 Everything else — DI, middleware, content types, JWT auth, TLS, custom HTTP

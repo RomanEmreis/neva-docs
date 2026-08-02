@@ -199,10 +199,32 @@ async fn update_resource(mut ctx: Context, uri: Uri) -> Result<(), Error> {
 }
 ```
 
-Каждая из этих операций автоматически уведомляет клиента, если он подписан на соответствующие события:
+Каждая из этих операций автоматически уведомляет всех клиентов, подписанных на
+соответствующее событие:
 
 * `notifications/resources/list_changed` — при добавлении или удалении ресурса
 * `notifications/resources/updated` — при обновлении ресурса
+
+Доставка идёт в живые потоки [`subscriptions/listen`](./subscriptions), чей
+фильтр допускает уведомление, поэтому сервер должен объявить `listChanged` и
+`subscribe`, чтобы клиент вообще мог о них попросить:
+
+```rust
+App::new()
+    .with_options(|opt| opt
+        .with_resources(|res| res.with_list_changed().with_subscribe()));
+```
+
+Чтобы не делать работу, которую никто не слушает, используйте
+[`ctx.is_subscribed(&uri)`](https://docs.rs/neva/latest/neva/app/context/struct.Context.html#method.is_subscribed).
+
+:::note Под флагом `legacy-spec`
+Возвращается пара RPC-методов `resources/subscribe` / `resources/unsubscribe`,
+а вместе с ней `Context::subscribe_to_resource` /
+`unsubscribe_from_resource`. В сборке по умолчанию этих методов нет —
+подпиской теперь владеет клиент. См. [Подписки](./subscriptions) и
+[Легаси-спецификация](../legacy-spec.md).
+:::
 
 ## Обучение на примерах
 Полный [пример](https://github.com/RomanEmreis/neva/tree/main/examples/server) доступен здесь.
@@ -212,3 +234,4 @@ async fn update_resource(mut ctx: Context, uri: Uri) -> Result<(), Error> {
 * [Обработка больших ресурсов](https://github.com/RomanEmreis/neva/tree/main/examples/large_resources_server)
 * [Пагинация](https://github.com/RomanEmreis/neva/tree/main/examples/pagination)
 * [Обновления ресурсов](https://github.com/RomanEmreis/neva/tree/main/examples/updates)
+* [Подписки](https://github.com/RomanEmreis/neva/tree/main/examples/subscriptions)
