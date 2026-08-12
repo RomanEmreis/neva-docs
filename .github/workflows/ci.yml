@@ -29,8 +29,9 @@ jobs:
       - run: npm ci
       - run: npm run build
 
-  # Compiles the doc snippets marked `compile` / `compile-fragment` against
-  # the published neva crate. See ci/check-snippets.py for the conventions.
+  # Compiles the doc snippets marked `compile` / `compile-fragment`, and every
+  # snippet in the Agent Skill, against the published neva crate. See
+  # ci/check-snippets.py for the conventions and why the two defaults differ.
   snippets:
     name: Compile Rust snippets
     runs-on: ubuntu-latest
@@ -55,4 +56,20 @@ jobs:
           key: snippets-${{ runner.os }}-neva${{ env.NEVA_VERSION }}-${{ hashFiles('ci/check-snippets.py') }}
           restore-keys: |
             snippets-${{ runner.os }}-neva${{ env.NEVA_VERSION }}-
-      - run: python3 ci/check-snippets.py
+      - name: docs/ — the marked snippets
+        run: python3 ci/check-snippets.py
+      # The skill is read by a model, so its markdown carries no markers and
+      # every block is checked instead. A block that cannot be self-contained
+      # opts out with `<!-- snippet: skip -->`.
+      - name: skill/ — every snippet
+        run: >
+          python3 ci/check-snippets.py --docs-dir skill
+          --default-mode compile --default-features full
+
+  # The skill ships as a zip built at site-build time; make sure it packages.
+  skill-package:
+    name: Package the Agent Skill
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - run: python3 ci/build-skill.py

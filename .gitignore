@@ -21,3 +21,6 @@ yarn-error.log*
 
 # Snippet compile check (ci/check-snippets.py)
 /.snippet-target
+
+# Built from skill/ by ci/build-skill.py on every `npm run build`
+/static/neva-skill.zip

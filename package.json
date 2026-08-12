@@ -4,7 +4,10 @@
   "private": true,
   "scripts": {
     "docusaurus": "docusaurus",
+    "build-skill": "python3 ci/build-skill.py",
+    "prestart": "npm run build-skill",
     "start": "docusaurus start",
+    "prebuild": "npm run build-skill",
     "build": "docusaurus build",
     "swizzle": "docusaurus swizzle",
     "deploy": "docusaurus deploy",

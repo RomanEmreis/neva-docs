@@ -44,7 +44,25 @@ Override per block with `features="..."` in the metastring.
 Snippets that need different feature sets are compiled in separate crates,
 since Cargo unifies features across a workspace.
 
+Checking a tree where every block should compile
+------------------------------------------------
+`skill/` is the Agent Skill, read by a model rather than rendered, so its
+markdown stays free of markers and the default is inverted instead:
+
+    --default-mode compile --default-features full
+
+Every `rust` fence is then checked, and a block that cannot be
+self-contained opts out with an HTML comment on the line before it:
+
+    <!-- snippet: skip -->
+    <!-- snippet: compile-fragment -->
+    <!-- snippet: features="client-full" -->
+
+The comment form also works in docs/ and wins over the metastring.
+
 Usage: python3 ci/check-snippets.py [--docs-dir docs] [--keep]
+                                    [--default-mode {none,compile,compile-fragment}]
+                                    [--default-features FEATURES]
 Env:   NEVA_VERSION (default "0.5")
 """
 
@@ -60,6 +78,9 @@ import tempfile
 from pathlib import Path
 
 FENCE = re.compile(r"^```rust([^\n]*)\n(.*?)^```", re.S | re.M)
+# An optional directive on the line immediately above a fence. Wins over the
+# metastring, and is how a marker-free tree (skill/) opts a block out.
+DIRECTIVE = re.compile(r"<!--\s*snippet:([^>]*?)-->\s*\n\Z", re.S)
 NEVA_VERSION = os.environ.get("NEVA_VERSION", "0.5")
 
 FRAGMENT_HEAD = (
@@ -79,9 +100,9 @@ def default_features(path: Path) -> str:
 
 
 def parse_meta(meta: str) -> tuple[str | None, str | None]:
-    """Return (mode, features) from a fence metastring."""
+    """Return (mode, features) from a fence metastring or a directive body."""
     mode = None
-    for candidate in ("compile-fragment", "compile"):
+    for candidate in ("compile-fragment", "compile", "skip"):
         if re.search(rf"(^|\s){re.escape(candidate)}(\s|$)", meta):
             mode = candidate
             break
@@ -90,6 +111,12 @@ def parse_meta(meta: str) -> tuple[str | None, str | None]:
     if m:
         features = m.group(1)
     return mode, features
+
+
+def directive_before(text: str, start: int) -> tuple[str | None, str | None]:
+    """Read a `<!-- snippet: ... -->` sitting directly above the fence."""
+    m = DIRECTIVE.search(text, 0, start)
+    return parse_meta(m.group(1)) if m else (None, None)
 
 
 def render(mode: str, body: str) -> str:
@@ -104,20 +131,29 @@ def render(mode: str, body: str) -> str:
     return "\n".join(uses) + "\n" + FRAGMENT_HEAD + indented + "\n" + FRAGMENT_TAIL
 
 
-def collect(docs_dir: Path) -> list[dict]:
+def collect(
+    docs_dir: Path,
+    fallback_mode: str = "none",
+    fallback_features: str | None = None,
+) -> list[dict]:
     snippets = []
     for md in sorted(docs_dir.rglob("*.md")):
         text = md.read_text(encoding="utf-8")
         for idx, m in enumerate(FENCE.finditer(text)):
             mode, features = parse_meta(m.group(1))
-            if mode is None:
+            d_mode, d_features = directive_before(text, m.start())
+            mode = d_mode or mode or (fallback_mode if fallback_mode != "none" else None)
+            if mode is None or mode == "skip":
                 continue
             line = text.count("\n", 0, m.start()) + 1
             snippets.append(
                 {
                     "name": f"{md.stem}_{idx}".replace("-", "_"),
                     "origin": f"{md}:{line}",
-                    "features": features or default_features(md),
+                    "features": d_features
+                    or features
+                    or fallback_features
+                    or default_features(md),
                     "source": render(mode, m.group(2)),
                 }
             )
@@ -128,9 +164,20 @@ def main() -> int:
     ap = argparse.ArgumentParser()
     ap.add_argument("--docs-dir", default="docs", type=Path)
     ap.add_argument("--keep", action="store_true", help="keep the scratch crates")
+    ap.add_argument(
+        "--default-mode",
+        default="none",
+        choices=("none", "compile", "compile-fragment"),
+        help="mode for blocks carrying no marker (default: skip them)",
+    )
+    ap.add_argument(
+        "--default-features",
+        default=None,
+        help="features for blocks naming none (default: by directory)",
+    )
     args = ap.parse_args()
 
-    snippets = collect(args.docs_dir)
+    snippets = collect(args.docs_dir, args.default_mode, args.default_features)
     if not snippets:
         print("no snippets marked for compilation — nothing to check")
         return 0
@@ -158,6 +205,7 @@ def main() -> int:
                 'tokio = { version = "1", features = ["full"] }\n'
                 'tracing = "0.1"\n'
                 'tracing-subscriber = "0.3"\n'
+                'serde = { version = "1", features = ["derive"] }\n'
                 'serde_json = "1"\n\n'
                 # detach from any enclosing workspace
                 "[workspace]\n",
