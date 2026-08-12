@@ -28,6 +28,18 @@
   --docusaurus-highlighted-code-line-bg: rgba(181, 168, 245, 0.2);
 }
 
+/* Buttons written directly in markdown. They are inline-block, so they carry
+   no bottom margin of their own — give them a paragraph's. The second rule is
+   a guard: MDX wraps a label placed on its own line in a <p>, whose margin
+   then pushes the text off-centre inside the button. */
+.markdown a.button {
+  margin-bottom: var(--ifm-paragraph-margin-bottom);
+}
+
+.markdown a.button > p {
+  margin: 0;
+}
+
 /* Vertical separator between line numbers and code */
 
 /* Remove vertical padding from pre, move it to the lines container

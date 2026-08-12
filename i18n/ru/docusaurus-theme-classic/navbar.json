@@ -11,6 +11,10 @@
     "message": "Руководство",
     "description": "Navbar item with label Tutorial"
   },
+  "item.label.Skill": {
+    "message": "Skill",
+    "description": "Navbar item with label Skill"
+  },
   "item.label.GitHub": {
     "message": "GitHub",
     "description": "Navbar item with label GitHub"
