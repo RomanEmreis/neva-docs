@@ -49,6 +49,13 @@ don't need a `legacy-spec` build just to reach an older server.
 **which legacy version the fallback negotiates**; it can never make
 `server/discover` reject a valid MCP 2026-07-28 server.
 
+The version the client offers in that handshake is a **proposal, not a
+demand**: a server that does not speak it answers with one it does, and the
+connection carries on as long as the client speaks that too. Only a version
+neva knows nothing about ends the connection — insisting on the offered
+version would refuse every server a notch older than the client, which is
+the case the negotiation exists for.
+
 ## Connecting via HTTP
 
 Use [`with_http()`](https://docs.rs/neva/latest/neva/client/options/struct.McpOptions.html#method.with_http) to configure the client for HTTP transport:

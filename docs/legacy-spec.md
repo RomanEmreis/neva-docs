@@ -63,6 +63,7 @@ Beyond the flag, the code changes worth checking:
 |---|---|
 | Handshake | `initialize` / `initialized`, with `serverInfo` in `InitializeResult` |
 | Transport | Session-bound Streamable HTTP: `Mcp-Session-Id`, session `DELETE`, standalone SSE `GET` stream with `Last-Event-ID` replay |
+| Stream resumption | A dropped `POST` response stream is resumed once, with a `GET` carrying `Last-Event-ID` after the pause the server asked for — only when the server named an id to resume from. Each stream keeps its own cursor and its own reconnection delay, taken from that stream's SSE `retry:` field rather than a fixed three seconds |
 | Version selection | `with_mcp_version(...)` on the **server** |
 | Server→client requests | Capability-driven push for `sampling/createMessage`, `roots/list`, `elicitation/create` — no MRTR |
 | Macros | The `#[sampling]` attribute macro |

@@ -51,6 +51,14 @@ async fn main() -> Result<(), Error> {
 Here we configure the [MCP Client](https://docs.rs/neva/latest/neva/client/struct.Client.html) to connect to the server via `stdio`.  
 Once connected, you can call tools, get prompts, or read resources until you disconnect (or the client is dropped).
 
+:::note `disconnect()` is local
+It shuts down the transport and sends **nothing** on the wire. There is no
+goodbye message in the protocol — the param-less
+`notifications/cancelled` neva used to send does not validate against the
+spec's own schema, and a server learns the client is gone from the closed
+connection anyway.
+:::
+
 ## Get a Prompt
 
 Next, let’s fetch a [prompt](/docs/mcp-server/basics#adding-a-prompt-handler) to see how prompts work from the client side.

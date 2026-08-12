@@ -111,6 +111,72 @@ App::new()
     .await;
 ```
 
+## DNS-Rebinding Protection
+
+A server on loopback is reachable by any page the browser loads: point
+`evil.example.com` at `127.0.0.1` and the browser will connect. The request
+really is local — what gives the attack away is the *name* it was addressed
+by. Neva therefore validates `Origin` and `Host` and answers `403 Forbidden`
+before reading the body.
+
+**The default needs no call.** Bound to loopback, the server accepts only
+loopback names — `localhost`, anything in `127.0.0.0/8`, `[::1]` — on any
+port. Bound to anything else it accepts everything, because the names a
+deployment is legitimately reached by are not knowable from here: behind a
+proxy the `Host` is whatever that proxy forwards.
+
+A deployment that *does* know its names states them with
+[`with_allowed_origins()`](https://docs.rs/neva/latest/neva/transport/struct.HttpServer.html#method.with_allowed_origins):
+
+```rust
+let http = HttpServer::new("0.0.0.0:3000")
+    .with_allowed_origins(["https://mcp.example.com", "https://app.example.com"]);
+
+App::new()
+    .with_options(|opt| opt.set_http(http))
+    .run()
+    .await;
+```
+
+### What an entry means
+
+| Entry | Matches an `Origin` of |
+|---|---|
+| `https://app.example.com` | that scheme, host **and** port (a missing port means the scheme's default) |
+| `app.example.com` | that host on any scheme and any port |
+| `app.example.com:8443` | that host on any scheme, narrowed to that port |
+
+Prefer the full origin. A bare host trusts everything served under that
+name, including whatever sits on another port — trusting an application
+should not mean trusting the rest of its host.
+
+`Host` is matched by hostname against every entry either way: it says where
+the request landed rather than who sent it, carries no scheme, and behind a
+proxy its port is the proxy's business. Matching is case-insensitive
+throughout, loopback is always accepted, and a request carrying neither
+header is left alone — it is not from a browser, and there is no rebinding
+without a name.
+
+### Turning the gate off
+
+```rust
+// A tunnel terminates the browser-facing name and forwards here.
+let http = HttpServer::new("127.0.0.1:3000").allow_any_origin();
+```
+
+[`allow_any_origin()`](https://docs.rs/neva/latest/neva/transport/struct.HttpServer.html#method.allow_any_origin)
+is only meaningful on a loopback bind, where the gate is on by default.
+Reach for it when something in front of the server already validates the
+name — not to quiet a `403` whose cause has not been read, because that
+`403` is the protection working.
+
+:::note Applies to any HTTP engine
+The gate lives in the transport core, not in the Volga adapter, so a
+[custom HTTP stack](./custom-http) gets the same validation — and the policy
+survives `with_engine(...)`, since it is a property of the deployment rather
+than of the framework serving it.
+:::
+
 ## TLS
 
 To enable HTTPS, configure TLS using the [`with_tls()`](https://docs.rs/neva/latest/neva/transport/struct.HttpServer.html#method.with_tls) method:
