@@ -44,6 +44,67 @@ sidebar_position: 6
 [Легаси-спецификация](../legacy-spec.md).
 :::
 
+## Спрашивайте только то, на что вызывающая сторона может ответить {#ask-only-for-what-the-caller-can-answer}
+
+В MCP 2026-07-28 возможности объявляются **на каждый запрос**, в его
+`_meta`. [`Context::client_capabilities()`](https://docs.rs/neva/latest/neva/app/context/struct.Context.html#method.client_capabilities)
+сообщает, что объявил вызывающий *именно этого* вызова, — поэтому
+обработчик, который может обойтись без ввода, вправе сначала посмотреть, а
+уже потом спрашивать:
+
+```rust
+use neva::{Context, error::Error, types::elicitation::ElicitRequestParams, tool};
+
+#[tool]
+async fn greet(mut ctx: Context) -> Result<String, Error> {
+    if ctx.client_capabilities().elicitation.is_none() {
+        return Ok("Hello, stranger!".to_string());
+    }
+    let params = ElicitRequestParams::form("Your name?")
+        .with_required("name", "string")
+        .into();
+    let res = ctx.elicit("name", params).await?;
+    Ok(format!("{:?}", res.content))
+}
+```
+
+Это стоит делать, потому что спросить всё равно — не «ухудшенный сценарий»:
+такой запрос **завершает вызов** ошибкой
+`MissingRequiredClientCapability` (`-32021`).
+
+### Elicitation сообщается вплоть до режима {#elicitation-modes}
+
+`elicitation` — не флаг, а
+[`ElicitationModes`](https://docs.rs/neva/latest/neva/types/mrtr/struct.ElicitationModes.html):
+спецификация описывает `form` и `url` как под-возможности внутри объекта
+`elicitation`, и клиент, умеющий отрисовать форму, вполне может не уметь
+открыть URL.
+
+* Клиент, **назвавший режимы**, перечисляет то, что умеет: режим, которого в
+  списке нет, — это режим, на который он ответить не может.
+* Клиент, объявивший `elicitation`, но **не назвавший ни одного режима**
+  (`{}`), не исключил ничего: `unconstrained()` равно `true`, и разрешены
+  все режимы.
+
+`allows(&params)` отвечает на весь вопрос целиком — «можно ли отправить
+этому вызывающему *такие* параметры» — для обеих форм записи:
+
+```rust
+use neva::prelude::*;
+use neva::types::elicitation::ElicitRequestParams;
+
+let params: ElicitRequestParams = ElicitRequestParams::url(
+    "https://example.com/pay",
+    "Please pay your bill"
+).into();
+
+match ctx.client_capabilities().elicitation {
+    Some(modes) if modes.allows(&params) => { ctx.elicit("payment", params).await?; }
+    // Elicitation объявлен, но не этот режим — идём другим путём.
+    _ => return Ok("Send an invoice instead".into()),
+}
+```
+
 ## Определение формы для получения данных
 
 Формы используют JSON-схему для определения и валидации структурированного ввода.

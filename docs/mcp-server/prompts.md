@@ -70,6 +70,59 @@ async fn hello_world_code(lang: String) -> PromptMessage {
 }
 ```
 
+## Optional Arguments
+
+An argument declared `Option<T>` is published with `"required": false`, and
+a `prompts/get` that leaves it out hands the handler `None`:
+
+```rust
+#[prompt(descr = "Generates a user message requesting a hello world code generation.")]
+async fn hello_world_code(lang: String, tone: Option<String>) -> PromptMessage {
+    let tone = tone.unwrap_or_else(|| "neutral".into());
+    PromptMessage::user()
+        .with(format!("Write a hello-world function on {lang}, tone: {tone}"))
+}
+```
+
+Building the argument list by hand,
+[`PromptArgument::named(name, required)`](https://docs.rs/neva/latest/neva/types/prompt/struct.PromptArgument.html#method.named)
+is the description-less form; `PromptArgument::required` and
+`PromptArgument::optional` are the same thing with a description.
+
+## Argument Names
+
+Prompt arguments are read from a `prompts/get` **by name**, so the names the
+handler reads by must be the names `prompts/list` publishes.
+
+`#[prompt]` takes the function's own parameter names. A bare closure has
+none — Rust does not preserve them — and falls back to the positional
+`arg0`, `arg1`, … The `map_prompt!` macro reads them off the closure:
+
+```rust compile
+use neva::{App, map_prompt, types::Role};
+
+#[tokio::main]
+async fn main() {
+    let mut app = App::new();
+
+    map_prompt!(app, "analyze", |lang: String, code: String| async move {
+        (format!("Analyze this {lang} code: {code}"), Role::User)
+    })
+    .with_description("Analyzes a code snippet");
+
+    app.run().await;
+}
+```
+
+[`Prompt::with_args()`](https://docs.rs/neva/latest/neva/types/prompt/struct.Prompt.html#method.with_args)
+is the explicit form, and it sets the published arguments and the extraction
+names in one go, so the two cannot drift.
+
+A prompt that publishes arguments its handler does not read fails
+`App::run` at startup — see
+[Tools → Startup Validation](./tools#startup-validation), which covers
+prompts by the same rule.
+
 ## MCP Context
 
 For more advanced scenarios - for example, when a prompt needs to access resources you also declared in your MCP Server -

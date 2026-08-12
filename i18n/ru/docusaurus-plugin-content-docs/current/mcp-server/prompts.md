@@ -70,6 +70,60 @@ async fn hello_world_code(lang: String) -> PromptMessage {
 }
 ```
 
+## Необязательные аргументы {#optional-arguments}
+
+Аргумент, объявленный как `Option<T>`, публикуется с `"required": false`, а
+`prompts/get`, который его не передал, отдаёт обработчику `None`:
+
+```rust
+#[prompt(descr = "Generates a user message requesting a hello world code generation.")]
+async fn hello_world_code(lang: String, tone: Option<String>) -> PromptMessage {
+    let tone = tone.unwrap_or_else(|| "neutral".into());
+    PromptMessage::user()
+        .with(format!("Write a hello-world function on {lang}, tone: {tone}"))
+}
+```
+
+Если вы собираете список аргументов вручную,
+[`PromptArgument::named(name, required)`](https://docs.rs/neva/latest/neva/types/prompt/struct.PromptArgument.html#method.named) —
+это форма без описания; `PromptArgument::required` и
+`PromptArgument::optional` — то же самое с описанием.
+
+## Имена аргументов {#argument-names}
+
+Аргументы промпта читаются из `prompts/get` **по имени**, поэтому имена, по
+которым читает обработчик, обязаны совпадать с теми, что публикует
+`prompts/list`.
+
+`#[prompt]` берёт имена параметров самой функции. У «голого» замыкания их
+нет — Rust их не сохраняет, — и оно откатывается к позиционным `arg0`,
+`arg1`, … Макрос `map_prompt!` считывает их с замыкания:
+
+```rust
+use neva::{App, map_prompt, types::Role};
+
+#[tokio::main]
+async fn main() {
+    let mut app = App::new();
+
+    map_prompt!(app, "analyze", |lang: String, code: String| async move {
+        (format!("Analyze this {lang} code: {code}"), Role::User)
+    })
+    .with_description("Analyzes a code snippet");
+
+    app.run().await;
+}
+```
+
+[`Prompt::with_args()`](https://docs.rs/neva/latest/neva/types/prompt/struct.Prompt.html#method.with_args) —
+явная форма: она задаёт публикуемые аргументы и имена для извлечения одним
+вызовом, так что разойтись они не могут.
+
+Промпт, публикующий аргументы, которые его обработчик не читает, роняет
+`App::run` при старте — см.
+[Инструменты → Проверка при старте](./tools#startup-validation): к промптам
+применяется то же правило.
+
 ## MCP-контекст
 
 В более сложных сценариях — например, когда промпту нужен доступ к ресурсам, объявленным на том же MCP-сервере, — можно внедрить [Context](https://docs.rs/neva/latest/neva/app/context/struct.Context.html) в обработчик промпта:

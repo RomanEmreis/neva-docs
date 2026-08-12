@@ -43,6 +43,64 @@ Elicitation is a capability-driven server→client push request instead:
 re-running. See [Legacy spec](../legacy-spec.md).
 :::
 
+## Ask Only for What the Caller Can Answer
+
+Under MCP 2026-07-28 capabilities are declared **per request**, in the
+call's `_meta`. [`Context::client_capabilities()`](https://docs.rs/neva/latest/neva/app/context/struct.Context.html#method.client_capabilities)
+reports what the caller of *this* call declared, so a handler that can do
+without an input can look before it asks:
+
+```rust compile
+use neva::{Context, error::Error, types::elicitation::ElicitRequestParams, tool};
+
+#[tool]
+async fn greet(mut ctx: Context) -> Result<String, Error> {
+    if ctx.client_capabilities().elicitation.is_none() {
+        return Ok("Hello, stranger!".to_string());
+    }
+    let params = ElicitRequestParams::form("Your name?")
+        .with_required("name", "string")
+        .into();
+    let res = ctx.elicit("name", params).await?;
+    Ok(format!("{:?}", res.content))
+}
+```
+
+This is worth doing because asking anyway is not a degraded experience — it
+**ends the call** with `MissingRequiredClientCapability` (`-32021`).
+
+### Elicitation is reported down to the mode
+
+`elicitation` is not a flag but an
+[`ElicitationModes`](https://docs.rs/neva/latest/neva/types/mrtr/struct.ElicitationModes.html):
+the spec spells `form` and `url` as sub-capabilities inside the
+`elicitation` object, and a client that can render a form may well be unable
+to open a URL.
+
+* A client that **named modes** is stating a list of what it can do — a mode
+  missing from it is one it cannot answer.
+* A client that declared `elicitation` but **named no mode** (`{}`) has
+  ruled nothing out; `unconstrained()` is `true` and every mode is allowed.
+
+`allows(&params)` answers the whole question — "can this caller be sent
+*these* params" — for either shape:
+
+```rust compile-fragment
+use neva::prelude::*;
+use neva::types::elicitation::ElicitRequestParams;
+
+let params: ElicitRequestParams = ElicitRequestParams::url(
+    "https://example.com/pay",
+    "Please pay your bill"
+).into();
+
+match ctx.client_capabilities().elicitation {
+    Some(modes) if modes.allows(&params) => { ctx.elicit("payment", params).await?; }
+    // Declared elicitation, but not this mode — take the other path.
+    _ => return Ok("Send an invoice instead".into()),
+}
+```
+
 ## Defining a Form Elicitation
 
 Forms use a JSON schema to define and validate structured input.
