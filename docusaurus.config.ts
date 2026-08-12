@@ -69,6 +69,12 @@ const config: Config = {
           label: 'Tutorial',
         },
         {
+          type: 'doc',
+          docId: 'agent-skill',
+          position: 'left',
+          label: 'Skill',
+        },
+        {
           href: 'https://github.com/RomanEmreis/neva',
           label: 'GitHub',
           position: 'right',

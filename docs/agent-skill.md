@@ -2,20 +2,15 @@
 sidebar_position: 6
 ---
 
+import useBaseUrl from '@docusaurus/useBaseUrl';
+
 # Agent Skill
 
 A packaged [Agent Skill](https://agentskills.io/specification) that teaches
 a coding assistant to write neva correctly — the same material as this site,
 reorganised for a model rather than a reader.
 
-import useBaseUrl from '@docusaurus/useBaseUrl';
-
-<a
-  href={useBaseUrl('/neva-skill.zip')}
-  download
-  className="button button--primary button--lg">
-  Download neva-skill.zip
-</a>
+<a href={useBaseUrl('/neva-skill.zip')} download className="button button--primary button--lg">Download neva-skill.zip</a>
 
 Source: [`skill/neva`](https://github.com/RomanEmreis/neva-docs/tree/main/skill/neva).
 
