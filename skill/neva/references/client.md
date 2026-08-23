@@ -44,6 +44,11 @@ async fn main() -> Result<(), Error> {
 
 `with_default_http()` is the shorthand for `127.0.0.1:3000` + `/mcp`.
 
+Against a protected server, add `.with_oauth(|oauth| oauth)` inside
+`with_http(..)` and the client handles the whole authorization flow off the
+first `401` — see `http.md`. Raise the timeout well past the default 10
+seconds if the flow opens a browser.
+
 `Client::discover()` is the explicit call behind `connect()`;
 `Client::init()` survives as a back-compat alias. `Client::server_info` is
 read from `_meta["io.modelcontextprotocol/serverInfo"]`, which every result
@@ -304,6 +309,13 @@ protocol violation and `listen` rejects it.
 client), `Graceful(result)` (the server closed it), or `Abrupt` (stream
 went away). Subscriptions are not resumable — call `listen` again.
 Dropping the handle, or `disconnect()`, ends the subscription too.
+
+A server shutting down owes you `Graceful`. neva servers only started
+delivering it in **0.5.4** — before that the empty result raced the writer
+teardown, so an older peer stopping reads as `Abrupt` and is not a fault on
+this side. Over HTTP your own `cancel()` is always `Cancelled`, never
+`Graceful`: cancelling closes the listen `POST`'s body, which *is* the
+spec's cancellation mechanism there, and leaves no channel for a result.
 
 Logging and progress need no subscription; they are request-scoped.
 

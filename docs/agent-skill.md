@@ -31,10 +31,10 @@ The skill front-loads exactly those traps, then routes to detail on demand.
 | File | Covers |
 |---|---|
 | `SKILL.md` | Establishing the version and profile, the non-negotiables, minimal server and client, routing |
-| `references/server.md` | Tools, prompts, resources, schemas, argument names, content types, DI, middleware, logging, subscriptions |
+| `references/server.md` | Tools, prompts, resources, schemas, argument names, content types, DI, middleware, logging, subscriptions, cross-instance fan-out |
 | `references/client.md` | Connecting, calling, structured results, batching, subscribing, answering input requests, tasks |
 | `references/mrtr.md` | The re-run model, `memo` / `once` / `on_commit`, elicitation modes, tasks |
-| `references/http.md` | Transports, TLS, JWT/OAuth, DNS-rebinding, custom engines, feature flags, multi-instance deploy |
+| `references/http.md` | Transports, TLS, JWT and OAuth 2.1 (both sides, DPoP, CIMD, grants), DNS-rebinding, shutdown, custom engines, feature flags, multi-instance deploy |
 | `references/troubleshooting.md` | Error codes, symptom → cause, everything removed in this generation |
 | `references/legacy.md` | The `legacy-spec` profile and the 0.4.x → 0.5.x upgrade |
 
@@ -77,7 +77,7 @@ and the reference file it routes you to.
 ## The code in it compiles
 
 Every Rust snippet in the skill is compiled against the published `neva`
-crate in this repository's CI — 60-plus of them — so what an assistant
+crate in this repository's CI — 70-plus of them — so what an assistant
 copies out of it builds. That is the whole point of shipping a skill rather
 than a prose summary: an assistant that pastes a plausible-looking API is
 worse than one that pastes a verified one.
@@ -90,12 +90,12 @@ python3 ci/check-snippets.py --docs-dir skill --default-mode compile --default-f
 
 ## Version
 
-The skill tracks neva **0.5.2** / MCP **2026-07-28**, with the legacy
+The skill tracks neva **0.5.4** / MCP **2026-07-28**, with the legacy
 generation documented separately. The frontmatter records both, so an
 assistant can tell whether the skill matches the crate in front of it:
 
 ```yaml
 metadata:
-  neva-version: "0.5.2"
+  neva-version: "0.5.4"
   mcp-protocol: "2026-07-28"
 ```

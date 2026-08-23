@@ -267,6 +267,17 @@ Also set `App::with_request_state_store(<shared store>)` — the default
 lost-response retry re-runs the handler and double-fires `on_commit`.
 Implement `RequestStateStore` over Redis or similar.
 
+**0.5.3 — bind the state to this service.** The sealed state was bound to
+its request and principal but not to the service, so where several share
+one `with_request_state_secret`, a state minted by one was a state the
+others accepted. `App::with_request_state_audience("https://weather.example.com/mcp")`
+closes that. It must be identical on every instance of the same service; a
+mismatch is `InvalidParams`, and the check runs both ways — a state naming
+an audience is refused by a server configuring none. An audience-bound
+state is sealed under wire version `v2.` rather than `v1.`, so a binary
+predating the option refuses it instead of dropping the field it does not
+know; states in flight when you turn it on lapse within the 5-minute TTL.
+
 `requestState` is **sealed** with ChaCha20-Poly1305, not merely signed:
 `ctx.memo` writes server-computed values (an upstream response, a quoted
 price, a downstream token) into it, and a signed blob would still be

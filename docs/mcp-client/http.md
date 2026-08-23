@@ -123,6 +123,13 @@ client.connect().await?;
 
 The token is sent as an `Authorization: Bearer <token>` header on every request.
 
+:::tip You rarely need to hold a token yourself
+`with_auth` is for a token your application already has. Against a server
+protected by an authorization server, use [OAuth 2.1](./oauth) instead —
+`with_oauth(|oauth| oauth)` and the client discovers, registers, authorizes and
+refreshes on its own, driven by the first `401`.
+:::
+
 ## Full Example: HTTPS + Auth
 
 ```rust
@@ -154,3 +161,4 @@ async fn main() -> Result<(), Error> {
 * [MRTR client](https://github.com/RomanEmreis/neva/tree/main/examples/mrtr/client) — the round-trip loop end to end
 * [HTTP client (roots)](https://github.com/RomanEmreis/neva/tree/main/examples/roots/client)
 * [Sampling client](https://github.com/RomanEmreis/neva/tree/main/examples/sampling/client)
+* [OAuth client](https://github.com/RomanEmreis/neva/tree/main/examples/oauth-client) — the whole authorization flow behind `connect()`

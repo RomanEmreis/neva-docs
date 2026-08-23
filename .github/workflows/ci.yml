@@ -37,7 +37,7 @@ jobs:
     runs-on: ubuntu-latest
     env:
       # bump alongside the version the docs describe
-      NEVA_VERSION: "0.5.2"
+      NEVA_VERSION: "0.5.4"
       # The generated crates live in a temp dir outside the repo, so point
       # cargo at a fixed path we can actually cache.
       CARGO_TARGET_DIR: ${{ github.workspace }}/.snippet-target

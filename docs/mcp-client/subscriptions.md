@@ -148,6 +148,16 @@ resolves to a
 | `Graceful(SubscriptionsListenResult)` | The server answered the listen request with its close result. The result names the subscription it closes, and a reply naming a different one is reported as `Abrupt` instead |
 | `Abrupt` | The stream went away without a final result — dropped connection, timeout, or a server that died |
 
+:::info Server shutdown gives you `Graceful` — since neva 0.5.4
+A server ending a subscription on its own initiative SHOULD send the empty
+result first, and until **0.5.4** neva constructed that result but rarely
+delivered it: one cancellation token drove both the subscription and the
+transport, so the result raced a writer that had already broken out of its
+loop on the very same signal. Against an older server, read an `Abrupt` at
+shutdown as "the peer stopped", not as a fault on this side. See
+[Server → Graceful Shutdown](../mcp-server/shutdown).
+:::
+
 Subscriptions are **not resumable**: a client that wants to keep listening
 sends `subscriptions/listen` again.
 

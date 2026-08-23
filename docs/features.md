@@ -30,7 +30,7 @@ neva = { version = "...", features = ["full"] }
 |---------|----------|-------------|
 | `full` | `server-full` + `client-full` | Everything — for apps that run both a server and a client |
 | `server-full` | `server-macros`, `tracing`, `http-server-volga`, `server-tls`, `server-oauth`, `di`, `tasks` | All server capabilities, including the default Volga-based HTTP server |
-| `client-full` | `client-macros`, `tracing`, `http-client`, `client-tls`, `client-oauth`, `tasks` | All client capabilities |
+| `client-full` | `client-macros`, `tracing`, `http-client`, `client-tls`, `client-oauth`, `client-oauth-jwt`, `client-oauth-dpop`, `tasks` | All client capabilities |
 
 Note that `full` is *every* feature **except** the protocol-generation flag
 below — it is the default build, which is also what `docs.rs` publishes.
@@ -44,7 +44,7 @@ below — it is the default build, which is also what `docs.rs` publishes.
 | `http-server` | `server` | Engine-agnostic Streamable HTTP abstractions — pulls in no HTTP framework. Plug in your own stack (axum, hyper, actix-web, …) by implementing [`HttpEngine`](./mcp-server/custom-http) |
 | `http-server-volga` | `http-server` | Default [Volga](https://docs.rs/volga)-based HTTP server adapter, including JWT auth |
 | `server-tls` | `http-server-volga` | TLS support for the default HTTP server, including automatic dev certificate generation |
-| `server-oauth` | `http-server` | OAuth 2.1 protected-resource metadata and token validation on the server |
+| `server-oauth` | `http-server` | [OAuth 2.1](./mcp-server/oauth) protected-resource metadata and token validation on the server |
 
 ### Client Features
 
@@ -54,7 +54,9 @@ below — it is the default build, which is also what `docs.rs` publishes.
 | `client-macros` | `client`, `macros` | Adds attribute macros (`#[sampling]`, `#[elicitation]`) |
 | `http-client` | `client` | Streamable HTTP transport and SSE stream support |
 | `client-tls` | — | TLS support for the HTTP client (rustls) |
-| `client-oauth` | `http-client` | Client-side OAuth 2.1 authorization: discovery, dynamic registration, authorization code + PKCE |
+| `client-oauth` | `http-client` | Client-side [OAuth 2.1 authorization](./mcp-client/oauth): discovery, all three registration mechanisms, authorization code + PKCE, client credentials and JWT bearer |
+| `client-oauth-jwt` | `client-oauth` | `private_key_jwt` client authentication — the client signs a short-lived assertion with its own key instead of presenting a shared secret. The only part of the OAuth client that needs a JWS backend, which is why it is separate |
+| `client-oauth-dpop` | `client-oauth` | [DPoP](./mcp-client/oauth#dpop-sender-constrained-tokens) sender-constrained tokens ([RFC 9449](https://www.rfc-editor.org/rfc/rfc9449)) — every token is bound to a key the client holds and proved on each request |
 
 ### Shared Features
 
@@ -164,6 +166,10 @@ full
     ├── client-tls
     ├── client-oauth
     │   └── http-client
+    ├── client-oauth-jwt
+    │   └── client-oauth
+    ├── client-oauth-dpop
+    │   └── client-oauth
     ├── tracing
     └── tasks
 
