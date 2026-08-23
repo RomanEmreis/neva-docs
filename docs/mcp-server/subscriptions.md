@@ -90,16 +90,111 @@ a default build and clients learn task status by polling
 ## Asking who is listening
 
 [`Context::is_subscribed`](https://docs.rs/neva/latest/neva/app/context/struct.Context.html#method.is_subscribed)
-answers from the live streams, so you can skip work nobody will receive:
+answers from the live streams, so you can skip **expensive local work** nobody
+will receive:
 
 ```rust compile-fragment
 use neva::prelude::*;
 
 if ctx.is_subscribed(&"res://config".into()) {
-    // somebody is listening for this resource
-    ctx.resource_updated("res://config").await?;
+    // re-render the snapshot, refresh the cache — the expensive part,
+    // worth skipping when nobody on this node is listening
 }
+
+// Publish either way — the subscription filters route it.
+ctx.resource_updated("res://config").await?;
 ```
+
+:::warning `is_subscribed` is node-local — changed in 0.5.3
+It can only answer for the instance running the handler. Under a
+[notification bus](#running-more-than-one-instance) a subscriber elsewhere may
+be waiting for exactly the update this instance would skip.
+
+That is why `Context::resource_updated` **no longer pre-checks it**: since
+**0.5.3** it publishes unconditionally and lets the filters route the result,
+which is what they already did. Use `is_subscribed` to skip work, never to
+decide whether to notify.
+:::
+
+## Running more than one instance
+
+A `subscriptions/listen` stream is a socket held open by exactly one process,
+and the [stateless transport](./http#the-transport-is-stateless) pins nothing
+to an instance — so the subscriber and the request that mutates the server
+routinely land on different ones:
+
+```text
+client --- subscriptions/listen ------------> instance A   (stream held here)
+client --- tools/call (mutates the tools) --> instance B   (ctx.add_tool)
+                                              instance B has no subscribers
+                                              instance A's subscriber hears nothing
+```
+
+The subscriber was told its filter was accepted, so the loss reads as "the
+server never changes" rather than as a delivery failure.
+
+:::info New in neva 0.5.3
+[`App::with_notification_bus(..)`](https://docs.rs/neva/latest/neva/app/struct.App.html#method.with_notification_bus)
+carries notifications between instances: each one publishes what it produces
+and delivers what it receives to the streams it holds.
+:::
+
+```rust
+use neva::prelude::*;
+use neva::app::notification_bus::{BusNotification, NotificationBus};
+use neva::shared::Stream;
+
+struct RedisBus { /* … */ }
+
+impl NotificationBus for RedisBus {
+    async fn publish(&self, notification: BusNotification) {
+        // hand off to a background connection
+    }
+
+    fn subscribe(&self) -> impl Stream<Item = BusNotification> + Send + 'static {
+        // every instance's notifications, this one's own included
+    }
+}
+
+App::new()
+    .with_notification_bus(RedisBus { /* … */ })
+    .with_options(|opt| opt.with_default_http())
+    .run()
+    .await;
+```
+
+The **subscriber table stays node-local** by construction: half of every entry
+is a handle to a socket on one node, so a shared registry could not deliver
+anyway. What is pluggable is the *distribution*. neva ships the trait and the
+local default; shared implementations (Redis pub/sub, NATS, Postgres
+`LISTEN`/`NOTIFY`) live outside the crate, as for
+[`RequestStateStore`](./http#running-more-than-one-instance).
+
+### The contract
+
+| Rule | Why |
+|---|---|
+| **No echo suppression** — `subscribe` must yield this instance's own publishes | Local delivery goes through that same stream and only through it. A bus that hides an instance's messages from itself silences that instance's own subscribers. Redis pub/sub, NATS and `tokio::sync::broadcast` all echo by default |
+| **At-most-once is enough** | A subscription whose buffer is full drops the notification with a warning rather than blocking the request that produced it. Redelivery after an instance dies buys nothing — subscriptions are not resumable by spec, and a client whose stream drops re-sends `subscriptions/listen` |
+| **`publish` is awaited inside the producing request** | A slow bus slows that request down. Prefer an implementation that hands off to a background connection over one that waits for a round trip |
+| **A stream that ends stops delivery for good** | An implementation that can reconnect should do so *inside* the stream rather than end it |
+
+`BusNotification` serializes as the notification body it describes
+(`{"method": …, "params": …}`), so a bus that ships JSON can hand it straight
+to `serde_json` in both directions. It carries nothing about the instance that
+produced it or the subscription it lands on — the receiving instance matches it
+against its own filters and stamps each copy with that stream's subscription
+id.
+
+**Nothing changes without one.** There is no bus by default, notifications go
+straight to this instance's subscribers, and a single-instance server pays no
+channel, no allocation and no task for the trait's existence.
+
+:::note Three things, not two
+A multi-instance stateless deployment serving subscriptions now configures
+`with_request_state_secret`, `with_request_state_store` **and**
+`with_notification_bus`.
+:::
 
 ## What goes on the wire
 
@@ -128,6 +223,22 @@ Over HTTP a `notifications/cancelled` travels on its own `POST` and proves
 nothing about who opened the stream, so closing the response body is the
 sound mechanism there — and the client sees `Cancelled` rather than a final
 result.
+
+:::info Graceful close on shutdown — fixed in 0.5.4
+The spec says a server ending a subscription on its own initiative SHOULD send
+the empty result first, so a client can tell an orderly end from a dropped
+connection. neva constructed that result but rarely delivered it: one
+cancellation token drove both the subscription and the transport, so the result
+raced a writer that had already broken out of its loop on the very same signal
+— and clients saw `SubscriptionEnd::Abrupt` where `Graceful` was owed.
+
+Shutdown is [two-phase](./shutdown#what-shutdown-actually-does) now. The signal
+ends the subscriptions and waits until every result has reached the outbound
+channel; only then is the transport torn down.
+[`App::with_shutdown_drain(..)`](./shutdown) caps that wait (2 seconds by
+default) and is skipped outright when no subscription is open, so a server that
+never uses them shuts down exactly as fast as before.
+:::
 
 ## Transports
 

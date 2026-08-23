@@ -614,14 +614,98 @@ async fn main() {
 
 A category the client asks for but the server does not advertise is
 **dropped from the acknowledgment**, not refused — the subscription still
-opens. `Context::is_subscribed(&uri)` answers from the live streams, so you
-can skip work nobody will receive.
+opens.
+
+`Context::is_subscribed(&uri)` answers from the live streams, so you can
+skip **expensive local work** nobody will receive. Do not use it to decide
+whether to notify: it is node-local, and it can only answer for the instance
+running the handler. Since 0.5.3 `Context::resource_updated` no longer
+pre-checks it — it publishes unconditionally and lets the subscription
+filters route the result, which is what they already did.
+
+### Fanning out across instances (0.5.3)
+
+A `subscriptions/listen` stream is a socket held by exactly one process, and
+the stateless transport pins nothing — so the subscriber and the request
+that mutates the server routinely land on different instances, and the
+notification is silently lost. `App::with_notification_bus(..)` carries them
+across:
+
+```rust
+use neva::prelude::*;
+use neva::app::notification_bus::{BusNotification, NotificationBus};
+use neva::shared::Stream;
+use tokio::sync::broadcast::{Sender, channel, error::RecvError};
+
+/// Stands in for Redis pub/sub or NATS: one channel every instance
+/// publishes to and reads back from, echo included.
+struct BroadcastBus(Sender<BusNotification>);
+
+impl NotificationBus for BroadcastBus {
+    async fn publish(&self, notification: BusNotification) {
+        // Nobody draining yet is not worth failing a request over.
+        let _ = self.0.send(notification);
+    }
+
+    fn subscribe(&self) -> impl Stream<Item = BusNotification> + Send + 'static {
+        let rx = self.0.subscribe();
+        futures_util::stream::unfold(rx, |mut rx| async move {
+            loop {
+                match rx.recv().await {
+                    Ok(notification) => return Some((notification, rx)),
+                    // At-most-once: skip what was missed rather than
+                    // end delivery for good.
+                    Err(RecvError::Lagged(_)) => continue,
+                    Err(RecvError::Closed) => return None,
+                }
+            }
+        })
+    }
+}
+
+#[tokio::main]
+async fn main() {
+    let (tx, _) = channel(64);
+
+    App::new()
+        .with_notification_bus(BroadcastBus(tx))
+        .with_options(|opt| opt.with_default_http())
+        .run()
+        .await;
+}
+```
+
+Contract, all four of which matter:
+
+* **No echo suppression.** `subscribe` must yield this instance's own
+  publishes — local delivery goes through that stream and only through it,
+  so a bus that hides them silences its own subscribers. Redis pub/sub,
+  NATS and `tokio::sync::broadcast` all echo by default.
+* **At-most-once is enough.** A full subscription buffer drops the
+  notification with a warning rather than blocking the producing request;
+  subscriptions are not resumable by spec anyway.
+* **`publish` is awaited inside the producing request** — hand off to a
+  background connection rather than waiting for a round trip.
+* **A stream that ends stops delivery for the process's life** — reconnect
+  *inside* the stream.
+
+The subscriber table itself stays node-local by construction: half of every
+entry is a handle to a socket on one node. Nothing changes without a bus —
+there is none by default, and a single-instance server pays nothing.
+
+### Shutdown answers the streams first (0.5.4)
+
+A server ending a subscription on its own initiative SHOULD send the empty
+result first. Shutdown is two-phase for that reason — see `http.md` for
+`App::with_shutdown()` and `with_shutdown_drain(..)`.
 
 ## Access control
 
 `roles` and `permissions` on a primitive are checked against JWT claims and
 answer `403` when unsatisfied. See `http.md` for configuring the auth that
-produces those claims.
+produces those claims — either a locally minted JWT (`set_decoding_key`) or
+an OAuth 2.1 issuer (`with_oauth(|o| o.with_issuer(..))`). The gates are the
+same either way.
 
 ```rust
 use neva::prelude::*;

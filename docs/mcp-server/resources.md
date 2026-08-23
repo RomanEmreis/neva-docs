@@ -217,7 +217,12 @@ App::new()
 
 Use
 [`ctx.is_subscribed(&uri)`](https://docs.rs/neva/latest/neva/app/context/struct.Context.html#method.is_subscribed)
-to skip work nobody is listening for.
+to skip expensive local work nobody is listening for — but not to decide
+whether to notify: it is **node-local**, and under a
+[notification bus](./subscriptions#running-more-than-one-instance) a subscriber
+on another instance may be waiting for exactly what this one would skip. Since
+**0.5.3** `resource_updated` no longer pre-checks it and publishes
+unconditionally, letting the subscription filters route the result.
 
 :::note Under `legacy-spec`
 The `resources/subscribe` / `resources/unsubscribe` RPC pair comes back, and

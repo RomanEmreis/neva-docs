@@ -165,6 +165,81 @@ The instances do not share a state secret. Set
 warns at startup when it is missing. A doubled `on_commit` across
 instances means the state *store* is not shared either.
 
+If it started after adding `with_request_state_audience` (0.5.3): the value
+must be identical on every instance, and states in flight when it was
+turned on are refused until they lapse (5 minutes). A mixed rollout also
+refuses — an audience-bound state is sealed under wire version `v2.`, which
+a binary predating the option cannot read, deliberately.
+
+### A subscriber hears nothing about a change made on another instance
+
+The stateless transport pins nothing, so the `subscriptions/listen` stream
+and the request that mutated the server landed on different processes.
+Configure `App::with_notification_bus(..)` (0.5.3). If a bus is installed
+and it still happens, check the bus does not suppress echo — local delivery
+goes through `subscribe()` too, so an implementation that hides an
+instance's own publishes silences that instance's own subscribers.
+
+Also: do not gate the notification on `ctx.is_subscribed(..)`. It is
+node-local and answers only for the instance running the handler.
+
+### `SubscriptionEnd::Abrupt` when the server shuts down
+
+Owed a `Graceful`. Fixed in **0.5.4** — before it, one cancellation token
+drove both the subscription and the transport, so the empty result raced a
+writer that had already broken out of its loop. Under `App::run_blocking`
+take **0.5.5**, which also makes `run` wait for the transport writers.
+`App::with_shutdown_drain(Duration::ZERO)` opts out of the graceful close
+deliberately.
+
+### The OAuth client re-authorizes on every start
+
+A stored refresh token is only read back under the authorization server
+that minted it, and nothing records which one that was without
+`OAuthClientConfig::with_issuer(..)`. Set it. Dynamically registered
+clients never reuse a token either. (0.5.3 tightened this: the server a
+flow discovers is vouched for by the resource alone, which is what an
+attacker controlling the resource rewrites.)
+
+Related, same release: the `TokenStore` key became
+`{issuer}|{client}|{resource}`. Entries written by 0.5.2 or earlier are not
+found under it and are left in place; those sessions re-authorize once.
+
+### The OAuth flow registers, then fails at the token request
+
+The registration response named no `token_endpoint_auth_method`, RFC 7591
+fills that silence with `client_secret_basic`, and the server advertises
+only `none`. Fixed in 0.5.4 — the server's own metadata decides. Likewise a
+secret is now presented the way `token_endpoint_auth_methods_supported`
+says it is accepted, rather than always as HTTP Basic.
+
+### A DPoP request fails on a `3xx`
+
+By design. A proof covers one method and one URL, nothing can re-sign it
+mid-chain, so a DPoP connection does not follow redirects and the `3xx` is
+surfaced as itself. Point the client at the final URL. Bearer connections
+are unaffected.
+
+### An OIDC-strict server refuses the redirect URI
+
+A loopback redirect outside the literal `127.0.0.1` used to register the
+client as `web`, which such a server refuses for a plain-http redirect.
+Fixed in 0.5.4 — the whole `127.0.0.0/8` range registers a native client
+(RFC 8252 §7.3). `localhost` and `[::1]` were never affected.
+
+Separately: an authorization server validates the redirect it is sent
+against a registered list, so a `LoopbackHandler` on an **ephemeral** port
+cannot be described by a pre-registration or a Client ID Metadata Document.
+Pin it with `LoopbackHandler::new().with_port(8919)` and register both the
+`127.0.0.1` and `localhost` spellings.
+
+### A loopback server accepts any `Origin`
+
+Check the bind string. `bind("::1:3000")` really listens on `[::1]:3000`,
+but before **0.5.4** the DNS-rebinding policy read it whole, where it parses
+as the different, non-loopback address `::1:3000` — and a non-loopback bind
+defaults to `allow_any_origin`. Write `[::1]:3000`, or upgrade.
+
 ### `--all-features` behaves like a different SDK
 
 It is one: `legacy-spec` is additive to Cargo, so `--all-features` compiles

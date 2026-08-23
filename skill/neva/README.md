@@ -4,17 +4,17 @@ A model-neutral [Agent Skill](https://agentskills.io/specification) for
 building MCP servers and clients in Rust with the
 [neva](https://github.com/RomanEmreis/neva) crate.
 
-Covers neva **0.5.2** / MCP **2026-07-28**, with the legacy generation
+Covers neva **0.5.4** / MCP **2026-07-28**, with the legacy generation
 (MCP 2024-11-05 … 2025-11-25) documented separately.
 
 ```
 neva/
 ├── SKILL.md                      the entrypoint the agent loads
 └── references/
-    ├── server.md                 tools, prompts, resources, DI, middleware, subscriptions
+    ├── server.md                 tools, prompts, resources, DI, middleware, subscriptions, bus
     ├── client.md                 connecting, calling, batching, listening
     ├── mrtr.md                   elicitation, the re-run model, tasks
-    ├── http.md                   transports, TLS, auth, origins, deployment, feature flags
+    ├── http.md                   transports, TLS, JWT/OAuth 2.1, origins, shutdown, deployment, features
     ├── troubleshooting.md        error codes, symptom → cause, removed APIs
     └── legacy.md                 the legacy-spec profile and upgrade paths
 ```

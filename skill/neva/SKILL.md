@@ -1,9 +1,9 @@
 ---
 name: neva
-description: Build, review and debug MCP (Model Context Protocol) servers and clients in Rust with the neva crate — tools, prompts, resources, elicitation and multi round-trip requests, Streamable HTTP and stdio transports, auth, DI and deployment. Use whenever Rust code imports `neva`, whenever the task is to expose something as an MCP server or to talk to one from Rust, and when upgrading such code across neva or MCP-spec versions.
+description: Build, review and debug MCP (Model Context Protocol) servers and clients in Rust with the neva crate — tools, prompts, resources, elicitation and multi round-trip requests, Streamable HTTP and stdio transports, OAuth 2.1 auth, DI and deployment. Use whenever Rust code imports `neva`, whenever the task is to expose something as an MCP server or to talk to one from Rust, and when upgrading such code across neva or MCP-spec versions.
 license: MIT
 metadata:
-  neva-version: "0.5.2"
+  neva-version: "0.5.4"
   mcp-protocol: "2026-07-28"
   docs: "https://romanemreis.github.io/neva-docs/"
   api-reference: "https://docs.rs/neva"
@@ -59,7 +59,9 @@ Load only what the task calls for; each file is self-contained.
 | Connecting, calling tools, batching, subscribing, client handlers | `references/client.md` |
 | Asking the user for input mid-handler; `input_required`; re-run safety | `references/mrtr.md` |
 | Long-running work, `tasks/get` polling | `references/mrtr.md` |
-| Transport choice, TLS, JWT/OAuth, DNS-rebinding, multi-instance deploy | `references/http.md` |
+| Transport choice, TLS, JWT auth, DNS-rebinding, multi-instance deploy | `references/http.md` |
+| OAuth 2.1 — protecting a server, authorizing a client, DPoP, CIMD, grants | `references/http.md` |
+| Stopping a server from code; graceful shutdown; draining subscriptions | `references/http.md` |
 | A custom HTTP stack (axum, hyper, actix-web) | `references/http.md` |
 | An error code, a `-320xx` on the wire, or "why is this rejected" | `references/troubleshooting.md` |
 | `legacy-spec`, MCP ≤ 2025-11-25, upgrading from 0.4.x | `references/legacy.md` |

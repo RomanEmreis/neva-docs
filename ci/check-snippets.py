@@ -206,7 +206,10 @@ def main() -> int:
                 'tracing = "0.1"\n'
                 'tracing-subscriber = "0.3"\n'
                 'serde = { version = "1", features = ["derive"] }\n'
-                'serde_json = "1"\n\n'
+                'serde_json = "1"\n'
+                # `NotificationBus::subscribe` returns a `Stream`; building one
+                # by hand is what a real bus implementation does.
+                'futures-util = "0.3"\n\n'
                 # detach from any enclosing workspace
                 "[workspace]\n",
                 encoding="utf-8",

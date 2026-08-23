@@ -119,6 +119,39 @@ Mostly additive. The breaking pieces:
   tools are unaffected. Name them explicitly with `map_tool!` or
   `with_arg_names` to control what peers see.
 
+## Upgrading 0.5.2 → 0.5.3/0.5.4
+
+Additive throughout — no API breaks. What can change behavior:
+
+* **The OAuth `TokenStore` key** is now `{issuer}|{client}|{resource}`.
+  Entries written by 0.5.2 are not found under it and are left in place;
+  those sessions re-authorize once. A custom store needs no code change.
+* **A stored refresh token requires `OAuthClientConfig::with_issuer(..)`.**
+  Without one the session re-authorizes interactively on every start,
+  where 0.5.2 would have reused the token.
+* **`Context::resource_updated` no longer pre-checks `is_subscribed`.** It
+  publishes unconditionally. A handler that relied on the pre-check to
+  suppress notifications must gate the call itself — but see `server.md`
+  for why that is usually the wrong shape.
+* **`bind("::1:3000")`** now gets DNS-rebinding protection instead of
+  silently defaulting to `allow_any_origin`, so a deployment that was
+  relying on that accidental opening starts answering `403`. State the
+  names with `with_allowed_origins([..])`, or `allow_any_origin()`
+  deliberately.
+* **`App::with_request_state_audience`**, if you adopt it, seals state
+  under wire version `v2.` — a mixed rollout refuses those states rather
+  than running them unbound. Roll the binary out first, then the option.
+
+New surface worth knowing: `App::with_notification_bus(..)` and
+`with_request_state_audience(..)` (0.5.3); `App::with_shutdown()`,
+`with_shutdown_signal(..)`, `with_shutdown_drain(..)`, the
+`client-oauth-jwt` and `client-oauth-dpop` features, and the
+client-authenticating OAuth grants (0.5.4). See `http.md` and `server.md`.
+
+Then 0.5.5 (the next release) breaks two traits: `AuthorizationHandler` and
+`RequestStateStore` drop `BoxFuture` for plain `async fn`s. Users of the
+default `LoopbackHandler` / `InMemoryStateStore` have nothing to change.
+
 ## Examples in the neva repository
 
 Legacy variants live under a `legacy/` sub-directory, each its own Cargo

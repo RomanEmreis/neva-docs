@@ -30,7 +30,7 @@ neva = { version = "...", features = ["full"] }
 |-----------|----------|----------|
 | `full` | `server-full` + `client-full` | Всё сразу — для приложений, которые запускают и сервер, и клиент |
 | `server-full` | `server-macros`, `tracing`, `http-server-volga`, `server-tls`, `server-oauth`, `di`, `tasks` | Все возможности сервера, включая HTTP-сервер по умолчанию на базе Volga |
-| `client-full` | `client-macros`, `tracing`, `http-client`, `client-tls`, `client-oauth`, `tasks` | Все возможности клиента |
+| `client-full` | `client-macros`, `tracing`, `http-client`, `client-tls`, `client-oauth`, `client-oauth-jwt`, `client-oauth-dpop`, `tasks` | Все возможности клиента |
 
 Обратите внимание: `full` — это *все* компоненты, **кроме** флага поколения
 протокола (см. ниже). Это и есть сборка по умолчанию, которую публикует
@@ -45,7 +45,7 @@ neva = { version = "...", features = ["full"] }
 | `http-server` | `server` | Абстракции потокового HTTP-транспорта, не привязанные к конкретному фреймворку — не тянет за собой HTTP-стек. Подключите свой (axum, hyper, actix-web, …), реализовав [`HttpEngine`](./mcp-server/custom-http) |
 | `http-server-volga` | `http-server` | Адаптер HTTP-сервера по умолчанию на базе [Volga](https://docs.rs/volga), включая JWT-аутентификацию |
 | `server-tls` | `http-server-volga` | Поддержка TLS для HTTP-сервера по умолчанию, включая автоматическую генерацию сертификата для разработки |
-| `server-oauth` | `http-server` | Метаданные защищённого ресурса OAuth 2.1 и проверка токенов на сервере |
+| `server-oauth` | `http-server` | [OAuth 2.1](./mcp-server/oauth): метаданные защищённого ресурса и проверка токенов на сервере |
 
 ### Компоненты клиента
 
@@ -55,7 +55,9 @@ neva = { version = "...", features = ["full"] }
 | `client-macros` | `client`, `macros` | Добавляет атрибутные макросы (`#[sampling]`, `#[elicitation]`) |
 | `http-client` | `client` | Потоковый HTTP-транспорт и поддержка SSE-потоков |
 | `client-tls` | — | Поддержка TLS для HTTP-клиента (rustls) |
-| `client-oauth` | `http-client` | Авторизация OAuth 2.1 на стороне клиента: discovery, динамическая регистрация, authorization code + PKCE |
+| `client-oauth` | `http-client` | [Авторизация OAuth 2.1](./mcp-client/oauth) на стороне клиента: discovery, все три механизма регистрации, authorization code + PKCE, client credentials и JWT bearer |
+| `client-oauth-jwt` | `client-oauth` | Аутентификация клиента через `private_key_jwt` — клиент подписывает короткоживущее утверждение собственным ключом вместо общего секрета. Единственная часть OAuth-клиента, которой нужен JWS-бэкенд, поэтому она отдельная |
+| `client-oauth-dpop` | `client-oauth` | [DPoP](./mcp-client/oauth#dpop-токены-привязанные-к-отправителю): токены, привязанные к отправителю ([RFC 9449](https://www.rfc-editor.org/rfc/rfc9449)) — каждый токен привязан к ключу клиента и доказывается на каждом запросе |
 
 ### Общие компоненты
 
@@ -166,6 +168,10 @@ full
     ├── client-tls
     ├── client-oauth
     │   └── http-client
+    ├── client-oauth-jwt
+    │   └── client-oauth
+    ├── client-oauth-dpop
+    │   └── client-oauth
     ├── tracing
     └── tasks
 

@@ -215,8 +215,14 @@ App::new()
         .with_resources(|res| res.with_list_changed().with_subscribe()));
 ```
 
-Чтобы не делать работу, которую никто не слушает, используйте
-[`ctx.is_subscribed(&uri)`](https://docs.rs/neva/latest/neva/app/context/struct.Context.html#method.is_subscribed).
+Чтобы не делать дорогую локальную работу, которую никто не слушает,
+используйте
+[`ctx.is_subscribed(&uri)`](https://docs.rs/neva/latest/neva/app/context/struct.Context.html#method.is_subscribed) —
+но не для того, чтобы решить, слать ли уведомление: он **знает только про свой
+узел**, и при [шине уведомлений](./subscriptions#запуск-нескольких-экземпляров)
+подписчик на другом экземпляре может ждать ровно то, что этот пропустит. Начиная
+с **0.5.3** `resource_updated` предпроверку не делает и публикует безусловно,
+оставляя маршрутизацию фильтрам подписок.
 
 :::note Под флагом `legacy-spec`
 Возвращается пара RPC-методов `resources/subscribe` / `resources/unsubscribe`,

@@ -43,8 +43,8 @@ and the standalone SSE `GET` stream with `Last-Event-ID` replay. See
 ## Running More Than One Instance
 
 Because the transport is stateless, a multi round-trip request can land on
-any instance — so two shared resources become mandatory as soon as you run
-more than one:
+any instance — so shared resources become mandatory as soon as you run more
+than one:
 
 ```rust
 App::new()
@@ -54,10 +54,23 @@ App::new()
     // Without this, a lost-response retry re-runs the handler and
     // double-fires `on_commit`. The default store is per-process.
     .with_request_state_store(my_redis_store)
+    // Without this, a subscriber on one instance never hears about a
+    // mutation that happened on another. New in 0.5.3.
+    .with_notification_bus(my_redis_bus)
     .with_options(|opt| opt.with_default_http())
     .run()
     .await;
 ```
+
+| Setting | Protects against |
+|---|---|
+| [`with_request_state_secret`](../spec-2026-07-28.md#deployment-must-do-for-multi-instance-http) | A cross-instance MRTR retry that cannot decrypt its `requestState` |
+| `with_request_state_store` | A lost-response retry re-running the handler and double-firing `on_commit` |
+| [`with_notification_bus`](./subscriptions#running-more-than-one-instance) | A [subscription](./subscriptions) stream held on one instance missing what another instance produced |
+
+Where several services share one `with_request_state_secret`, add
+[`with_request_state_audience`](../spec-2026-07-28.md#binding-state-to-the-service)
+so a state minted by one is not a state the others accept.
 
 See [Deployment must-do for multi-instance HTTP](../spec-2026-07-28.md#deployment-must-do-for-multi-instance-http)
 for what the secret protects and how to rotate it.
@@ -124,6 +137,20 @@ loopback names — `localhost`, anything in `127.0.0.0/8`, `[::1]` — on any
 port. Bound to anything else it accepts everything, because the names a
 deployment is legitimately reached by are not knowable from here: behind a
 proxy the `Host` is whatever that proxy forwards.
+
+:::warning `bind("::1:3000")` — fixed in 0.5.4
+`std` takes the last colon of an *unbracketed* IPv6 bind string as the port
+separator, so that address really does listen on `[::1]:3000` — but the
+default policy read the string whole, where it parses as the *different*,
+non-loopback address `::1:3000`. A server on loopback therefore defaulted to
+`allow_any_origin`, with the checks the spec makes a MUST for local servers
+switched off. Bind strings are now read the way `std` reads them.
+`[::1]:3000`, `127.0.0.1:3000` and `localhost:3000` were never affected.
+
+Hardened in the same release: an `Origin` carrying userinfo is no longer
+matched by the name in front of the `@` — `https://app.example.com:8443@evil.com`
+has the host `evil.com`. Not a reachable bypass, since `Origin` is browser-set.
+:::
 
 A deployment that *does* know its names states them with
 [`with_allowed_origins()`](https://docs.rs/neva/latest/neva/transport/struct.HttpServer.html#method.with_allowed_origins):
@@ -259,6 +286,14 @@ async fn restricted_resource(uri: Uri, name: String) -> (String, String) {
 
 Roles and permissions are extracted from JWT token claims. Access is denied with a `403 Forbidden` if the token does not satisfy the declared requirements.
 
+:::tip Tokens from an authorization server
+`set_decoding_key` is for a deployment that mints its own JWTs. To validate
+tokens issued by an OAuth 2.1 / OIDC provider — against its JWKS, with the
+RFC 9728 metadata document and the `401` challenge that lets clients discover
+it — see [OAuth 2.1](./oauth). The role and permission gates above are
+identical either way.
+:::
+
 ## Blocking Runner
 
 For use cases where you need a synchronous entry point (e.g., embedding in a non-async context), you can use [`run_blocking()`](https://docs.rs/neva/latest/neva/app/struct.App.html#method.run_blocking) instead of `.run().await`:
@@ -270,6 +305,12 @@ fn main() {
         .run_blocking();
 }
 ```
+
+## Stopping the Server
+
+Both runners stop on `SIGINT` / `SIGTERM` with no configuration. To stop one
+from your own code — a test, or neva embedded in a service that owns its
+lifecycle — see [Graceful Shutdown](./shutdown).
 
 ## Testing with MCP Inspector
 
@@ -285,6 +326,7 @@ Then open the Inspector and connect to `http://127.0.0.1:3000/mcp`.
 
 * [HTTP server](https://github.com/RomanEmreis/neva/tree/main/examples/http)
 * [Protected server with JWT auth](https://github.com/RomanEmreis/neva/tree/main/examples/protected-server)
+* [OAuth 2.1 resource server](https://github.com/RomanEmreis/neva/tree/main/examples/oauth-server)
 * [Sampling server with TLS](https://github.com/RomanEmreis/neva/tree/main/examples/sampling/server)
 * [Custom HTTP stack (axum)](https://github.com/RomanEmreis/neva/tree/main/examples/axum)
 * [Custom HTTP stack (hyper)](https://github.com/RomanEmreis/neva/tree/main/examples/hyper)

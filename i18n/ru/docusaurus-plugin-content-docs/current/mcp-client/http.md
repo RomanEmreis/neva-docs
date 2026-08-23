@@ -126,6 +126,13 @@ client.connect().await?;
 
 Токен отправляется в заголовке `Authorization: Bearer <token>` при каждом запросе.
 
+:::tip Держать токен самому нужно редко
+`with_auth` — для токена, который у приложения уже есть. Против сервера,
+защищённого сервером авторизации, используйте [OAuth 2.1](./oauth):
+`with_oauth(|oauth| oauth)` — и клиент сам обнаружит, зарегистрируется,
+авторизуется и обновит токен, отталкиваясь от первого `401`.
+:::
+
 ## Полный пример: HTTPS + Auth
 
 ```rust
@@ -157,3 +164,4 @@ async fn main() -> Result<(), Error> {
 * [MRTR-клиент](https://github.com/RomanEmreis/neva/tree/main/examples/mrtr/client) — цикл раундов от начала до конца
 * [HTTP-клиент (корневые каталоги)](https://github.com/RomanEmreis/neva/tree/main/examples/roots/client)
 * [Клиент сэмплирования](https://github.com/RomanEmreis/neva/tree/main/examples/sampling/client)
+* [OAuth-клиент](https://github.com/RomanEmreis/neva/tree/main/examples/oauth-client) — весь поток авторизации внутри `connect()`
