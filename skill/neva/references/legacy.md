@@ -31,7 +31,7 @@ that must serve pre-2026-07-28 clients needs the `legacy-spec` build.
 | Area | Legacy behavior |
 |---|---|
 | Handshake | `initialize` / `initialized`, with `serverInfo` in `InitializeResult` |
-| Transport | Session-bound Streamable HTTP: `Mcp-Session-Id`, session `DELETE`, standalone SSE `GET` with `Last-Event-ID` replay |
+| Transport | Session-bound Streamable HTTP: `Mcp-Session-Id`, session `DELETE`, SSE `GET` streams with `Last-Event-ID` replay — as many per session as the client opens, see below |
 | Stream resumption | A dropped `POST` response stream resumes once via a `GET` with `Last-Event-ID`, after the pause the server asked for; each stream keeps its own cursor and its own `retry:`-derived delay |
 | Version selection | `with_mcp_version(...)` on the **server** |
 | Server→client requests | Capability-driven push for `sampling/createMessage`, `roots/list`, `elicitation/create` — no MRTR |
@@ -45,6 +45,31 @@ that must serve pre-2026-07-28 clients needs the `legacy-spec` build.
 
 Everything else — DI, middleware, content types, JWT auth, TLS, custom HTTP
 engines, batch requests — is shared and behaves identically in both.
+
+### Concurrent SSE streams (0.5.5)
+
+A session holds a **map** of streams — the spec lets a client "remain
+connected to multiple SSE streams simultaneously" — each with its own
+sender, cursor and replay buffer. Every tracked event id names its stream:
+`id: <stream>:<seq>`.
+
+| `GET` on the endpoint | Result |
+|---|---|
+| With `Last-Event-ID` | Resumes the stream that id names, replayed that stream's backlog alone — never what went out on another |
+| `Last-Event-ID` naming a stream the session does not hold | `404` |
+| Without one, standalone stream free | That stream — the one carrying server-initiated traffic |
+| Without one, standalone stream live | A second stream; the first stays open and the server-initiated traffic follows the newer one |
+| Session already at 8 streams | `429` (a disconnected stream is dropped to make room first) |
+
+Server-initiated traffic rides exactly one stream at a time (the spec's MUST
+NOT), following the newest live one; with nothing live the role stays put,
+so an ordinary reconnect takes that stream back and gets its replay.
+
+Before 0.5.5 there was one sender per session: a second `GET` overwrote the
+first and the displaced stream ended on a bare EOF. Old-shape ids (`<seq>`,
+no stream) are still read as the standalone stream's cursor while the
+session holds only that one, so a client resumes across a server upgrade.
+neva's own client echoes back whatever id it was handed and is unaffected.
 
 ## Writing against the legacy profile
 
@@ -148,9 +173,25 @@ New surface worth knowing: `App::with_notification_bus(..)` and
 `client-oauth-jwt` and `client-oauth-dpop` features, and the
 client-authenticating OAuth grants (0.5.4). See `http.md` and `server.md`.
 
-Then 0.5.5 (the next release) breaks two traits: `AuthorizationHandler` and
-`RequestStateStore` drop `BoxFuture` for plain `async fn`s. Users of the
-default `LoopbackHandler` / `InMemoryStateStore` have nothing to change.
+## Upgrading 0.5.4 → 0.5.5
+
+Three traits change signature, all of them narrowly:
+
+* **`AuthorizationHandler`** (`redirect_uri`, `authorize`) and
+  **`RequestStateStore`** (`get`, `put`, `reserve`) drop `BoxFuture` for
+  plain `async fn`s. Delete the `Box::pin(async move { .. })` wrapper and
+  the lifetimes it needed. Users of the default `LoopbackHandler` /
+  `InMemoryStateStore` change nothing. `neva::shared::BoxFuture` is no
+  longer part of any trait neva asks you to implement — it stays public for
+  the middleware `Next`.
+* **`HttpEngine::tracked_event` takes an `EventId`** instead of a `u64`.
+  `id.to_string()` renders `<stream>:<seq>`; the migration is the signature
+  and nothing else. Only custom engines are affected.
+
+Behavior that changes without a signature: `App::run` now waits for the
+transport writers before returning, and the Volga engine stops on the
+transport's token — see `http.md`, *Stopping a server*. Under the legacy
+profile, the SSE session model above.
 
 ## Examples in the neva repository
 

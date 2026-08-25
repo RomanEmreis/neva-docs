@@ -238,6 +238,11 @@ channel; only then is the transport torn down.
 [`App::with_shutdown_drain(..)`](./shutdown) caps that wait (2 seconds by
 default) and is skipped outright when no subscription is open, so a server that
 never uses them shuts down exactly as fast as before.
+
+**0.5.5** finished the job: `run` now waits for the transport writers before it
+returns, so the result survives a runtime dropped right behind it — and the
+bundled Volga engine actually stops on the transport's token, which is what
+makes any of this reach an HTTP client.
 :::
 
 ## Transports

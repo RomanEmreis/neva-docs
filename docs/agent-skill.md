@@ -90,12 +90,12 @@ python3 ci/check-snippets.py --docs-dir skill --default-mode compile --default-f
 
 ## Version
 
-The skill tracks neva **0.5.4** / MCP **2026-07-28**, with the legacy
+The skill tracks neva **0.5.5** / MCP **2026-07-28**, with the legacy
 generation documented separately. The frontmatter records both, so an
 assistant can tell whether the skill matches the crate in front of it:
 
 ```yaml
 metadata:
-  neva-version: "0.5.4"
+  neva-version: "0.5.5"
   mcp-protocol: "2026-07-28"
 ```

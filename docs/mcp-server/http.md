@@ -36,8 +36,9 @@ Every other `POST` gets a single JSON object.
 
 :::note Under `legacy-spec`
 The session-bound transport comes back: `Mcp-Session-Id`, session `DELETE`,
-and the standalone SSE `GET` stream with `Last-Event-ID` replay. See
-[Legacy spec](../legacy-spec.md).
+and SSE `GET` streams with `Last-Event-ID` replay — a session hosts as many at
+once as the client opens, each with its own cursor. See
+[Legacy spec → Concurrent SSE streams](../legacy-spec#concurrent-sse-streams).
 :::
 
 ## Running More Than One Instance

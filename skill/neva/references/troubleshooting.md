@@ -188,9 +188,54 @@ node-local and answers only for the instance running the handler.
 Owed a `Graceful`. Fixed in **0.5.4** — before it, one cancellation token
 drove both the subscription and the transport, so the empty result raced a
 writer that had already broken out of its loop. Under `App::run_blocking`
-take **0.5.5**, which also makes `run` wait for the transport writers.
+take **0.5.5**: there `run` also waits for the transport writers, where
+before it returned on the same signal that started them draining and the
+dropped runtime aborted a writer mid-drain.
 `App::with_shutdown_drain(Duration::ZERO)` opts out of the graceful close
-deliberately.
+deliberately, and the two teardown phases share that one budget rather than
+each taking it afresh.
+
+### The server "stops" but the port stays bound
+
+A shutdown requested through `ShutdownHandle` rather than Ctrl+C, on 0.5.4
+or earlier: the Volga engine took the transport token and used it only to
+report its own failures, so the listener came down on Volga's own signal
+handling and nothing else. `run` returned while the endpoint was still
+serving. Fixed in **0.5.5**. A *custom* `HttpEngine` has the same duty —
+wire the token to the framework's graceful shutdown, and remember that
+`run` returning is what neva waits for.
+
+### `Box::pin(async move { .. })` no longer compiles in a trait impl
+
+0.5.5 converted the last two boxed traits to plain `async fn`s:
+`AuthorizationHandler` (`redirect_uri`, `authorize`) and
+`RequestStateStore` (`get`, `put`, `reserve`). Drop the wrapper and the
+explicit lifetimes; the body is what it always was. `neva::shared::BoxFuture`
+is still public — the middleware `Next` returns one — it is just no longer
+part of any trait you implement.
+
+### A custom engine fails to compile on `tracked_event`
+
+0.5.5 changed the parameter from `seq: u64` to `EventId` (re-exported from
+`neva::prelude`). Take the id and write `id.to_string()` where the sequence
+number went: it renders `<stream>:<seq>`, because an event id is a cursor
+within one SSE stream rather than within the session.
+
+### A resumed SSE stream replays the wrong events, or is answered `404`
+
+The engine is writing out a trimmed id — the `seq` half alone, or its own
+counter. A `Last-Event-ID` has to name the stream it resumes, so neva
+refuses one that names a stream the session does not hold rather than
+serving it from whatever stream is at hand. Write the whole `EventId`.
+(Ids in the pre-0.5.5 shape are read as the standalone stream's cursor
+while the session holds only that one, so an upgrade does not strand
+clients.)
+
+### A second `GET` on the same session gets `429`
+
+A session hosts at most **8** SSE streams. A disconnected stream is dropped
+to make room before a `GET` is refused, so the cap is spent on live ones —
+seeing this means eight are genuinely connected. Legacy profile only.
 
 ### The OAuth client re-authorizes on every start
 
@@ -274,7 +319,7 @@ predates MCP 2026-07-28:
 | `elicitationId` on URL elicitation | Your own id in `requestState` |
 | `with_mcp_version` on the **server** | `legacy-spec` build |
 | `resources/subscribe` / `resources/unsubscribe` as RPC | `SubscriptionFilter::with_resource(uri)` |
-| `Mcp-Session-Id`, session `DELETE`, standalone SSE `GET` | Stateless transport + `subscriptions/listen` |
+| `Mcp-Session-Id`, session `DELETE`, SSE `GET` streams | Stateless transport + `subscriptions/listen` |
 | `ErrorCode::ResourceNotFound` (-32002) | `ErrorCode::RESOURCE_NOT_FOUND` |
 
 All of them come back under `legacy-spec` — see `legacy.md`.

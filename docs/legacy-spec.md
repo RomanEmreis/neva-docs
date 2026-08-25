@@ -62,7 +62,7 @@ Beyond the flag, the code changes worth checking:
 | Area | Legacy behavior |
 |---|---|
 | Handshake | `initialize` / `initialized`, with `serverInfo` in `InitializeResult` |
-| Transport | Session-bound Streamable HTTP: `Mcp-Session-Id`, session `DELETE`, standalone SSE `GET` stream with `Last-Event-ID` replay |
+| Transport | Session-bound Streamable HTTP: `Mcp-Session-Id`, session `DELETE`, [SSE `GET` streams](#concurrent-sse-streams) with `Last-Event-ID` replay — as many at once as the client opens |
 | Stream resumption | A dropped `POST` response stream is resumed once, with a `GET` carrying `Last-Event-ID` after the pause the server asked for — only when the server named an id to resume from. Each stream keeps its own cursor and its own reconnection delay, taken from that stream's SSE `retry:` field rather than a fixed three seconds |
 | Version selection | `with_mcp_version(...)` on the **server** |
 | Server→client requests | Capability-driven push for `sampling/createMessage`, `roots/list`, `elicitation/create` — no MRTR |
@@ -77,6 +77,49 @@ Beyond the flag, the code changes worth checking:
 Everything else — DI, middleware, content types, JWT auth, TLS, custom HTTP
 engines, batch requests — is shared between the two generations and behaves
 the same either way.
+
+## Concurrent SSE streams
+
+The spec lets a client "remain connected to multiple SSE streams
+simultaneously", and asks for event ids assigned "on a per-stream basis, to act
+as a cursor within that particular stream". A session therefore holds a **map**
+of streams, each with its own sender, cursor and replay buffer, and every
+tracked event id names the stream it belongs to:
+
+```
+id: 0:7
+```
+
+`<stream>:<seq>`. That is what makes the rest of the rules enforceable.
+
+| A `GET` on the session endpoint | What it gets |
+|---|---|
+| With a `Last-Event-ID` | Resumes **the stream that id names**, replayed that stream's backlog past the cursor and nothing that went out on another one |
+| With a `Last-Event-ID` naming a stream the session does not hold | `404` — answering from whatever stream is at hand would replay what was delivered elsewhere |
+| Without one, nothing connected to the standalone stream | That stream, which is the one carrying server-initiated traffic |
+| Without one, the standalone stream already live | A **second** stream. The first stays open, and the server-initiated traffic moves onto the newer one |
+| When the session already holds 8 streams | `429`. A disconnected stream is dropped to make room first, so the cap is spent on live ones |
+
+Server-initiated traffic — log notifications included — rides exactly one
+stream at a time, which is the spec's MUST NOT on delivering a message on more
+than one. It follows the newest live stream; with nothing live the role stays
+put, so an ordinary reconnect takes that stream back and is replayed what it
+missed while the connection was down.
+
+:::info Fixed in 0.5.5
+Before it, neva held **one sender per session**: a second `GET` overwrote the
+first, and the displaced stream ended on a bare EOF with nothing to tell it
+apart from the server closing it on purpose.
+
+Ids in the old per-session shape (`<seq>`, no stream) are still read as the
+standalone stream's cursor while the session holds only that one, so a client
+reconnecting across a server upgrade resumes rather than starting over. neva's
+own client is unaffected either way — it echoes back whatever id it was handed.
+
+Custom HTTP engines take one signature change:
+[`tracked_event`](./mcp-server/custom-http#the-httpengine-contract) is handed an
+`EventId` instead of a `u64`.
+:::
 
 ## Talking to a legacy peer *without* `legacy-spec`
 

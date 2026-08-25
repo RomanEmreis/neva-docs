@@ -126,10 +126,30 @@ what makes the drain mean the same thing under both runners.
 
 :::warning Fixed in 0.5.5
 That last leg — `run` waiting for the writers rather than returning on the same
-signal that started them draining — landed in **0.5.5**. On 0.5.4 the
-subscription phase works, but under `run_blocking` a writer that had not
-finished could still be cut off. If you rely on the graceful close, take the
-patch release.
+signal that started them draining — landed in **0.5.5**. Cancelling the
+transport token used to do two things at once: the writers began draining what
+was queued, and `run`'s own loop broke on that same signal and returned.
+Nothing joined the first to the second, so on 0.5.4 the subscription phase
+works but under `run_blocking` a writer that had not finished is aborted
+mid-drain — the abrupt close the drain exists to prevent. If you rely on the
+graceful close, take the patch release.
+:::
+
+## The HTTP engine has to stop too
+
+An [`HttpEngine`](./custom-http) is handed a `CancellationToken` and is
+expected to bring its listener down when the token fires. That contract is what
+the drain rests on: `run` waits for the engine's own `run` to return, so an
+engine that takes the token and never acts on it spends the whole shutdown
+budget on every stop.
+
+:::warning Fixed in 0.5.5
+The bundled Volga engine took the token and used it only to report its own
+failures, so the listener came down on Volga's signal handling and nothing
+else. A server stopped through a `ShutdownHandle` rather than Ctrl+C returned
+from `run` **with the port still bound and serving**, until whatever owned the
+runtime dropped it — which under `tokio::spawn` may be never. Ctrl+C was
+unaffected. If you stop servers from code, this is the fix to take.
 :::
 
 ## Learn By Example

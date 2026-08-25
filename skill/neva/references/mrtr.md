@@ -265,7 +265,33 @@ async fn main() {
 Also set `App::with_request_state_store(<shared store>)` — the default
 `InMemoryStateStore` is per-process, and without a shared one a
 lost-response retry re-runs the handler and double-fires `on_commit`.
-Implement `RequestStateStore` over Redis or similar.
+Implement `RequestStateStore` over Redis or similar. Since **0.5.5** its
+methods are plain `async fn`s (they returned `BoxFuture` before, so every
+impl opened with `Box::pin(async move { .. })` and carried the lifetimes
+that needed):
+
+```rust
+use neva::RequestStateStore;
+use neva::types::Response;
+
+/// A store that remembers nothing — every retry re-runs the round.
+struct NoCache;
+
+impl RequestStateStore for NoCache {
+    async fn get(&self, _tag: &str) -> Option<Response> {
+        None
+    }
+
+    async fn put(&self, _tag: &str, _response: Response, _exp: u64) {}
+}
+```
+
+`reserve(&self, tag)` is the third method: it claims the tag for an
+in-flight final round and returns a guard held across `get` → handler →
+`put`, so identical retries serialise instead of racing. Its default is a
+no-op, which is correct only for a single process — a **shared** store must
+implement it with a real distributed lock for the same reason it must share
+the MRTR secret.
 
 **0.5.3 — bind the state to this service.** The sealed state was bound to
 its request and principal but not to the service, so where several share

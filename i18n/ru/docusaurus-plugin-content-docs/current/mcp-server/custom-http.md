@@ -54,7 +54,7 @@ pub trait HttpEngine: Send + Sync + 'static {
     async fn adapt_request(req: Self::Request) -> Result<HttpRequest, Error>;
     fn adapt_response(resp: HttpResponse) -> Self::Response;
 
-    fn tracked_event(seq: u64, msg: &Message) -> Self::SseEvent;
+    fn tracked_event(id: EventId, msg: &Message) -> Self::SseEvent;
     fn ephemeral_event(msg: &Message) -> Self::SseEvent;
 
     async fn run(self, ctx: HttpContext, token: CancellationToken) -> Result<(), Error>;
@@ -65,18 +65,47 @@ pub trait HttpEngine: Send + Sync + 'static {
 
 1. **`adapt_request`** — забуферизовать тело входящего запроса и преобразовать его в нейтральный `http::Request<Bytes>`.
 2. **`adapt_response`** — преобразовать нейтральный `http::Response<Bytes>` обратно в нативный ответ фреймворка.
-3. **`tracked_event`** — построить SSE-событие **с** полем `id:` (попадает под повтор по `Last-Event-ID`).
+3. **`tracked_event`** — построить SSE-событие **с** полем `id:` (попадает под повтор по `Last-Event-ID`). Записывайте `EventId` так, как он рендерится: `id.to_string()` даёт `<поток>:<номер>`.
 4. **`ephemeral_event`** — построить SSE-событие **без** поля `id:` (лог/уведомление, не повторяется).
-5. **`run`** — запустить HTTP-сервер с переданным `HttpContext` и остановиться, когда сработает `token`.
+5. **`run`** — запустить HTTP-сервер с переданным `HttpContext` и остановиться, когда сработает `token`. Возврат из `run` — это то, чего neva ждёт при остановке, поэтому токен обязан действительно останавливать сервер; см. [Остановка — часть контракта](#shutdown-is-part-of-the-contract).
 
 Внутри обработчиков маршрутов всё остальное делают три свободные функции:
 
 * [`handlers::dispatch_post`](https://docs.rs/neva/latest/neva/transport/http/core/handlers/fn.dispatch_post.html) — обработка JSON-RPC POST (одиночный запрос, батч или 202-нотификация).
 * [`handlers::dispatch_delete`](https://docs.rs/neva/latest/neva/transport/http/core/handlers/fn.dispatch_delete.html) — обработка удаления сессии.
-* [`handlers::dispatch_get_sse`](https://docs.rs/neva/latest/neva/transport/http/core/handlers/fn.dispatch_get_sse.html) — обработка SSE GET-потока, включая повтор по `Last-Event-ID`.
+* [`handlers::dispatch_get_sse`](https://docs.rs/neva/latest/neva/transport/http/core/handlers/fn.dispatch_get_sse.html) — открыть или возобновить один из SSE-потоков сессии, включая повтор по `Last-Event-ID`.
 
 Последние две компилируются в любой сборке, но в MCP 2026-07-28 транспорту
 без состояния обслуживать через них нечего.
+
+:::warning `tracked_event` принимает `EventId` — изменено в v0.5.5
+Параметром был порядковый номер `u64`. Теперь это
+[`EventId`](https://docs.rs/neva/latest/neva/transport/http/core/types/struct.EventId.html):
+сессия может держать [несколько SSE-потоков
+одновременно](../legacy-spec#concurrent-sse-streams), а идентификатор
+события — это курсор *внутри одного потока*, а не внутри сессии, поэтому он
+обязан называть и поток, и позицию в нём.
+
+Миграция — это сигнатура и ничего больше: движок записывает идентификатор
+так же, как записывал номер.
+
+```rust
+// 0.5.4
+fn tracked_event(seq: u64, msg: &Message) -> Self::SseEvent {
+    Ok(Event::default().id(seq.to_string()).json_data(msg).unwrap_or_default())
+}
+
+// 0.5.5
+fn tracked_event(id: EventId, msg: &Message) -> Self::SseEvent {
+    Ok(Event::default().id(id.to_string()).json_data(msg).unwrap_or_default())
+}
+```
+
+`EventId` реэкспортируется из `neva::prelude` и рендерится как
+`<поток>:<номер>`. Половинки доступны как `id.stream()` и `id.seq()` — но не
+записывайте усечённый идентификатор: `Last-Event-ID` без части с потоком не
+называет ничего, и neva отвечает на него `404`, а не повтором чужого потока.
+:::
 
 ### `StreamResponse`: одна форма для обоих маршрутов
 
@@ -166,9 +195,9 @@ impl HttpEngine for AxumEngine {
         builder.body(Body::from(body)).expect("valid response")
     }
 
-    fn tracked_event(seq: u64, msg: &Message) -> Self::SseEvent {
+    fn tracked_event(id: EventId, msg: &Message) -> Self::SseEvent {
         Ok(Event::default()
-            .id(seq.to_string())
+            .id(id.to_string())
             .json_data(msg)
             .unwrap_or_default())
     }
@@ -293,13 +322,37 @@ MCP 2026-07-28 зафиксирован, а набор поддерживаем�
 
 **Адаптация ответа.** Зеркально: neva возвращает `http::Response<Bytes>`, вы пересобираете `Response` axum и возвращаете его.
 
-**Tracked- и ephemeral-события SSE.** Tracked-события несут поле `id:` и сдвигают курсор `Last-Event-ID` на стороне клиента — при переподключении они повторяются. Ephemeral-события без `id:` и теряются, если клиент их пропустил. neva решает, какое событие сформировать; ваше дело — выдать байты в формате, ожидаемом фреймворком.
+**Tracked- и ephemeral-события SSE.** Tracked-события несут поле `id:` и сдвигают курсор `Last-Event-ID` на стороне клиента — при переподключении они повторяются. Ephemeral-события без `id:` и теряются, если клиент их пропустил. neva решает, какое событие сформировать; ваше дело — выдать байты в формате, ожидаемом фреймворком. `EventId` называет и поток, и позицию в нём, поэтому передавайте его целиком.
 
 **`run`.** Здесь живёт обвязка фреймворка:
 
 * `ctx.addr()` и `ctx.endpoint()` приходят из той же конфигурации `with_http(...)` / `from_engine(...)`, что и у сервера по умолчанию, — поведение не меняется между движками.
 * Прокиньте `ctx` в состояние роутера (`with_state` в axum, `app_data` в actix и т.д.), чтобы обработчики имели к нему доступ.
-* Свяжите выключение с переданным `CancellationToken` — neva срабатывает его при завершении `App`.
+* Свяжите выключение с переданным `CancellationToken` — neva срабатывает его при завершении `App` и ждёт возврата из `run`, прежде чем закончить остановку.
+
+### Остановка — часть контракта {#shutdown-is-part-of-the-contract}
+
+Возврат из `run` — это сигнал, которого neva ждёт при остановке. `App::run`
+не завершается, пока он не произошёл: ответ, который ещё пишется — например,
+корректное закрытие потока
+[`subscriptions/listen`](./subscriptions#как-завершается-подписка), — должен
+дойти до сокета раньше, чем исчезнет среда выполнения под ним. Свяжите токен
+с graceful shutdown фреймворка, как это делает `with_graceful_shutdown` выше;
+движок, который берёт токен и только сообщает через него о собственных сбоях,
+оставляет слушающий сокет открытым и обслуживающим после остановки `App`.
+
+Это ожидание ограничено
+[`App::with_shutdown_drain`](./shutdown#что-происходит-при-остановке), поэтому
+движок, игнорирующий токен, не подвешивает сервер, а лишь тратит весь этот
+бюджет на каждой остановке — зато тратит его всегда.
+
+:::note Исправлено в v0.5.5
+Ровно эта ошибка была во встроенном движке на Volga: он брал токен и
+использовал его только для отчёта о собственных сбоях, поэтому сервер,
+остановленный через [`App::with_shutdown()`](./shutdown), возвращался из `run`
+с всё ещё занятым портом — пока владелец среды выполнения не уронит её.
+Сигналы работали, потому что их Volga обрабатывала сама.
+:::
 
 **Обработчики маршрутов — одной строкой.** Вся логика конкретных методов (диспатчер протокола, быстрый путь батчей, инициализация SSE, маршрутизация oneshot-запросов) спрятана в `dispatch_post` / `dispatch_delete` / `dispatch_get_sse`. Обработчики просто пробрасывают запрос и контекст.
 

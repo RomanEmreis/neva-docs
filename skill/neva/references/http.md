@@ -335,6 +335,34 @@ not found and those sessions re-authorize once), `with_handler(..)` (replace
 the browser round; `LoopbackHandler::new().with_port(8919)` pins the port a
 registered redirect URI needs).
 
+**A custom `AuthorizationHandler`** drives the browser round for a headless
+or GUI-embedded client. Since **0.5.5** both methods are plain `async fn`s —
+they returned `BoxFuture` before, so every impl opened with
+`Box::pin(async move { .. })`:
+
+```rust
+use neva::auth::oauth::{AuthorizationHandler, CallbackParams};
+use neva::error::Error;
+
+struct MyUi;
+
+impl AuthorizationHandler for MyUi {
+    async fn redirect_uri(&self) -> Result<String, Error> {
+        Ok("https://my.app/oauth/callback".into())
+    }
+
+    async fn authorize(&self, authorization_url: String) -> Result<CallbackParams, Error> {
+        // show the URL to the user, await the redirect, parse its query
+        let _ = authorization_url;
+        CallbackParams::from_query("code=abc&state=xyz")
+    }
+}
+```
+
+`redirect_uri` runs once per flow, before registration. The futures must be
+`Send`, which an `async fn` holding nothing thread-bound across an `.await`
+already is. Users of `LoopbackHandler` change nothing.
+
 ### DNS-rebinding protection
 
 A server on loopback is reachable by any page the browser loads: point
@@ -431,6 +459,41 @@ axum = "0.8"
 // custom engine gets it too and it survives `with_engine(...)`.
 ```
 
+The trait is five methods: `adapt_request`, `adapt_response`,
+`tracked_event`, `ephemeral_event`, `run`. Two of them carry contracts
+that are easy to get wrong:
+
+<!-- snippet: skip -->
+```rust
+// 0.5.5 — the parameter was `seq: u64`
+fn tracked_event(id: EventId, msg: &Message) -> Self::SseEvent {
+    Ok(Event::default().id(id.to_string()).json_data(msg).unwrap_or_default())
+}
+
+async fn run(self, ctx: HttpContext, token: CancellationToken) -> Result<(), Error> {
+    // the token must actually stop the listener — `App::run` waits for
+    // this future to resolve before it returns
+    axum::serve(listener, app)
+        .with_graceful_shutdown(async move { token.cancelled().await })
+        .await
+        .map_err(|e| Error::new(ErrorCode::InternalError, e.to_string()))
+}
+```
+
+* **`tracked_event` takes an `EventId`** (0.5.5; it was a `u64`). It is
+  re-exported from `neva::prelude` and renders as `<stream>:<seq>` — an
+  event id is a cursor within one SSE stream rather than within the
+  session, since a session may hold several. `id.to_string()` is the whole
+  migration; `stream()` / `seq()` expose the halves. Writing out a trimmed
+  id names no stream, and the resuming `GET` is answered `404`.
+* **`run` must honour the token, and returning is the shutdown signal.**
+  `App::run` waits for it, so a response still being written reaches the
+  socket before the runtime under it goes away. An engine that takes the
+  token and only reports its own failures leaves the listener bound and
+  serving after the `App` stopped, and costs the whole
+  `with_shutdown_drain` budget on every stop. (The bundled Volga engine had
+  exactly this bug before 0.5.5.)
+
 Working adapters live in the neva repository under `examples/axum`,
 `examples/hyper` and `examples/actix`.
 
@@ -504,10 +567,16 @@ reach the wire, then the transport goes down and the writers drain.
 default, a **ceiling not a delay**, skipped outright when no subscription is
 open, and `Duration::ZERO` restores an abrupt close.
 
-Before 0.5.4 clients saw `SubscriptionEnd::Abrupt` at shutdown where
-`Graceful` was owed. Under `run_blocking`, take **0.5.5** for the last leg:
-there `run` also waits for the transport writers instead of returning on the
-same signal that started them draining.
+The two phases share **one** deadline, stamped when the request arrives:
+waiting for the subscriptions spends part of the budget and the writers get
+the remainder.
+
+Two shutdown bugs to know when triaging a version:
+
+| Symptom | Fixed in |
+|---|---|
+| Clients see `SubscriptionEnd::Abrupt` where `Graceful` was owed | 0.5.4 (the drain), and **0.5.5** for the last leg — before it `run` returned on the same signal that started the writers draining, so under `run_blocking` the runtime drop aborted a writer mid-drain |
+| A server stopped through `ShutdownHandle` returns from `run` **with the port still bound and serving** | **0.5.5.** The Volga engine took the transport token and used it only to report its own failures, so the listener came down on Volga's own signal handling and nothing else. Ctrl+C was unaffected |
 
 ## Feature flags
 

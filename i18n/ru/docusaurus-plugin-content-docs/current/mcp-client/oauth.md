@@ -315,7 +315,55 @@ use neva::auth::oauth::LoopbackHandler;
 
 Замените обработчик целиком для headless-потока или потока внутри GUI —
 реализуйте `redirect_uri` и `authorize` и ведите пользователя так, как это
-принято в вашем приложении.
+принято в вашем приложении:
+
+```rust
+use neva::auth::oauth::{AuthorizationHandler, CallbackParams};
+use neva::error::Error;
+
+struct MyUi;
+
+impl AuthorizationHandler for MyUi {
+    async fn redirect_uri(&self) -> Result<String, Error> {
+        Ok("https://my.app/oauth/callback".into())
+    }
+
+    async fn authorize(&self, authorization_url: String) -> Result<CallbackParams, Error> {
+        // показать `authorization_url` пользователю, дождаться коллбэка
+        // и вернуть то, с чем сервер авторизации сделал редирект
+        show_in_app_browser(&authorization_url).await;
+        CallbackParams::from_query(&await_callback_query().await)
+    }
+}
+```
+
+`redirect_uri` вызывается один раз за поток, до регистрации: именно
+возвращённый им URI регистрируется и уходит с запросом авторизации.
+
+:::warning Обычные `async fn` — изменено в 0.5.5
+Оба метода раньше возвращали `neva::shared::BoxFuture`, поэтому каждая
+реализация начиналась с `Box::pin(async move { … })`. Это был факт о том, как
+конфигурация хранит обработчик — за `Arc<dyn ..>`, — а не о шве, который вы
+реализуете; теперь боксинг переехал во внутренний мост.
+
+Для миграции уберите обёртку:
+
+```rust
+// 0.5.4
+fn redirect_uri(&self) -> BoxFuture<'_, Result<String, Error>> {
+    Box::pin(async { Ok("https://my.app/oauth/callback".into()) })
+}
+
+// 0.5.5
+async fn redirect_uri(&self) -> Result<String, Error> {
+    Ok("https://my.app/oauth/callback".into())
+}
+```
+
+Футуры по-прежнему обязаны быть `Send`, а `async fn`, который не держит через
+`.await` ничего привязанного к потоку, это условие уже выполняет.
+Пользователям стандартного `LoopbackHandler` менять нечего.
+:::
 
 ## Хранение токенов
 

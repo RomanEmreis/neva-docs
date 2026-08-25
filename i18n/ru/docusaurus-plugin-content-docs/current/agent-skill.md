@@ -90,12 +90,12 @@ python3 ci/check-snippets.py --docs-dir skill --default-mode compile --default-f
 
 ## Версия {#version}
 
-Скилл описывает neva **0.5.4** / MCP **2026-07-28**, легаси-поколение
+Скилл описывает neva **0.5.5** / MCP **2026-07-28**, легаси-поколение
 вынесено отдельно. Обе версии записаны во frontmatter, чтобы ассистент мог
 понять, соответствует ли скилл крейту перед ним:
 
 ```yaml
 metadata:
-  neva-version: "0.5.4"
+  neva-version: "0.5.5"
   mcp-protocol: "2026-07-28"
 ```
