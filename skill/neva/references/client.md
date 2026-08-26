@@ -311,9 +311,9 @@ went away). Subscriptions are not resumable — call `listen` again.
 Dropping the handle, or `disconnect()`, ends the subscription too.
 
 A server shutting down owes you `Graceful`. neva servers only started
-delivering it in **0.5.4** — before that the empty result raced the writer
-teardown, so an older peer stopping reads as `Abrupt` and is not a fault on
-this side. Over HTTP your own `cancel()` is always `Cancelled`, never
+delivering it in **0.5.4**, and **0.5.5** made it survive the writer teardown
+under `run_blocking` — before that the empty result raced it, so an older
+peer stopping reads as `Abrupt` and is not a fault on this side. Over HTTP your own `cancel()` is always `Cancelled`, never
 `Graceful`: cancelling closes the listen `POST`'s body, which *is* the
 spec's cancellation mechanism there, and leaves no channel for a result.
 

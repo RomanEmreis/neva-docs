@@ -153,8 +153,10 @@ A server ending a subscription on its own initiative SHOULD send the empty
 result first, and until **0.5.4** neva constructed that result but rarely
 delivered it: one cancellation token drove both the subscription and the
 transport, so the result raced a writer that had already broken out of its
-loop on the very same signal. Against an older server, read an `Abrupt` at
-shutdown as "the peer stopped", not as a fault on this side. See
+loop on the very same signal. **0.5.5** completed it — until then `run` could
+return into a drain that was still writing, and under `run_blocking` the
+runtime dropped behind it cut the writer off. Against an older server, read an
+`Abrupt` at shutdown as "the peer stopped", not as a fault on this side. See
 [Server → Graceful Shutdown](../mcp-server/shutdown).
 :::
 

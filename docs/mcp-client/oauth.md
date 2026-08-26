@@ -315,7 +315,55 @@ client and refused for its plain-http redirect URI.
 
 Replace the handler entirely for a headless or GUI-embedded flow — implement
 `redirect_uri` and `authorize` and drive the user however your application
-does.
+does:
+
+```rust
+use neva::auth::oauth::{AuthorizationHandler, CallbackParams};
+use neva::error::Error;
+
+struct MyUi;
+
+impl AuthorizationHandler for MyUi {
+    async fn redirect_uri(&self) -> Result<String, Error> {
+        Ok("https://my.app/oauth/callback".into())
+    }
+
+    async fn authorize(&self, authorization_url: String) -> Result<CallbackParams, Error> {
+        // show `authorization_url` to the user, await the callback,
+        // and hand back what the authorization server redirected with
+        show_in_app_browser(&authorization_url).await;
+        CallbackParams::from_query(&await_callback_query().await)
+    }
+}
+```
+
+`redirect_uri` is called once per flow, before registration — the URI it
+returns is what gets registered and sent with the authorization request.
+
+:::warning Plain `async fn`s — changed in 0.5.5
+Both methods used to return `neva::shared::BoxFuture`, so every implementation
+opened with `Box::pin(async move { … })`. That was a fact about how the
+configuration keeps the handler — behind `Arc<dyn ..>` — rather than about the
+seam you implement, and the boxing has moved to an internal bridge.
+
+To migrate, drop the wrapper:
+
+```rust
+// 0.5.4
+fn redirect_uri(&self) -> BoxFuture<'_, Result<String, Error>> {
+    Box::pin(async { Ok("https://my.app/oauth/callback".into()) })
+}
+
+// 0.5.5
+async fn redirect_uri(&self) -> Result<String, Error> {
+    Ok("https://my.app/oauth/callback".into())
+}
+```
+
+The futures still have to be `Send`, which an `async fn` holding nothing
+thread-bound across an `.await` already satisfies. Users of the default
+`LoopbackHandler` have nothing to change.
+:::
 
 ## Storing tokens
 

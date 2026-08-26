@@ -693,11 +693,13 @@ The subscriber table itself stays node-local by construction: half of every
 entry is a handle to a socket on one node. Nothing changes without a bus —
 there is none by default, and a single-instance server pays nothing.
 
-### Shutdown answers the streams first (0.5.4)
+### Shutdown answers the streams first (0.5.4/0.5.5)
 
 A server ending a subscription on its own initiative SHOULD send the empty
 result first. Shutdown is two-phase for that reason — see `http.md` for
-`App::with_shutdown()` and `with_shutdown_drain(..)`.
+`App::with_shutdown()` and `with_shutdown_drain(..)`. **0.5.5** completed it:
+`App::run` waits for the transport writers to put those results on the wire
+before returning, so the result survives a runtime dropped right after.
 
 ## Access control
 

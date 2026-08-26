@@ -4,7 +4,7 @@ A model-neutral [Agent Skill](https://agentskills.io/specification) for
 building MCP servers and clients in Rust with the
 [neva](https://github.com/RomanEmreis/neva) crate.
 
-Covers neva **0.5.4** / MCP **2026-07-28**, with the legacy generation
+Covers neva **0.5.5** / MCP **2026-07-28**, with the legacy generation
 (MCP 2024-11-05 … 2025-11-25) documented separately.
 
 ```

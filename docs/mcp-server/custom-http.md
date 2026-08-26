@@ -54,7 +54,7 @@ pub trait HttpEngine: Send + Sync + 'static {
     async fn adapt_request(req: Self::Request) -> Result<HttpRequest, Error>;
     fn adapt_response(resp: HttpResponse) -> Self::Response;
 
-    fn tracked_event(seq: u64, msg: &Message) -> Self::SseEvent;
+    fn tracked_event(id: EventId, msg: &Message) -> Self::SseEvent;
     fn ephemeral_event(msg: &Message) -> Self::SseEvent;
 
     async fn run(self, ctx: HttpContext, token: CancellationToken) -> Result<(), Error>;
@@ -65,18 +65,48 @@ Five responsibilities:
 
 1. **`adapt_request`** — buffer the inbound body and convert your framework's request into neva's neutral `http::Request<Bytes>`.
 2. **`adapt_response`** — convert neva's neutral `http::Response<Bytes>` back into your framework's response type.
-3. **`tracked_event`** — build an SSE event **with** an `id:` field (eligible for `Last-Event-ID` replay).
+3. **`tracked_event`** — build an SSE event **with** an `id:` field (eligible for `Last-Event-ID` replay). Write the `EventId` out as it renders — `id.to_string()` gives `<stream>:<seq>`.
 4. **`ephemeral_event`** — build an SSE event **without** an `id:` field (log/notification, not replayed).
-5. **`run`** — start the HTTP server with the supplied `HttpContext`, and shut down when `token` fires.
+5. **`run`** — start the HTTP server with the supplied `HttpContext`, and shut down when `token` fires. Returning is what neva waits for at shutdown, so the token has to actually stop the server — see [Shutdown is part of the contract](#shutdown-is-part-of-the-contract).
 
 Inside your route handlers, three free helpers do everything else:
 
 * [`handlers::dispatch_post`](https://docs.rs/neva/latest/neva/transport/http/core/handlers/fn.dispatch_post.html) — handle the JSON-RPC POST endpoint (single request, batch, or accepted-202 notification).
 * [`handlers::dispatch_delete`](https://docs.rs/neva/latest/neva/transport/http/core/handlers/fn.dispatch_delete.html) — handle session deletion.
-* [`handlers::dispatch_get_sse`](https://docs.rs/neva/latest/neva/transport/http/core/handlers/fn.dispatch_get_sse.html) — handle the SSE GET stream, including `Last-Event-ID` replay.
+* [`handlers::dispatch_get_sse`](https://docs.rs/neva/latest/neva/transport/http/core/handlers/fn.dispatch_get_sse.html) — open or resume one of the session's SSE streams, including `Last-Event-ID` replay.
 
 The last two compile in either build, but under MCP 2026-07-28 the stateless
 transport gives them nothing to serve.
+
+:::warning `tracked_event` takes an `EventId` — changed in v0.5.5
+The parameter was a `u64` sequence number. It is now
+[`EventId`](https://docs.rs/neva/latest/neva/transport/http/core/types/struct.EventId.html),
+because a session may hold [several SSE streams at
+once](../legacy-spec#concurrent-sse-streams) and an event id is a cursor
+*within one stream* rather than within the session — so it has to name the
+stream as well as the position.
+
+The migration is the signature and nothing else: engines write the id out the
+way they wrote the number.
+
+```rust
+// 0.5.4
+fn tracked_event(seq: u64, msg: &Message) -> Self::SseEvent {
+    Ok(Event::default().id(seq.to_string()).json_data(msg).unwrap_or_default())
+}
+
+// 0.5.5
+fn tracked_event(id: EventId, msg: &Message) -> Self::SseEvent {
+    Ok(Event::default().id(id.to_string()).json_data(msg).unwrap_or_default())
+}
+```
+
+`EventId` is re-exported from `neva::prelude` and renders as `<stream>:<seq>`.
+An engine that wants the halves has `id.stream()` and `id.seq()` — but do not
+write out a trimmed-down id: a `Last-Event-ID` carrying only the sequence
+number names no stream, and neva answers it with `404` rather than replaying
+the wrong one.
+:::
 
 ### `StreamResponse`: one shape for both routes
 
@@ -165,9 +195,9 @@ impl HttpEngine for AxumEngine {
         builder.body(Body::from(body)).expect("valid response")
     }
 
-    fn tracked_event(seq: u64, msg: &Message) -> Self::SseEvent {
+    fn tracked_event(id: EventId, msg: &Message) -> Self::SseEvent {
         Ok(Event::default()
-            .id(seq.to_string())
+            .id(id.to_string())
             .json_data(msg)
             .unwrap_or_default())
     }
@@ -293,13 +323,36 @@ them turns valid calls into `400`s.
 
 **Response adaptation.** Same idea in reverse: neva hands back `http::Response<Bytes>`, you rebuild axum's `Response` and return it.
 
-**Tracked vs. ephemeral SSE events.** Tracked events carry an `id:` field and bump the client's `Last-Event-ID` cursor — they're replayed on reconnect. Ephemeral events have no `id:` and are dropped if the client misses them. neva decides which one to build; you just produce the bytes in whatever format your framework expects.
+**Tracked vs. ephemeral SSE events.** Tracked events carry an `id:` field and bump the client's `Last-Event-ID` cursor — they're replayed on reconnect. Ephemeral events have no `id:` and are dropped if the client misses them. neva decides which one to build; you just produce the bytes in whatever format your framework expects. The `EventId` names both the stream and the position in it, so pass it through whole.
 
 **`run`.** This is where your framework's plumbing lives:
 
 * `ctx.addr()` and `ctx.endpoint()` come from the same `with_http(...)` / `from_engine(...)` config the default server uses, so behaviour stays consistent across engines.
 * Inject `ctx` into the router's state (axum's `with_state`, actix's `app_data`, etc.) so handlers can reach it.
-* Wire shutdown to the supplied `CancellationToken` — neva calls it when the `App` exits.
+* Wire shutdown to the supplied `CancellationToken` — neva calls it when the `App` exits, and waits for `run` to return before it finishes.
+
+### Shutdown is part of the contract
+
+`run` returning is the signal neva waits for at shutdown. `App::run` holds off
+until it has, so that a response still being written — the graceful close of a
+[`subscriptions/listen`](./subscriptions#how-a-subscription-ends) stream, say —
+reaches the socket before the runtime under it can go away. Wire the token to
+the framework's own graceful shutdown, as `with_graceful_shutdown` does above;
+an engine that takes the token and only reports its own failures leaves the
+listener bound and serving after the `App` has stopped.
+
+That wait is bounded by
+[`App::with_shutdown_drain`](./shutdown#what-shutdown-actually-does), so an
+engine that ignores the token costs its server that budget on every stop rather
+than hanging it — but it costs it every time.
+
+:::note Fixed in v0.5.5
+The bundled Volga engine had exactly this bug: it took the token and used it
+only to report failures, so a server stopped through an
+[`App::with_shutdown()`](./shutdown) handle returned from `run` with the port
+still bound, until whatever owned the runtime dropped it. Signals still worked,
+because Volga handled those itself.
+:::
 
 **Route handlers are one-liners.** All of the per-method logic — protocol dispatch, batch fast-path, SSE setup, oneshot routing — lives behind `dispatch_post` / `dispatch_delete` / `dispatch_get_sse`. Handlers just forward the request and the context.
 
