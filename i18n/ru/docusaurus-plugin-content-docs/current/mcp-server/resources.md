@@ -122,6 +122,22 @@ mcp_server
 mcp_server.run().await;
 ```
 
+## Ресурсы `ui://` {#ui-resources}
+
+Ресурс, URI которого начинается с `ui://`, — это [MCP App](./apps): HTML-документ,
+который хост рендерит в песочнице iframe для указывающего на него инструмента.
+Схема зарезервирована, и именно она помечает ресурс: neva отдаёт такое чтение как
+`text/html;profile=mcp-app` и прикладывает блок безопасности `_meta.ui`:
+
+```rust
+app.add_ui_resource("ui://clock/app.html", "clock", "<!doctype html>…")
+    .with_title("Clock")
+    .with_prefers_border(true);
+```
+
+По умолчанию ресурсы `ui://` **не попадают** в `resources/list` — хост находит их
+через метаданные инструмента, а не просмотром списка. См. [MCP Apps](./apps).
+
 ## Обработка `list_resources`
 
 С помощью атрибутного макроса [`#[resources]`](https://docs.rs/neva/latest/neva/attr.resources.html) можно переопределить функцию, предоставляющую список ресурсов, и при необходимости реализовать пагинацию:

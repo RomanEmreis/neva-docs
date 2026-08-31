@@ -74,6 +74,7 @@ neva = { version = "0.5", features = ["server-full", "legacy-spec"] }
 | Уведомления | `ping`, `notifications/roots/list_changed`, `notifications/elicitation/complete` |
 | Подписки | Пара RPC-методов `resources/subscribe` / `resources/unsubscribe`, `Context::subscribe_to_resource` / `unsubscribe_from_resource` и `resource::commands::{SUBSCRIBE, UNSUBSCRIBE}` — состояние подписки на сервере вместо потока `subscriptions/listen` |
 | Запросы | Нет обязательных ключей `_meta`, нет проверки заголовков маршрутизации, нет `resultType` |
+| [MCP Apps](./mcp-server/apps) | **Ничего** — серверная половина вырезается, потому что расширение едет в `capabilities.extensions`, которому в этом поколении нет места. [Клиентская половина](./mcp-client/apps) работает, и здесь она покрыта даже *лучше*: легаси-`initialize` несёт объявление на каждом соединении, тогда как в 2026-07-28 сейчас не несёт ничего ([#122](https://github.com/RomanEmreis/neva/issues/122)) |
 
 Всё остальное — DI, промежуточные обработчики, типы содержимого,
 JWT-аутентификация, TLS, собственные HTTP-движки, батч-запросы — общее для

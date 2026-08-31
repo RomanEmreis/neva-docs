@@ -125,5 +125,20 @@ You can configure its behavior using attributes such as:
 * `debug` - include debug metadata in the generated schema
 
 
+## Tools with a UI
+
+A tool may carry [MCP Apps](./apps) metadata naming an HTML document a host
+renders for it. `tool.ui()` reads the block back, and `tool.is_model_visible()`
+answers whether the agent may see the tool at all — a server lists app-only
+tools like any other, so filtering them out is the host's job:
+
+```rust
+for tool in tools.tools.iter() {
+    if !tool.is_model_visible() {
+        continue; // the iframe may call it; the model must not see it
+    }
+}
+```
+
 ## Learn By Example
 Here you may find the full [example](https://github.com/RomanEmreis/neva/tree/main/examples/client)

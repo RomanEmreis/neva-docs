@@ -48,6 +48,15 @@ You can access individual resource fields using the following methods:
 * [`blob()`](https://docs.rs/neva/latest/neva/types/resource/read_resource_result/enum.ResourceContents.html#method.blob) — returns the binary (blob) content
 * [`json()`](https://docs.rs/neva/latest/neva/types/resource/read_resource_result/enum.ResourceContents.html#method.json) — returns the JSON content
 
+:::info Fixed in 0.5.6
+These accessors used to be compiled into **server** builds only, which left a
+client-only build reading the enum's variants by hand. They are now available to
+both. The *builders* — `with_mime`, `with_title`, … — stay server-side.
+:::
+
+A resource served as `text/html;profile=mcp-app` is an
+[MCP App](./apps) document; `ui()` reads its security block.
+
 ## Subscribing to resource updates
 
 Two notifications carry resource changes: `notifications/resources/list_changed`

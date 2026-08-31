@@ -582,20 +582,24 @@ Two shutdown bugs to know when triaging a version:
 
 | Preset | Contains |
 |---|---|
-| `server-full` | `server-macros`, `tracing`, `http-server-volga`, `server-tls`, `server-oauth`, `di`, `tasks` |
-| `client-full` | `client-macros`, `tracing`, `http-client`, `client-tls`, `client-oauth`, `client-oauth-jwt`, `client-oauth-dpop`, `tasks` |
+| `server-full` | `server-macros`, `tracing`, `http-server-volga`, `server-tls`, `server-oauth`, `di`, `tasks`, `apps` |
+| `client-full` | `client-macros`, `tracing`, `http-client`, `client-tls`, `client-oauth`, `client-oauth-jwt`, `client-oauth-dpop`, `tasks`, `apps` |
 | `full` | both |
 
 Individually: `server`, `server-macros`, `http-server`,
 `http-server-volga`, `server-tls`, `server-oauth`; `client`,
 `client-macros`, `http-client`, `client-tls`, `client-oauth`,
 `client-oauth-jwt`, `client-oauth-dpop`; shared `macros`, `di`, `tasks`,
-`tracing`.
+`apps`, `tracing`.
 
 `client-oauth-jwt` (`private_key_jwt` client authentication) and
 `client-oauth-dpop` (RFC 9449 sender-constrained tokens) are new in 0.5.4.
 Both are opt-in because they are the only parts of the OAuth client needing
 a JWS signing backend, and both are in `client-full`.
+
+`apps` (MCP Apps, new in 0.5.6) is additive and pulls in no dependencies. Its
+**server** half needs the default protocol generation and is compiled out
+under `legacy-spec`; the client half works in both. See `apps.md`.
 
 `legacy-spec` is not a capability — it selects the protocol generation and
 compiles the other one out. `--all-features` therefore builds the *legacy*
