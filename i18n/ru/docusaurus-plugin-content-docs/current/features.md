@@ -29,8 +29,8 @@ neva = { version = "...", features = ["full"] }
 | Компонент | Включает | Описание |
 |-----------|----------|----------|
 | `full` | `server-full` + `client-full` | Всё сразу — для приложений, которые запускают и сервер, и клиент |
-| `server-full` | `server-macros`, `tracing`, `http-server-volga`, `server-tls`, `server-oauth`, `di`, `tasks` | Все возможности сервера, включая HTTP-сервер по умолчанию на базе Volga |
-| `client-full` | `client-macros`, `tracing`, `http-client`, `client-tls`, `client-oauth`, `client-oauth-jwt`, `client-oauth-dpop`, `tasks` | Все возможности клиента |
+| `server-full` | `server-macros`, `tracing`, `http-server-volga`, `server-tls`, `server-oauth`, `di`, `tasks`, `apps` | Все возможности сервера, включая HTTP-сервер по умолчанию на базе Volga |
+| `client-full` | `client-macros`, `tracing`, `http-client`, `client-tls`, `client-oauth`, `client-oauth-jwt`, `client-oauth-dpop`, `tasks`, `apps` | Все возможности клиента |
 
 Обратите внимание: `full` — это *все* компоненты, **кроме** флага поколения
 протокола (см. ниже). Это и есть сборка по умолчанию, которую публикует
@@ -66,6 +66,7 @@ neva = { version = "...", features = ["full"] }
 | `macros` | Инфраструктура процедурных макросов (общая для `server-macros` и `client-macros`) |
 | `di` | [Внедрение зависимостей](./mcp-server/di) — контейнер сервисов с жизненными циклами singleton, scoped и transient |
 | `tasks` | [Задачи с расширенными запросами](./mcp-server/tasks) — долгосрочное асинхронное выполнение инструментов с опросом |
+| `apps` | [MCP Apps](./mcp-server/apps) ([SEP-1865](https://github.com/modelcontextprotocol/ext-apps)) — HTML-ресурсы `ui://` и блоки `_meta.ui`, привязывающие к ним инструмент. Аддитивна и не тянет новых зависимостей. Серверной половине нужно поколение протокола по умолчанию; [клиентская](./mcp-client/apps) работает в обоих |
 | `tracing` | Структурированное логирование через экосистему [`tracing`](https://docs.rs/tracing) и MCP-уведомления журнала |
 
 ### Поколение протокола
@@ -158,7 +159,8 @@ full
 │   │   └── http-server
 │   ├── tracing
 │   ├── di
-│   └── tasks
+│   ├── tasks
+│   └── apps
 └── client-full
     ├── client-macros
     │   ├── client
@@ -173,7 +175,8 @@ full
     ├── client-oauth-dpop
     │   └── client-oauth
     ├── tracing
-    └── tasks
+    ├── tasks
+    └── apps
 
 legacy-spec   (ортогонален: выбирает поколение протокола, а не возможность)
 ```

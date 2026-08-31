@@ -274,6 +274,40 @@ change what a good one sends. This applies to Streamable HTTP; other
 transports may ignore the annotation.
 :::
 
+## Unknown Attributes Are Rejected
+
+`#[tool]`, `#[resource]`, `#[resources]`, `#[prompt]` and `#[handler]` **reject**
+an attribute they do not recognise:
+
+```rust
+#[tool(descr = "…", visibilty = ["app"])]   // error: unknown attribute `visibilty`
+```
+
+:::info Changed in 0.5.6
+Before it, an unknown attribute was silently ignored. The motivating case was a
+misspelled `visibility`, which published an [app-only tool](#giving-a-tool-a-ui)
+to the agent — a security-relevant setting that looked applied and was not. If a
+macro invocation that used to build suddenly fails, the attribute it names was
+never doing anything.
+:::
+
+## Giving a Tool a UI
+
+A tool can point at an HTML document a host renders in a sandboxed iframe —
+[MCP Apps](./apps), behind the `apps` feature:
+
+```rust
+#[tool(descr = "Current weather", ui = "ui://weather/dashboard")]
+async fn get_weather(city: String) -> String {
+    format!("Sunny in {city}.")
+}
+```
+
+The tool still returns a sentence: a UI-bound tool **MUST** return a meaningful
+`content` array, because the model reads `content` and not every client has an
+iframe. `visibility = ["app"]` marks a tool the iframe may call and the model
+must not see. See [MCP Apps](./apps) for the resource half.
+
 ## Listing Order
 
 Tool, prompt, and resource registries are `BTreeMap`-backed, so `tools/list`

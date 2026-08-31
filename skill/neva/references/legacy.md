@@ -193,6 +193,31 @@ transport writers before returning, and the Volga engine stops on the
 transport's token — see `http.md`, *Stopping a server*. Under the legacy
 profile, the SSE session model above.
 
+## Upgrading 0.5.5 → 0.5.6
+
+Additive, with one change that can break a build on purpose:
+
+* **Unknown macro attributes are now compile errors.** `#[tool]`,
+  `#[resource]`, `#[resources]`, `#[prompt]` and `#[handler]` used to ignore
+  an attribute they did not know. If something stops compiling, the
+  attribute it names was never doing anything — fix the spelling or delete
+  it. The motivating case was a misspelled `visibility`, which published an
+  app-only tool to the agent.
+* **MCP Apps** arrives behind the new `apps` feature — see `apps.md`. Under
+  `legacy-spec` only the **client** half exists (`with_apps()`,
+  `with_app_mime_types()`, `Tool::ui()`, `ResourceContents::ui()`); the
+  server half is compiled out, since the extension rides
+  `capabilities.extensions`.
+* **`ClientCapabilities::extensions` is no longer gated on the protocol
+  generation**, so a legacy `initialize` can carry it. This makes the legacy
+  profile the *better*-covered one for MCP Apps negotiation right now: a
+  2026-07-28 client currently advertises no extensions at all, having no
+  handshake to put them on ([#122](https://github.com/RomanEmreis/neva/issues/122)).
+  `ServerCapabilities::extensions` stays 2026-07-28-only.
+* **`ResourceContents`'s accessors** (`uri`, `text`, `blob`, `json`, `mime`,
+  `title`, `annotations`) are available to a client build. Purely additive;
+  the builders stay server-side.
+
 ## Examples in the neva repository
 
 Legacy variants live under a `legacy/` sub-directory, each its own Cargo

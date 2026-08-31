@@ -63,6 +63,14 @@ async fn greet(name: String) -> String {
 | `roles` / `permissions` | Access gates, checked against JWT claims (HTTP only) |
 | `middleware` | `[fn, fn]` — per-handler middleware |
 | `task_support` | `"required"` marks a tool that must be called as a task |
+| `ui` | A `ui://` resource that renders this tool — [MCP Apps](apps.md), `apps` feature |
+| `visibility` | `["model"]` / `["app"]` / both — who may call a UI-bound tool. `apps` feature |
+
+**Since 0.5.6 an unknown attribute is a compile error** rather than being
+ignored — on `#[tool]`, `#[resource]`, `#[resources]`, `#[prompt]` and
+`#[handler]` alike. A misspelled `visibility` used to publish an app-only
+tool to the agent. If a macro invocation stops compiling after an upgrade,
+the attribute it names was never doing anything.
 
 ### The builder form
 
@@ -302,6 +310,10 @@ async fn get_file(uri: Uri, path: String) -> ResourceContents {
 ```
 
 Like prompts, an `Err` from a resource handler is a JSON-RPC error.
+
+A resource whose URI starts with `ui://` is an **MCP App** document: the
+scheme is reserved, the macro supplies the `text/html;profile=mcp-app` MIME
+type, and `ui_meta` carries the security block. See `apps.md`.
 
 ## Return types for tools
 

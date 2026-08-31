@@ -218,6 +218,16 @@ async fn main() -> Result<(), Error> {
 Listings are ordered by name and stable across calls, which is what makes
 cursor pagination safe.
 
+`ResourceContents`'s accessors — `uri`, `text`, `blob`, `json`, `mime`,
+`title`, `annotations` — are available to a client build **as of 0.5.6**.
+Before it they were server-only and a client had to match on the enum's
+variants. The builders are still server-side.
+
+A tool may carry MCP Apps metadata: `tool.ui()` reads the block, and
+`tool.is_model_visible()` says whether the agent may see the tool at all —
+a host has to filter, because the server lists app-only tools like any
+other. See `apps.md`.
+
 ## Batching
 
 ```rust

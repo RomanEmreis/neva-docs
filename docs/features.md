@@ -29,8 +29,8 @@ neva = { version = "...", features = ["full"] }
 | Feature | Includes | Description |
 |---------|----------|-------------|
 | `full` | `server-full` + `client-full` | Everything — for apps that run both a server and a client |
-| `server-full` | `server-macros`, `tracing`, `http-server-volga`, `server-tls`, `server-oauth`, `di`, `tasks` | All server capabilities, including the default Volga-based HTTP server |
-| `client-full` | `client-macros`, `tracing`, `http-client`, `client-tls`, `client-oauth`, `client-oauth-jwt`, `client-oauth-dpop`, `tasks` | All client capabilities |
+| `server-full` | `server-macros`, `tracing`, `http-server-volga`, `server-tls`, `server-oauth`, `di`, `tasks`, `apps` | All server capabilities, including the default Volga-based HTTP server |
+| `client-full` | `client-macros`, `tracing`, `http-client`, `client-tls`, `client-oauth`, `client-oauth-jwt`, `client-oauth-dpop`, `tasks`, `apps` | All client capabilities |
 
 Note that `full` is *every* feature **except** the protocol-generation flag
 below — it is the default build, which is also what `docs.rs` publishes.
@@ -65,6 +65,7 @@ below — it is the default build, which is also what `docs.rs` publishes.
 | `macros` | Procedural macro infrastructure (shared between `server-macros` and `client-macros`) |
 | `di` | [Dependency injection](./mcp-server/di) — service container with singleton, scoped, and transient lifetimes |
 | `tasks` | [Task-augmented requests](./mcp-server/tasks) — long-running async tool execution with polling |
+| `apps` | [MCP Apps](./mcp-server/apps) ([SEP-1865](https://github.com/modelcontextprotocol/ext-apps)) — `ui://` HTML resources and the `_meta.ui` blocks that bind a tool to one. Additive, and pulls in no new dependencies. The server half needs the default protocol generation; the [client half](./mcp-client/apps) works in both |
 | `tracing` | Structured logging via the [`tracing`](https://docs.rs/tracing) ecosystem and MCP log notifications |
 
 ### Protocol Generation
@@ -156,7 +157,8 @@ full
 │   │   └── http-server
 │   ├── tracing
 │   ├── di
-│   └── tasks
+│   ├── tasks
+│   └── apps
 └── client-full
     ├── client-macros
     │   ├── client
@@ -171,7 +173,8 @@ full
     ├── client-oauth-dpop
     │   └── client-oauth
     ├── tracing
-    └── tasks
+    ├── tasks
+    └── apps
 
 legacy-spec   (orthogonal: selects the protocol generation, not a capability)
 ```

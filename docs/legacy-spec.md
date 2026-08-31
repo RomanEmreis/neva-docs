@@ -73,6 +73,7 @@ Beyond the flag, the code changes worth checking:
 | Notifications | `ping`, `notifications/roots/list_changed`, `notifications/elicitation/complete` |
 | Subscriptions | The `resources/subscribe` / `resources/unsubscribe` RPC pair, `Context::subscribe_to_resource` / `unsubscribe_from_resource`, and `resource::commands::{SUBSCRIBE, UNSUBSCRIBE}` — server-side subscription state instead of a `subscriptions/listen` stream |
 | Requests | No mandatory `_meta` keys, no routing-header validation, no `resultType` |
+| [MCP Apps](./mcp-server/apps) | **Nothing** — the server half is compiled out, since the extension rides `capabilities.extensions`, which this generation has no place for. The [client half](./mcp-client/apps) does work, and is in fact the *better*-covered path here: a legacy `initialize` carries the declaration on every connection, where a 2026-07-28 one currently carries none ([#122](https://github.com/RomanEmreis/neva/issues/122)) |
 
 Everything else — DI, middleware, content types, JWT auth, TLS, custom HTTP
 engines, batch requests — is shared between the two generations and behaves

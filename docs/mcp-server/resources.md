@@ -122,6 +122,22 @@ mcp_server
 mcp_server.run().await;
 ```
 
+## `ui://` resources
+
+A resource whose URI starts with `ui://` is an [MCP App](./apps): an HTML
+document a host renders in a sandboxed iframe for a tool that points at it. The
+scheme is reserved, and it is what marks the resource — neva serves such a read
+as `text/html;profile=mcp-app` and attaches the `_meta.ui` security block:
+
+```rust
+app.add_ui_resource("ui://clock/app.html", "clock", "<!doctype html>…")
+    .with_title("Clock")
+    .with_prefers_border(true);
+```
+
+`ui://` resources stay **out of** `resources/list` by default — a host finds
+them through the tool's metadata, not by browsing. See [MCP Apps](./apps).
+
 ## Handling `list_resources`
 
 You can override the function that provides a list of resources and optionally handle pagination using the [`#[resources]`](https://docs.rs/neva/latest/neva/attr.resources.html) attribute macro:

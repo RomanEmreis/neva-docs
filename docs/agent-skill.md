@@ -34,12 +34,13 @@ The skill front-loads exactly those traps, then routes to detail on demand.
 | `references/server.md` | Tools, prompts, resources, schemas, argument names, content types, DI, middleware, logging, subscriptions, cross-instance fan-out |
 | `references/client.md` | Connecting, calling, structured results, batching, subscribing, answering input requests, tasks |
 | `references/mrtr.md` | The re-run model, `memo` / `once` / `on_commit`, elicitation modes, tasks |
+| `references/apps.md` | MCP Apps: `ui://` resources, the `_meta.ui` blocks, visibility, the security block, the View handshake |
 | `references/http.md` | Transports, TLS, JWT and OAuth 2.1 (both sides, DPoP, CIMD, grants), DNS-rebinding, shutdown, custom engines, feature flags, multi-instance deploy |
 | `references/troubleshooting.md` | Error codes, symptom → cause, everything removed in this generation |
 | `references/legacy.md` | The `legacy-spec` profile and the 0.4.x → 0.5.x upgrade |
 
 `SKILL.md` stays short on purpose: an entrypoint an agent always reads, and
-six references it loads only when the task needs one.
+seven references it loads only when the task needs one.
 
 ## Install
 
@@ -90,12 +91,12 @@ python3 ci/check-snippets.py --docs-dir skill --default-mode compile --default-f
 
 ## Version
 
-The skill tracks neva **0.5.5** / MCP **2026-07-28**, with the legacy
+The skill tracks neva **0.5.6** / MCP **2026-07-28**, with the legacy
 generation documented separately. The frontmatter records both, so an
 assistant can tell whether the skill matches the crate in front of it:
 
 ```yaml
 metadata:
-  neva-version: "0.5.5"
+  neva-version: "0.5.6"
   mcp-protocol: "2026-07-28"
 ```

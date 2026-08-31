@@ -298,6 +298,41 @@ the call site. Also note `neva::types` re-exports the sampling types only
 under `client` / `legacy-spec`, so a server-only build needs
 `use neva::types::sampling::...` explicitly.
 
+### An unknown attribute on `#[tool]` / `#[resource]` / `#[prompt]`
+
+New in **0.5.6**: these macros reject an attribute they do not know instead
+of ignoring it. The code compiled before because the attribute was being
+dropped, which is the bug — a misspelled `visibility` published an app-only
+tool to the agent. Fix the spelling or delete the attribute.
+
+### An MCP App renders nothing, or as unstyled plain text
+
+The MIME type is not `text/html;profile=mcp-app`, or the tool's
+`_meta.ui.resourceUri` names a resource nothing serves — the server logs a
+warning about the second at startup. A hand-built `TextResourceContents` on
+a non-`ui://` URI ships `text/plain`, which no host renders. See `apps.md`.
+
+### An MCP App loads but sits on its placeholder forever
+
+The View never completed the handshake: `ui/initialize`, *then*
+`ui/notifications/initialized`. A conforming host holds the tool result back
+until it has seen both. Also check that the `ui/notifications/tool-result`
+listener is registered **before** the handshake — the host may push the
+result the instant it sees `initialized`.
+
+### A `_meta.ui` CSP or permission setting is silently ignored
+
+A snake_case key. The wire is camelCase (`prefersBorder`,
+`connectDomains`), `_meta` is an open map, and hosts ignore what they do not
+recognise. The macro's `ui_meta` rejects this at compile time; a hand-built
+`serde_json::json!` block does not.
+
+### `with_apps` / `add_ui_resource` / `map_ui_resource` not found
+
+Either the `apps` feature is off, or the build has `legacy-spec` on — the
+server half of MCP Apps is 2026-07-28 only. Remember `--all-features`
+enables `legacy-spec`.
+
 ### `proto-2026-07-28-rc` is not a known feature
 
 That flag existed only during the release candidate. Remove it — the

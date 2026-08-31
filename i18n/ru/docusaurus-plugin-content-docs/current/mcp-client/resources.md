@@ -48,6 +48,16 @@ async fn main() -> Result<(), Error> {
 * [`blob()`](https://docs.rs/neva/latest/neva/types/resource/read_resource_result/enum.ResourceContents.html#method.blob) — возвращает бинарное содержимое (blob)
 * [`json()`](https://docs.rs/neva/latest/neva/types/resource/read_resource_result/enum.ResourceContents.html#method.json) — возвращает JSON-содержимое
 
+:::info Исправлено в 0.5.6
+Раньше эти методы компилировались только в **серверных** сборках, из-за чего
+чисто клиентской сборке приходилось разбирать варианты перечисления руками.
+Теперь они доступны в обеих. *Билдеры* — `with_mime`, `with_title`, … —
+остаются серверными.
+:::
+
+Ресурс, отданный как `text/html;profile=mcp-app`, — это документ
+[MCP App](./apps); его блок безопасности читается через `ui()`.
+
 ## Подписка на обновления ресурсов
 
 Изменения ресурсов несут два уведомления:
