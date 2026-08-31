@@ -74,5 +74,45 @@
   "homepage.example.client.desc": {
     "message": "Интуитивный API с простой настройкой и удобным взаимодействием с MCP-серверами.",
     "description": "Example section description"
+  },
+  "theme.SearchBar.label": {
+    "message": "Поиск",
+    "description": "The ARIA label and placeholder for search button"
+  },
+  "theme.SearchBar.seeAll": {
+    "message": "Показать все результаты",
+    "description": "Link at the bottom of the search dropdown"
+  },
+  "theme.SearchBar.noResultsText": {
+    "message": "Ничего не найдено",
+    "description": "Message in the search dropdown when nothing matches"
+  },
+  "theme.SearchBar.searchInContext": {
+    "message": "Показать все результаты в «{context}»",
+    "description": "Link at the bottom of the search dropdown, when a search context is active"
+  },
+  "theme.SearchBar.seeAllOutsideContext": {
+    "message": "Показать все результаты вне «{context}»",
+    "description": "Link at the bottom of the search dropdown, when the active context has no matches"
+  },
+  "theme.SearchPage.existingResultsTitle": {
+    "message": "Результаты поиска по запросу «{query}»",
+    "description": "The search page title for non-empty query"
+  },
+  "theme.SearchPage.emptyResultsTitle": {
+    "message": "Поиск по документации",
+    "description": "The search page title for empty query"
+  },
+  "theme.SearchPage.documentsFound.plurals": {
+    "message": "Найден {count} документ|Найдено {count} документа|Найдено {count} документов",
+    "description": "Pluralized label for \"{count} documents found\". Russian takes three forms: one / few / many"
+  },
+  "theme.SearchPage.noResultsText": {
+    "message": "Ничего не найдено",
+    "description": "The paragraph for empty search result"
+  },
+  "theme.SearchPage.searchContext.everywhere": {
+    "message": "Везде",
+    "description": "The label for the search-everywhere option in the context selector"
   }
 }

@@ -36,6 +36,39 @@ const config: Config = {
     locales: ['en','ru'],
   },
 
+  // Offline search. Docusaurus ships no search of its own — the bundled option
+  // is Algolia DocSearch, which means an external service and an application
+  // to their crawler. This one builds a lunr index from the rendered HTML at
+  // the end of `docusaurus build` and ships it as a static asset, so search
+  // stays a property of the site rather than of a third party.
+  //
+  // Because the index is a build artifact, the search box is inert under
+  // `npm start` — it says so in the dropdown. Use `npm run build && npm run
+  // serve` to try it.
+  themes: [
+    [
+      '@easyops-cn/docusaurus-search-local',
+      {
+        // One index per locale, built from that locale's own pages, so a
+        // Russian query searches the Russian text. `ru` brings in the lunr
+        // stemmer for it — without naming the locale here the index would be
+        // stemmed as English and match badly.
+        language: ['en', 'ru'],
+        // Content-hash the index filename, so a redeploy can never be served
+        // a stale index out of a browser cache.
+        hashed: true,
+        // There is no blog. The `src/pages/examples/*.md` files are bare code
+        // fences imported into the landing page rather than pages anyone reads
+        // on their own, so indexing them would only add noise.
+        indexBlog: false,
+        indexPages: false,
+        docsRouteBasePath: 'docs',
+        // Marks the query's terms on the page the reader lands on.
+        highlightSearchTermsOnTargetPage: true,
+      },
+    ],
+  ],
+
   presets: [
     [
       'classic',
