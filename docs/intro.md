@@ -26,6 +26,21 @@ Read **[MCP 2026-07-28](./spec-2026-07-28)** for the narrative, and
 from 0.4.x.
 :::
 
+:::info What's new in 0.6.0
+A handler no longer has to be an `async fn` — every registration point accepts
+a plain `fn` too, and one that blocks can be moved onto Tokio's blocking pool
+with `neva::blocking` or a `blocking` attribute. See
+**[Handler shapes](./mcp-server/handlers)**.
+
+A client's extension declarations now ride
+**[each request's `_meta`](./spec-2026-07-28#capabilities-ride-each-request)**,
+so `with_apps()` reaches a 2026-07-28 server with no handshake and a handler
+can ask `ctx.supports_apps()` before choosing how to answer.
+
+Upgrading from 0.5.x? Two calls changed —
+**[Migrating to 0.6.0](./spec-2026-07-28#migrating-to-060)**.
+:::
+
 ## Supported Platforms
 Neva runs on Rust stable on Linux, macOS, and Windows.
 

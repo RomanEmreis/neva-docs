@@ -1,5 +1,5 @@
 ---
-sidebar_position: 8
+sidebar_position: 9
 ---
 
 # Свой HTTP-стек
@@ -27,7 +27,7 @@ sidebar_position: 8
 
 ```toml
 [dependencies]
-neva = { version = "0.5", features = ["http-server", "server-macros", "tracing", "di"] }
+neva = { version = "0.6", features = ["http-server", "server-macros", "tracing", "di"] }
 
 axum = "0.8"
 http = "1.4"

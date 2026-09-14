@@ -38,6 +38,84 @@ itself, advertising the versions it speaks plus the capabilities implied by
 what you registered and configured. `with_name` / `with_version` are what
 every result reports back under `_meta["io.modelcontextprotocol/serverInfo"]`.
 
+## Handler shapes
+
+Since **0.6.0** every registration point takes a handler in either shape,
+and the shape is read off the signature. On 0.5.x, only the asynchronous one
+exists.
+
+```rust
+use neva::{prelude::*, blocking};
+
+// Awaits something -> async fn.
+#[tool(descr = "Fetches a page")]
+async fn fetch(url: String) -> String {
+    format!("fetching {url}")
+}
+
+// Computation on data in hand -> plain fn, runs inline.
+#[tool(descr = "Adds two numbers")]
+fn add(a: i32, b: i32) -> i32 {
+    a + b
+}
+
+// Blocks -> plain fn on Tokio's blocking pool.
+#[tool(descr = "Reads a text file", blocking)]
+fn read_file(path: String) -> String {
+    std::fs::read_to_string(path).unwrap_or_default()
+}
+
+#[tokio::main]
+async fn main() {
+    let mut app = App::new()
+        .with_options(|opt| opt.with_stdio());
+
+    // Closures take both shapes too. Name the arguments either way.
+    app.map_tool("mul", |a: i32, b: i32| a * b)
+        .with_arg_names(["a", "b"]);
+
+    app.map_tool("read_other", blocking(|path: String| {
+        std::fs::read_to_string(path).unwrap_or_default()
+    }))
+    .with_arg_names(["path"]);
+
+    app.run().await;
+}
+```
+
+Accepted at: `App::map_tool`, `map_prompt`, `map_resource`, `map_resources`,
+`map_completion`, `map_handler`, `map_ui_resource`, `Tool::new`,
+`Prompt::new`, the `map_tool!` / `map_prompt!` macros, and every attribute
+macro. `blocking` is an attribute on all eight macros — `#[tool]`,
+`#[prompt]`, `#[resource]`, `#[resources]`, `#[completion]`, `#[handler]`,
+`#[sampling]`, `#[elicitation]`.
+
+Rules:
+
+* `blocking` on an `async fn` is a **compile error**.
+* `blocking` on a short body is a pessimization — the hand-off costs more
+  than the work.
+* Schema, argument slots, `Result` handling and the response are identical
+  across shapes. Nothing about the wire changes.
+* A `blocking` body is **not cancelled** when the request is; a panic inside
+  it propagates to the awaiting task.
+* A handler that needs `Context` (elicitation, sampling, progress,
+  `ctx.memo`) has to await, so it must be an `async fn`.
+
+The shape is a defaulted type-level marker — `neva::marker::Async` or
+`marker::Immediate` — on the handler traits
+(`ToolHandler<Args, M = marker::Async>`). It is inferred at the registration
+site and never written in handler code. Bounds written as
+`ToolHandler<Args>` mean what they always meant. A call site that spells its
+generics out needs one more argument on 0.6:
+
+```rust
+// 0.5.x
+// app.map_tool::<_, _, (String,)>("greet", greet);
+// 0.6.0 — E0107 until the marker parameter is added
+// app.map_tool::<_, _, (String,), _>("greet", greet);
+```
+
 ## Tools
 
 ### The macro form
@@ -421,6 +499,40 @@ publishing something no peer could call.
 
 For asking the *client* for input (`elicit`, `sample`, `list_roots`) and
 the re-run primitives (`memo`, `once`, `on_commit`), read `mrtr.md`.
+
+### What this caller declared
+
+There is no handshake, so a client declares its capabilities on **every
+request**, in `_meta` under `io.modelcontextprotocol/clientCapabilities`.
+`Context` reads back what the caller of *this* request declared:
+
+| Ask | Answers |
+|---|---|
+| `ctx.client_capabilities()` | The MRTR kinds — which input requests this caller can answer |
+| `ctx.client_extension(id)` | Settings this caller declared for extension `id`, or `None` |
+| `ctx.supports_apps()` | Whether this caller can render MCP Apps (`apps` feature) |
+
+```rust
+use neva::prelude::*;
+
+#[tool(descr = "Searches the corpus")]
+async fn search(ctx: Context, query: String) -> String {
+    let fuzzy = ctx
+        .client_extension("com.example/search")
+        .and_then(|settings| settings["fuzzy"].as_bool())
+        .unwrap_or(false);
+
+    format!("searching for {query} (fuzzy: {fuzzy})")
+}
+```
+
+`client_extension` and `supports_apps` are **new in 0.6.0** and are not
+available under `legacy-spec`, where capabilities ride `initialize` instead.
+Presence of an id is the declaration; what counts as *supporting* the
+extension is the extension's own rule — MCP Apps requires its settings to
+name the content types the client renders, which is what `supports_apps()`
+checks and `client_extension()` does not. A malformed `extensions` value
+reads as none declared rather than failing the request.
 
 ## Custom JSON-RPC methods
 

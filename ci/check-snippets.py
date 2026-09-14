@@ -63,7 +63,7 @@ The comment form also works in docs/ and wins over the metastring.
 Usage: python3 ci/check-snippets.py [--docs-dir docs] [--keep]
                                     [--default-mode {none,compile,compile-fragment}]
                                     [--default-features FEATURES]
-Env:   NEVA_VERSION (default "0.5")
+Env:   NEVA_VERSION (default "0.6")
 """
 
 from __future__ import annotations
@@ -81,7 +81,7 @@ FENCE = re.compile(r"^```rust([^\n]*)\n(.*?)^```", re.S | re.M)
 # An optional directive on the line immediately above a fence. Wins over the
 # metastring, and is how a marker-free tree (skill/) opts a block out.
 DIRECTIVE = re.compile(r"<!--\s*snippet:([^>]*?)-->\s*\n\Z", re.S)
-NEVA_VERSION = os.environ.get("NEVA_VERSION", "0.5")
+NEVA_VERSION = os.environ.get("NEVA_VERSION", "0.6")
 
 FRAGMENT_HEAD = (
     "#[allow(unused, deprecated)]\n"

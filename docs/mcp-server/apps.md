@@ -1,5 +1,5 @@
 ---
-sidebar_position: 20
+sidebar_position: 21
 ---
 
 # MCP Apps
@@ -13,7 +13,7 @@ Enabled by the `apps` feature (included in `server-full`).
 
 ```toml
 [dependencies]
-neva = { version = "0.5", features = ["server-macros", "apps"] }
+neva = { version = "0.6", features = ["server-macros", "apps"] }
 ```
 
 ## What a server is actually responsible for
@@ -136,7 +136,7 @@ async fn main() {
         .with_descr("Today's forecast")
         .with_csp(UiCsp::new()
             .with_connect_domains(["https://api.openweathermap.org"]))
-        .with_permissions(UiPermissions::new().with_geolocation())
+        .with_ui_permissions(UiPermissions::new().with_geolocation())
         .with_prefers_border(true);
 
     app.run().await;
@@ -147,10 +147,19 @@ async fn main() {
 |---|---|
 | `with_title` / `with_descr` | Human-readable title and description |
 | `with_csp` | The origins the app needs — see [The security block](#the-security-block) |
-| `with_permissions` | Browser permissions the iframe *requests* |
+| `with_ui_permissions` | Browser permissions the iframe *requests* |
 | `with_domain` | Asks the host to serve the app from a dedicated sandbox origin |
 | `with_prefers_border` | Whether the app wants a visible border and background |
 | `with_ui` | Replaces the whole `_meta.ui` block at once — the escape hatch for a block built elsewhere |
+| `with_roles` / `with_permissions` | Who may **read** the resource — see [Authorization](#authorization) |
+
+:::warning `with_permissions` changed meaning in 0.6.0
+On a `UiResource` it now sets **who may read the resource**, as on every other
+resource. The iframe's browser permissions moved to **`with_ui_permissions`**,
+so a 0.5.6 `with_permissions(UiPermissions::..)` call no longer compiles. The
+rename is mechanical — see the [0.6.0 migration notes](../spec-2026-07-28#migrating-to-060).
+`UiResourceMeta::with_permissions` is unchanged.
+:::
 
 ### Generated HTML — a `ui://` resource like any other
 
@@ -393,15 +402,53 @@ The switch is read when the server starts, so it applies to every
 ## Authorization
 
 A resource registered with `add_ui_resource` carries **no role or permission
-requirement**: on an [OAuth-protected server](./oauth) anyone who can reach it
-can read it.
+requirement by default**: on an [OAuth-protected server](./oauth) anyone who can
+reach it can read it.
 
-That is usually right. The document is a template a host is expected to prefetch
-and review at connection time, while the data it displays comes from a tool —
-which does carry `with_roles`. When the markup itself must be restricted,
-register it with `map_ui_resource` instead and put the requirement on the
-returned `ResourceTemplate`. A per-resource requirement on `add_ui_resource` is
-[tracked as #123](https://github.com/RomanEmreis/neva/issues/123).
+That default is usually right. The document is a template a host is expected to
+prefetch and review at connection time, while the data it displays comes from a
+tool — which carries its own requirement.
+
+When the markup itself is sensitive, state the requirement on the resource with
+`with_roles` and `with_permissions`, the same pair
+[`ResourceTemplate`](./oauth#roles-and-permissions) and
+`#[resource(roles = [..])]` put on any other resource, checked in the same place:
+
+```rust compile features="server-full"
+use neva::prelude::*;
+
+#[tokio::main]
+async fn main() {
+    let mut app = App::new()
+        .with_options(|opt| opt.with_stdio().with_apps());
+
+    app.add_ui_resource("ui://admin/app.html", "admin", "<!doctype html>…")
+        .with_title("Admin console")
+        .with_roles(["admin"])
+        .with_permissions(["reports:read"]);
+
+    app.run().await;
+}
+```
+
+A caller holding none of the roles is refused on `resources/read`. Combined,
+`with_roles` and `with_permissions` must **both** be satisfied.
+
+:::info New in 0.6.0
+Before 0.6.0 the only way to restrict a `ui://` document was to register it with
+`map_ui_resource` and put the requirement on the returned `ResourceTemplate`.
+That still works; `add_ui_resource` now carries the same pair directly.
+
+Both builders are gated on the `http-server` feature — roles and permissions come
+from a validated token, which is an HTTP-transport concern. Do not confuse
+`with_permissions` (who may read) with
+[`with_ui_permissions`](#serving-the-document) (what the iframe may ask the
+browser for).
+:::
+
+`resources/read` checks the requirement on the **matched route**, rather than
+looking up and cloning the resource template on every read — a template's
+requirement is copied onto its routes when the server starts.
 
 ## The View side
 
@@ -438,13 +485,59 @@ never sees in their own code and is therefore easy to forget to ship.
 Note the protocol version: `2026-01-26` tracks the **MCP Apps** specification,
 not the MCP one.
 
-## Known gaps in 0.5.6
+## Asking whether the caller can render
 
-| Gap | Issue |
-|---|---|
-| A handler cannot yet ask whether the caller can render a UI, so it cannot vary its `content` by that. Answer well in text unconditionally — which the specification requires anyway | [#122](https://github.com/RomanEmreis/neva/issues/122) |
-| Against a server speaking MCP 2026-07-28, a neva **client** advertises no extensions: that generation has no handshake to put them on | [#122](https://github.com/RomanEmreis/neva/issues/122) |
-| `add_ui_resource` takes no role or permission requirement | [#123](https://github.com/RomanEmreis/neva/issues/123) |
+A handler can ask whether *this* caller has an iframe, and shape its `content`
+for the audience:
+
+```rust compile features="server-full"
+use neva::prelude::*;
+
+#[tool(descr = "Current time", ui = "ui://clock/app.html")]
+async fn get_time(ctx: Context) -> String {
+    let now = "12:00:00 UTC";
+    if ctx.supports_apps() {
+        // An app will present it — hand over the datum.
+        now.to_string()
+    } else {
+        // The text is all there is — answer in a sentence.
+        format!("The time is {now}.")
+    }
+}
+
+#[tokio::main]
+async fn main() {
+    App::new()
+        .with_options(|opt| opt.with_stdio().with_apps())
+        .run()
+        .await;
+}
+```
+
+[`Context::supports_apps()`](https://docs.rs/neva/latest/neva/app/context/struct.Context.html#method.supports_apps)
+is true only when the caller declared the extension **and** its `mimeTypes`
+names `text/html;profile=mcp-app`. `mimeTypes` is required by the
+specification, so a declaration without it does not count.
+
+:::warning This shapes the answer; it does not excuse one
+A UI-bound tool must return meaningful `content` either way — the model reads
+`content`, and not every caller has an iframe. What this lets you do is choose
+between a terse datum and a full sentence, never between an answer and nothing.
+:::
+
+:::info New in 0.6.0
+Both halves of this landed together: a neva client now writes its `extensions`
+map into every request's `_meta`, so `with_apps()` reaches a 2026-07-28 server
+with no handshake, and the server reads it back through `Context`. Previously
+the declaration went out only on a `legacy-spec` `initialize`, and a handler had
+no way to ask. See
+[per-request client extensions](../spec-2026-07-28#capabilities-ride-each-request)
+for the general mechanism — MCP Apps is one extension using it.
+
+Not available under [`legacy-spec`](../legacy-spec), which has no per-request
+`_meta` channel for capabilities. Under that profile the declaration rides
+`initialize` as before.
+:::
 
 ## What's next
 

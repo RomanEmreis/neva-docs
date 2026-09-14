@@ -1,5 +1,5 @@
 ---
-sidebar_position: 4
+sidebar_position: 5
 ---
 
 # Промпты
@@ -42,6 +42,12 @@ async fn main() {
 
 В примере выше имя промпта должно быть задано явно.
 При использовании атрибутного макроса [`#[prompt]`](https://docs.rs/neva/latest/neva/attr.prompt.html) имя промпта автоматически выводится из имени функции.
+
+:::info Обработчик не обязан быть `async` — появилось в 0.6.0
+Обработчик промпта может быть и обычной `fn`, возвращающей `PromptMessage`
+напрямую, а `#[prompt(blocking)]` переносит блокирующий обработчик на
+blocking-пул Tokio. См. [Формы обработчиков](./handlers).
+:::
 
 Все остальные параметры промпта, доступные в атрибутном макросе, можно настроить с помощью методов `with_*` (например, [`with_description()`](https://docs.rs/neva/latest/neva/types/prompt/struct.Prompt.html#method.with_description)).
 

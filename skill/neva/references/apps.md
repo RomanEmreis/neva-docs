@@ -10,7 +10,7 @@ Behind the `apps` feature, which is in `server-full` and `client-full`.
 Additive — it pulls in no new dependencies.
 
 ```toml
-neva = { version = "0.5", features = ["server-macros", "apps"] }
+neva = { version = "0.6", features = ["server-macros", "apps"] }
 ```
 
 ## The single most important fact
@@ -115,7 +115,7 @@ async fn main() {
         .with_csp(UiCsp::new()
             .with_connect_domains(["https://api.openweathermap.org"])
             .with_resource_domains(["https://cdn.jsdelivr.net"]))
-        .with_permissions(UiPermissions::new().with_geolocation())
+        .with_ui_permissions(UiPermissions::new().with_geolocation())
         .with_domain("a904794854a047f6.example-host.com")
         .with_prefers_border(true);
 
@@ -125,6 +125,20 @@ async fn main() {
 
 `with_ui(UiResourceMeta)` replaces the whole block at once, for a block
 built elsewhere.
+
+**`with_ui_permissions` is the 0.6.0 name.** On 0.5.x this builder was
+`with_permissions`. In 0.6.0 that name was taken over by *who may read the
+resource* — see Authorization below — so a 0.5.x
+`with_permissions(UiPermissions::..)` no longer compiles. Two different
+things with confusable names:
+
+| Call | Sets |
+|---|---|
+| `with_ui_permissions(UiPermissions::..)` | What the **iframe** may ask the browser for (camera, geolocation, …). A request, not a grant |
+| `with_permissions(["reports:read"])` | Which **callers** may read the resource, checked against JWT claims |
+
+`UiResourceMeta::with_permissions` is unchanged — it is the `_meta.ui` block
+itself, not the registration builder.
 
 ### Generated HTML
 
@@ -293,13 +307,35 @@ other, not both.
 
 ## Authorization
 
-`add_ui_resource` carries **no** role or permission requirement: on an
-OAuth-protected server anyone who can reach it can read it. That is usually
-right — the document is a template a host prefetches and reviews, while the
-data comes from a tool, which does carry `with_roles`. To restrict the
-markup itself, register it with `map_ui_resource` and put the requirement on
-the returned `ResourceTemplate`. Tracked as
-[#123](https://github.com/RomanEmreis/neva/issues/123).
+`add_ui_resource` carries **no** role or permission requirement by default:
+on an OAuth-protected server anyone who can reach it can read it. That is
+usually right — the document is a template a host prefetches and reviews,
+while the data comes from a tool, which carries its own requirement.
+
+When the markup itself is sensitive, state the requirement on the resource.
+Since **0.6.0** `add_ui_resource` takes the same pair as any other resource:
+
+```rust
+use neva::prelude::*;
+
+#[tokio::main]
+async fn main() {
+    let mut app = App::new().with_options(|opt| opt.with_stdio().with_apps());
+
+    app.add_ui_resource("ui://admin/app.html", "admin", "<!doctype html>…")
+        .with_title("Admin console")
+        .with_roles(["admin"])
+        .with_permissions(["reports:read"]);
+
+    app.run().await;
+}
+```
+
+A caller holding none of the roles is refused on `resources/read`; both
+gates must be satisfied. Both builders need the `http-server` feature —
+roles and permissions come from a validated token. On 0.5.x, register with
+`map_ui_resource` and put the requirement on the returned `ResourceTemplate`
+instead.
 
 ## The client half
 
@@ -363,6 +399,27 @@ Declaring it is a promise about *rendering*. A neva client is not a browser
 handing the document to one, not merely to read the metadata, which works
 without it.
 
+**Where it is sent.** On 2026-07-28 there is no handshake, so since 0.6.0
+the client writes the map into every request's `_meta` under
+`io.modelcontextprotocol/clientCapabilities`:
+
+```json
+{
+  "_meta": {
+    "io.modelcontextprotocol/clientCapabilities": {
+      "extensions": {
+        "io.modelcontextprotocol/ui": {
+          "mimeTypes": ["text/html;profile=mcp-app"]
+        }
+      }
+    }
+  }
+}
+```
+
+`with_apps()` is all you write. Under `legacy-spec` the same declaration
+rides `initialize` under `capabilities.extensions` instead.
+
 `ui()` is lenient in one direction and strict in the other: it also accepts
 the deprecated flat `_meta["ui/resourceUri"]` key (the nested block wins
 where both are present), and a malformed block reads as absent rather than
@@ -406,13 +463,50 @@ In real apps this is the browser SDK
 the transport; the point of showing it here is that a Rust author never sees
 this half in their own code and therefore forgets to ship it.
 
-## Gaps in 0.5.6
+## Asking whether the caller can render
 
-| Gap | Consequence for code you write |
-|---|---|
-| No `Context::supports_apps()` — a handler cannot vary its answer by whether the caller can render ([#122](https://github.com/RomanEmreis/neva/issues/122)) | Answer well in text unconditionally. Do not invent an API for this |
-| A client speaking 2026-07-28 advertises no extensions — that generation has no handshake to carry them ([#122](https://github.com/RomanEmreis/neva/issues/122)) | A server cannot detect Apps support. Under `legacy-spec` the `initialize` handshake does carry it |
-| `add_ui_resource` takes no role requirement ([#123](https://github.com/RomanEmreis/neva/issues/123)) | Use `map_ui_resource` + `ResourceTemplate` when the markup must be restricted |
+Since **0.6.0** a client's extension declarations ride every request's
+`_meta`, so a handler can ask whether *this* caller has an iframe:
+
+```rust
+use neva::prelude::*;
+
+#[tool(descr = "Current time.", ui = "ui://clock/app.html")]
+async fn get_time(ctx: Context) -> String {
+    let now = "12:00:00 UTC";
+    if ctx.supports_apps() {
+        now.to_string()            // an app will present it
+    } else {
+        format!("The time is {now}.")   // the text is all there is
+    }
+}
+
+#[tokio::main]
+async fn main() {
+    App::new()
+        .with_options(|opt| opt.with_stdio().with_apps())
+        .run()
+        .await;
+}
+```
+
+`ctx.supports_apps()` is true only when the caller declared
+`io.modelcontextprotocol/ui` **and** its `mimeTypes` names
+`text/html;profile=mcp-app` — the spec requires `mimeTypes`, so a
+declaration without it does not count. `ctx.client_extension(id)` is the
+general form for any other extension.
+
+**This shapes the answer; it never excuses one.** A UI-bound tool must
+return meaningful `content` either way. Use this to choose between a terse
+datum and a full sentence, never between an answer and nothing.
+
+Not available under `legacy-spec`, which has no per-request `_meta` channel
+for capabilities; there the declaration rides `initialize` as before.
+
+On 0.5.x neither half exists: a client speaking 2026-07-28 advertised no
+extensions at all, and there was no `supports_apps`. If the crate in front
+of you is 0.5.x, answer well in text unconditionally and do not invent the
+API.
 
 ## Symptom → cause
 
@@ -428,3 +522,6 @@ this half in their own code and therefore forgets to ship it.
 | A tool was published to the agent despite `visibility` | Pre-0.5.6, a misspelled attribute was ignored. Upgrade — it is now a compile error |
 | The app renders one report for every id | The tool's `resourceUri` is a template. Point it at a concrete document and put the id in the result |
 | `with_apps` / `add_ui_resource` not found | Either the `apps` feature is off, or the build has `legacy-spec` on (which includes `--all-features`) |
+| `with_permissions` no longer takes `UiPermissions` | 0.6.0 renamed the iframe builder to `with_ui_permissions`; `with_permissions` now means who may read the resource |
+| `supports_apps` / `client_extension` not found | Needs 0.6.0, and is compiled out under `legacy-spec`. `supports_apps` also needs the `apps` feature |
+| `supports_apps()` is always false against a real host | The caller declared no `mimeTypes`, or is a 0.5.x neva client (which sent no extensions on this generation) |

@@ -387,6 +387,55 @@ default. A mode you do not declare is one the server must not send — it
 gets `MissingRequiredClientCapability` instead. Cap the retry loop with
 `McpOptions::with_max_mrtr_rounds`.
 
+### Handler shapes
+
+Since **0.6.0** `Client::map_sampling`, `Client::map_elicitation`,
+`#[sampling]` and `#[elicitation]` take a plain `fn` as well as an
+`async fn`. A handler that puts a **blocking** dialog in front of a person —
+a terminal prompt, a native modal — is what `blocking` is for: it runs on
+Tokio's blocking pool instead of holding a runtime worker for as long as the
+person takes to answer.
+
+```rust
+use neva::prelude::*;
+
+#[elicitation(blocking)]
+fn ask(params: ElicitRequestParams) -> ElicitResult {
+    match params {
+        ElicitRequestParams::Url(_url) => ElicitResult::accept(),
+        ElicitRequestParams::Form(_form) => {
+            let mut answer = String::new();
+            // Blocks this thread until the user presses enter.
+            let _ = std::io::stdin().read_line(&mut answer);
+            ElicitResult::accept()
+        }
+    }
+}
+
+#[tokio::main]
+async fn main() -> Result<(), Error> {
+    let mut client = Client::new()
+        .with_options(|opt| opt.with_default_http());
+
+    client.connect().await?;
+    client.disconnect().await
+}
+```
+
+`blocking` on an `async fn` is a compile error. The two methods keep their
+arity across 0.5 → 0.6, but their second generic parameter is now the shape
+marker rather than the handler's future type.
+
+### What this client declares, per request
+
+There is no handshake on 2026-07-28, so the client stamps its capabilities
+onto **every request**'s `_meta` under
+`io.modelcontextprotocol/clientCapabilities` — the MRTR modes above, and
+since 0.6.0 the `extensions` map too. Nothing to call: declaring a handler
+or calling `with_apps()` is what fills it in. A server reads it back with
+`ctx.client_capabilities()`, `ctx.client_extension(id)` and
+`ctx.supports_apps()`.
+
 ## Tasks
 
 A long-running tool is called through the task builder. Declare the

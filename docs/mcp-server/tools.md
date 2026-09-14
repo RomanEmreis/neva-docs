@@ -45,6 +45,13 @@ async fn main() {
 In the example above, the tool name must be set explicitly.
 When using the [`#[tool]`](https://docs.rs/neva/latest/neva/attr.tool.html) attribute macro, the tool name is automatically inferred from the function name.
 
+:::info A handler need not be `async` — new in 0.6.0
+A tool handler may also be a plain `fn` returning its value directly, and one
+that *blocks* can be moved onto Tokio's blocking pool with `neva::blocking` or
+`#[tool(blocking)]`. The published schema, the argument slots and the response
+are identical either way. See [Handler shapes](./handlers).
+:::
+
 All other tool parameters that can be specified in the attribute macro can also be configured using `with_*` methods (for example, [`with_description()`](https://docs.rs/neva/latest/neva/types/tool/struct.Tool.html#method.with_description)).
 
 The [`map_tool()`](https://docs.rs/neva/latest/neva/app/struct.App.html#method.map_tool) method registers a tool handler under a specified name and returns a mutable reference to the registered [tool](https://docs.rs/neva/latest/neva/types/tool/struct.Tool.html).

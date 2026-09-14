@@ -1,5 +1,5 @@
 ---
-sidebar_position: 8
+sidebar_position: 9
 ---
 
 # Custom HTTP Stack
@@ -27,7 +27,7 @@ Use the engine-agnostic `http-server` feature — it ships only the abstractions
 
 ```toml
 [dependencies]
-neva = { version = "0.5", features = ["http-server", "server-macros", "tracing", "di"] }
+neva = { version = "0.6", features = ["http-server", "server-macros", "tracing", "di"] }
 
 axum = "0.8"
 http = "1.4"
