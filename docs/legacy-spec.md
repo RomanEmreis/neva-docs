@@ -9,7 +9,7 @@ protocol generation — MCP 2024-11-05 … 2025-11-25.
 
 ```toml
 [dependencies]
-neva = { version = "0.5", features = ["server-full", "legacy-spec"] }
+neva = { version = "0.6", features = ["server-full", "legacy-spec"] }
 ```
 
 It is a **generation switch, not an addition**: enabling it compiles the
@@ -73,7 +73,7 @@ Beyond the flag, the code changes worth checking:
 | Notifications | `ping`, `notifications/roots/list_changed`, `notifications/elicitation/complete` |
 | Subscriptions | The `resources/subscribe` / `resources/unsubscribe` RPC pair, `Context::subscribe_to_resource` / `unsubscribe_from_resource`, and `resource::commands::{SUBSCRIBE, UNSUBSCRIBE}` — server-side subscription state instead of a `subscriptions/listen` stream |
 | Requests | No mandatory `_meta` keys, no routing-header validation, no `resultType` |
-| [MCP Apps](./mcp-server/apps) | **Nothing** — the server half is compiled out, since the extension rides `capabilities.extensions`, which this generation has no place for. The [client half](./mcp-client/apps) does work, and is in fact the *better*-covered path here: a legacy `initialize` carries the declaration on every connection, where a 2026-07-28 one currently carries none ([#122](https://github.com/RomanEmreis/neva/issues/122)) |
+| [MCP Apps](./mcp-server/apps) | **Nothing** — the server half is compiled out, since the extension rides `capabilities.extensions`, which this generation has no place for. The [client half](./mcp-client/apps) does work: a legacy `initialize` carries the declaration on every connection, where a 2026-07-28 one puts it on [each request's `_meta`](./spec-2026-07-28#capabilities-ride-each-request) instead (since 0.6.0 — before that it carried none) |
 
 Everything else — DI, middleware, content types, JWT auth, TLS, custom HTTP
 engines, batch requests — is shared between the two generations and behaves

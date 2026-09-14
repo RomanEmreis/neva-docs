@@ -12,7 +12,7 @@ Enabled by the `apps` feature (included in `client-full`).
 
 ```toml
 [dependencies]
-neva = { version = "0.5", features = ["client", "apps"] }
+neva = { version = "0.6", features = ["client", "apps"] }
 ```
 
 :::info A neva client is not a browser
@@ -71,23 +71,45 @@ document on to one — not merely to read the metadata, which works without the
 declaration.
 :::
 
-### Where it is sent, and where it is not
+### Where it is sent
 
-The declaration rides the `initialize` handshake, under
-`capabilities.extensions`. That covers every connection in a
-[`legacy-spec`](../legacy-spec) build, and the dual-mode fallback in a
-2026-07-28 one.
+MCP 2026-07-28
+[replaced the handshake with discovery](../spec-2026-07-28#discovery-replaces-the-handshake),
+so there is no `initialize` to hang a connection-wide declaration on. The
+declaration instead rides **every request**, in its `_meta` under
+`io.modelcontextprotocol/clientCapabilities`:
 
-Against a server that speaks MCP 2026-07-28, a neva client currently advertises
-**nothing**: that generation
-[replaced the handshake with discovery](../spec-2026-07-28#discovery-replaces-the-handshake)
-and carries capabilities in each request's `_meta`, a channel that is not wired
-for extensions yet. Tracked as
-[#122](https://github.com/RomanEmreis/neva/issues/122).
+```json
+{
+  "_meta": {
+    "io.modelcontextprotocol/clientCapabilities": {
+      "elicitation": {},
+      "extensions": {
+        "io.modelcontextprotocol/ui": {
+          "mimeTypes": ["text/html;profile=mcp-app"]
+        }
+      }
+    }
+  }
+}
+```
 
-This does not stop anything on this page from working — reading the metadata off
-`tools/list` and `resources/read` needs no negotiation. What it means is that a
-server cannot yet *vary* its answer by whether you can render.
+`with_apps()` is all you write; the client puts the map on each request itself.
+Under [`legacy-spec`](../legacy-spec) the same declaration rides the
+`initialize` handshake under `capabilities.extensions` instead.
+
+A server reads it back with
+[`Context::supports_apps()`](../mcp-server/apps#asking-whether-the-caller-can-render),
+and can then vary its `content` by whether you can render.
+
+:::info New in 0.6.0
+Before 0.6.0 a neva client advertised **nothing** to a 2026-07-28 server: the
+declaration existed only on the legacy `initialize` path, so `with_apps()`
+reached such a server not at all and a handler had no way to ask. Nothing on
+this page depended on it — reading the metadata off `tools/list` and
+`resources/read` needs no negotiation — but a server could not *vary* its answer.
+Now it can.
+:::
 
 :::note New in 0.5.6
 `ClientCapabilities::extensions` is no longer gated on the protocol generation,

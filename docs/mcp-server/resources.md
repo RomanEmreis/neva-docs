@@ -1,5 +1,5 @@
 ---
-sidebar_position: 3
+sidebar_position: 4
 ---
 
 # Resources
@@ -64,6 +64,13 @@ async fn main() {
 
 In the example above, the resource template name must be set explicitly.
 When using the [`#[resource]`](https://docs.rs/neva/latest/neva/attr.resource.html) attribute macro, the resource template name is automatically inferred from the function name.
+
+:::info A handler need not be `async` — new in 0.6.0
+A resource read or listing handler may also be a plain `fn`. Reading from disk
+*blocks*, so that is the textbook case for `#[resource(blocking)]` or
+`neva::blocking`, which moves the body onto Tokio's blocking pool instead of
+holding a runtime worker. See [Handler shapes](./handlers).
+:::
 
 All other resource template parameters that can be specified in the attribute macro can also be configured using `with_*` methods (for example, [`with_description()`](https://docs.rs/neva/latest/neva/types/resource/template/struct.ResourceTemplate.html#method.with_description)).
 

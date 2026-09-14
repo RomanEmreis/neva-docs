@@ -333,6 +333,60 @@ Either the `apps` feature is off, or the build has `legacy-spec` on — the
 server half of MCP Apps is 2026-07-28 only. Remember `--all-features`
 enables `legacy-spec`.
 
+### E0107 on `map_tool` / `map_prompt` / `Tool::new` — wrong number of generics
+
+0.6.0 gave every registration point a **handler-shape marker** as a generic
+parameter, which is what lets one call take both an `async fn` and a plain
+`fn`. It is always inferred, so only a call site that spells its generics
+out is affected:
+
+```rust
+// 0.5.x
+// app.map_tool::<_, _, (String,)>("greet", greet);
+// 0.6.0
+// app.map_tool::<_, _, (String,), _>("greet", greet);
+```
+
+Affected: `App::map_tool`, `map_prompt`, `map_resource`, `map_ui_resource`,
+`map_handler`, `map_resources`, `map_completion`, `Tool::new`,
+`Prompt::new`. `Client::map_sampling` and `map_elicitation` keep their
+arity. **Bounds are unaffected** — the marker is defaulted on the traits, so
+`where F: ToolHandler<Args, Output = R>` still means what it meant. The fix
+is to add `_`, or to delete the turbofish and let inference work.
+
+### `blocking` rejected on an `async fn`
+
+`#[tool(blocking)]` and `neva::blocking(..)` take a **synchronous** handler.
+An asynchronous one has nothing to offload — it already yields — so this is
+a compile error by design. Either drop `async` and the `.await`s, or drop
+`blocking`.
+
+The reverse mistake does not fail the build: a plain `fn` that blocks,
+registered **without** `blocking`, compiles and runs inline on the runtime
+thread that dispatched the request, holding a worker for its whole duration.
+`std::fs`, `Command::output` and synchronous DB or HTTP drivers all belong
+behind `blocking`. Short, non-blocking bodies do not — the hand-off costs
+more than the work.
+
+### `supports_apps` / `client_extension` not found, or always false
+
+Both are **0.6.0** and are compiled out under `legacy-spec`, which has no
+per-request `_meta` channel for capabilities. `supports_apps` additionally
+needs the `apps` feature.
+
+Present but always `false` means the caller declared nothing usable:
+`supports_apps()` requires `mimeTypes` to name
+`text/html;profile=mcp-app` — the spec makes `mimeTypes` mandatory, so a
+declaration without it does not count. A 0.5.x neva client speaking
+2026-07-28 sent no extensions at all.
+
+### `with_permissions` no longer accepts `UiPermissions`
+
+0.6.0 renamed the `UiResource` builder for the iframe's browser permissions
+to **`with_ui_permissions`**, and gave `with_permissions` the meaning it has
+on every other resource: **who may read it**. Rename the call.
+`UiResourceMeta::with_permissions` is unchanged.
+
 ### `proto-2026-07-28-rc` is not a known feature
 
 That flag existed only during the release candidate. Remove it — the

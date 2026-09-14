@@ -1,5 +1,5 @@
 ---
-sidebar_position: 4
+sidebar_position: 5
 ---
 
 # Prompts
@@ -42,6 +42,12 @@ async fn main() {
 
 In the example above, the prompt name must be set explicitly.
 When using the [`#[prompt]`](https://docs.rs/neva/latest/neva/attr.prompt.html) attribute macro, the prompt name is automatically inferred from the function name.
+
+:::info A handler need not be `async` — new in 0.6.0
+A prompt handler may also be a plain `fn` returning its `PromptMessage`
+directly, and `#[prompt(blocking)]` moves a blocking one onto Tokio's blocking
+pool. See [Handler shapes](./handlers).
+:::
 
 All other prompt parameters that can be specified in the attribute macro can also be configured using `with_*` methods (for example, [`with_description()`](https://docs.rs/neva/latest/neva/types/prompt/struct.Prompt.html#method.with_description)).
 

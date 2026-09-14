@@ -73,6 +73,16 @@ async fn elicitation_handler(params: ElicitRequestParams) -> ElicitResult {
 }
 ```
 
+:::info Обработчик не обязан быть `async` — появилось в 0.6.0
+`Client::map_elicitation` и `#[elicitation]` принимают и обычную `fn`,
+возвращающую `ElicitResult` напрямую. Обработчик, который показывает
+пользователю **блокирующий** диалог — приглашение в терминале, нативное
+модальное окно, — как раз случай для `#[elicitation(blocking)]`: он уйдёт на
+blocking-пул Tokio вместо того, чтобы удерживать воркер рантайма всё то
+время, пока человек думает. То же касается `#[sampling]` и
+`Client::map_sampling`. См. [Формы обработчиков](../mcp-server/handlers).
+:::
+
 ### Что здесь происходит?
 
 * Получение данных через URL

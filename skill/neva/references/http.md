@@ -448,7 +448,7 @@ axum, hyper, actix-web or your own adapter, implement `HttpEngine` and wire
 it in:
 
 ```toml
-neva = { version = "0.5", features = ["server-macros", "http-server", "tracing", "di", "tasks"] }
+neva = { version = "0.6", features = ["server-macros", "http-server", "tracing", "di", "tasks"] }
 axum = "0.8"
 ```
 
@@ -609,13 +609,13 @@ Minimal builds worth knowing:
 
 ```toml
 # stdio-only server, macros, no HTTP
-neva = { version = "0.5", features = ["server-macros", "tracing"] }
+neva = { version = "0.6", features = ["server-macros", "tracing"] }
 
 # lightweight HTTP client
-neva = { version = "0.5", features = ["http-client"] }
+neva = { version = "0.6", features = ["http-client"] }
 
 # a server that is also a client (agent pattern)
-neva = { version = "0.5", features = ["server-full", "http-client"] }
+neva = { version = "0.6", features = ["server-full", "http-client"] }
 ```
 
 ## Testing a server

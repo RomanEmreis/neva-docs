@@ -13,7 +13,7 @@ that command tests the legacy profile. Exercise the default one with an
 explicit list: `--features "server-full client-full"`.
 
 ```toml
-neva = { version = "0.5", features = ["server-full", "legacy-spec"] }
+neva = { version = "0.6", features = ["server-full", "legacy-spec"] }
 ```
 
 ## You usually do not need it on the client
@@ -211,12 +211,47 @@ Additive, with one change that can break a build on purpose:
 * **`ClientCapabilities::extensions` is no longer gated on the protocol
   generation**, so a legacy `initialize` can carry it. This makes the legacy
   profile the *better*-covered one for MCP Apps negotiation right now: a
-  2026-07-28 client currently advertises no extensions at all, having no
-  handshake to put them on ([#122](https://github.com/RomanEmreis/neva/issues/122)).
+  2026-07-28 client advertised no extensions at all, having no handshake to
+  put them on — **fixed in 0.6.0**, which puts them on each request's `_meta`.
   `ServerCapabilities::extensions` stays 2026-07-28-only.
 * **`ResourceContents`'s accessors** (`uri`, `text`, `blob`, `json`, `mime`,
   `title`, `annotations`) are available to a client build. Purely additive;
   the builders stay server-side.
+
+## Upgrading 0.5.6 → 0.6.0
+
+Additive almost everywhere, with two source-breaking changes. Both fail the
+build rather than changing behaviour silently.
+
+* **`UiResource::with_permissions` is renamed `with_ui_permissions`.** On a
+  `UiResource` the old name now means *who may read the resource*, as on
+  every other resource, so a 0.5.6 `with_permissions(UiPermissions::..)` call
+  no longer compiles. `UiResourceMeta::with_permissions` is unchanged. See
+  `apps.md`.
+* **Registration methods take one more generic parameter** — the handler's
+  shape marker. It is always inferred, so only a call site that spells its
+  generics out is affected: `map_tool::<_, _, (String,)>(..)` becomes
+  `map_tool::<_, _, (String,), _>(..)` and fails with E0107 until it does.
+  Bounds are unaffected; the marker is defaulted on the traits.
+
+And, additively:
+
+* **Synchronous handlers** at every registration point on both sides. A
+  handler may return its value directly instead of a future; which shape it
+  has is read off the signature, and the published schema, argument slots and
+  response are unchanged. See the handler-shapes section of `server.md`.
+* **`neva::blocking`** and `blocking` as an attribute on all eight macros,
+  for a synchronous handler that really blocks.
+* **Per-request client extensions.** `with_apps()` now reaches a 2026-07-28
+  server, and `Context::client_extension(id)` / `Context::supports_apps()`
+  read the declaration back. Not available under `legacy-spec`, where
+  capabilities ride `initialize`.
+* **Roles and permissions on `add_ui_resource`**: `UiResource::with_roles`
+  and `with_permissions`, as on a resource template.
+
+None of this reaches the legacy profile except the two breaking renames,
+which apply to any build that uses those APIs. Synchronous handlers and
+`blocking` work under `legacy-spec` too.
 
 ## Examples in the neva repository
 
