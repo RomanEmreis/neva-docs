@@ -45,7 +45,7 @@ async fn main() {
 In the example above, the tool name must be set explicitly.
 When using the [`#[tool]`](https://docs.rs/neva/latest/neva/attr.tool.html) attribute macro, the tool name is automatically inferred from the function name.
 
-:::info A handler need not be `async` — new in 0.6.0
+:::info A handler need not be `async`
 A tool handler may also be a plain `fn` returning its value directly, and one
 that *blocks* can be moved onto Tokio's blocking pool with `neva::blocking` or
 `#[tool(blocking)]`. The published schema, the argument slots and the response
@@ -218,15 +218,6 @@ looks for. [`Context::add_tool`](https://docs.rs/neva/latest/neva/app/context/st
 and `add_prompt` run the same check and return an error, since a primitive
 registered while the server runs has no startup left to fail.
 
-:::warning Wire change in v0.5.2
-A tool registered from a bare closure now advertises `arg0`, `arg1`, … where
-it used to key the properties by *type* name — and `|a: i32, b: i32|`
-publishes two properties where the two `i32` slots used to collapse into
-one. Tools declared with `#[tool]` are unaffected. If you register tools
-from closures and want the old wire names back, name them explicitly with
-`map_tool!` or `with_arg_names()`.
-:::
-
 ## Mirroring an Argument into a Header
 
 A tool may ask that one of its arguments also travel as an HTTP header, so
@@ -290,13 +281,10 @@ an attribute they do not recognise:
 #[tool(descr = "…", visibilty = ["app"])]   // error: unknown attribute `visibilty`
 ```
 
-:::info Changed in 0.5.6
-Before it, an unknown attribute was silently ignored. The motivating case was a
-misspelled `visibility`, which published an [app-only tool](#giving-a-tool-a-ui)
-to the agent — a security-relevant setting that looked applied and was not. If a
-macro invocation that used to build suddenly fails, the attribute it names was
-never doing anything.
-:::
+An attribute that is quietly dropped is worse than one that fails: a misspelled
+`visibility` would publish an [app-only tool](#giving-a-tool-a-ui) to the agent,
+a security-relevant setting that looks applied and is not. Rejecting the
+spelling is what keeps that from compiling.
 
 ## Giving a Tool a UI
 
@@ -339,7 +327,6 @@ async fn read_resource(ctx: Context, res: Uri) -> Result<Content, Error> {
     Ok(Content::resource(resource))
 }
 ```
-
 
 ## Learn By Example
 Here you may find the full [example](https://github.com/RomanEmreis/neva/tree/main/examples/server)

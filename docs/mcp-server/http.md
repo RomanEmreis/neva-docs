@@ -56,7 +56,7 @@ App::new()
     // double-fires `on_commit`. The default store is per-process.
     .with_request_state_store(my_redis_store)
     // Without this, a subscriber on one instance never hears about a
-    // mutation that happened on another. New in 0.5.3.
+    // mutation that happened on another.
     .with_notification_bus(my_redis_bus)
     .with_options(|opt| opt.with_default_http())
     .run()
@@ -75,10 +75,6 @@ so a state minted by one is not a state the others accept.
 
 See [Deployment must-do for multi-instance HTTP](../spec-2026-07-28.md#deployment-must-do-for-multi-instance-http)
 for what the secret protects and how to rotate it.
-
-:::warning Breaking change in v0.3.3
-The `http-server` feature flag is now **engine-agnostic** and no longer pulls in Volga. To keep the default Volga-based server, depend on `http-server-volga` (or stay on the `server-full` preset, which still selects it for you). If you previously did `features = ["http-server"]` and want the same behavior as before v0.3.3, rename it to `http-server-volga`.
-:::
 
 ## Basic Setup
 
@@ -139,19 +135,13 @@ port. Bound to anything else it accepts everything, because the names a
 deployment is legitimately reached by are not knowable from here: behind a
 proxy the `Host` is whatever that proxy forwards.
 
-:::warning `bind("::1:3000")` — fixed in 0.5.4
-`std` takes the last colon of an *unbracketed* IPv6 bind string as the port
-separator, so that address really does listen on `[::1]:3000` — but the
-default policy read the string whole, where it parses as the *different*,
-non-loopback address `::1:3000`. A server on loopback therefore defaulted to
-`allow_any_origin`, with the checks the spec makes a MUST for local servers
-switched off. Bind strings are now read the way `std` reads them.
-`[::1]:3000`, `127.0.0.1:3000` and `localhost:3000` were never affected.
+Whether an address counts as loopback is decided the way `std` reads a bind
+string, so an unbracketed IPv6 address works: `bind("::1:3000")` listens on
+`[::1]:3000` and gets the loopback policy. Bracket it anyway — `[::1]:3000`
+says what it means without relying on the last-colon rule.
 
-Hardened in the same release: an `Origin` carrying userinfo is no longer
-matched by the name in front of the `@` — `https://app.example.com:8443@evil.com`
-has the host `evil.com`. Not a reachable bypass, since `Origin` is browser-set.
-:::
+An `Origin` carrying userinfo is matched on its real host, not on the name in
+front of the `@`: `https://app.example.com:8443@evil.com` is `evil.com`.
 
 A deployment that *does* know its names states them with
 [`with_allowed_origins()`](https://docs.rs/neva/latest/neva/transport/struct.HttpServer.html#method.with_allowed_origins):

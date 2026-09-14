@@ -17,29 +17,18 @@ This project is currently in preview. Breaking changes can be introduced without
 :::
 
 :::info MCP 2026-07-28 is the default
-Since **neva 0.5.0** a plain build speaks MCP **2026-07-28**, and this site
-documents that generation. The previous one (MCP 2024-11-05 … 2025-11-25)
-moved behind the [`legacy-spec`](./legacy-spec) feature.
+A plain build speaks MCP **2026-07-28**, and this site documents that
+generation. The previous one (MCP 2024-11-05 … 2025-11-25) lives behind the
+[`legacy-spec`](./legacy-spec) feature.
 
-Read **[MCP 2026-07-28](./spec-2026-07-28)** for the narrative, and
-**[Legacy spec](./legacy-spec#migrating-to-050)** if you are upgrading
-from 0.4.x.
+Read **[MCP 2026-07-28](./spec-2026-07-28)** for what that generation changed,
+and **[Legacy spec](./legacy-spec)** for the older profile and the upgrade
+paths between releases.
 :::
 
-:::info What's new in 0.6.0
-A handler no longer has to be an `async fn` — every registration point accepts
-a plain `fn` too, and one that blocks can be moved onto Tokio's blocking pool
-with `neva::blocking` or a `blocking` attribute. See
-**[Handler shapes](./mcp-server/handlers)**.
-
-A client's extension declarations now ride
-**[each request's `_meta`](./spec-2026-07-28#capabilities-ride-each-request)**,
-so `with_apps()` reaches a 2026-07-28 server with no handshake and a handler
-can ask `ctx.supports_apps()` before choosing how to answer.
-
-Upgrading from 0.5.x? Two calls changed —
-**[Migrating to 0.6.0](./spec-2026-07-28#migrating-to-060)**.
-:::
+Release-by-release detail lives in the
+[CHANGELOG](https://github.com/RomanEmreis/neva/blob/main/CHANGELOG.md); this
+site describes the current release.
 
 ## Supported Platforms
 Neva runs on Rust stable on Linux, macOS, and Windows.

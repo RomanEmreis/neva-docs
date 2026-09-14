@@ -4,7 +4,7 @@ sidebar_position: 9
 
 # Custom HTTP Stack
 
-Neva's Streamable HTTP transport is **pluggable**. The default server is built on [Volga](https://docs.rs/volga) and is enabled by `server-full` / `http-server-volga`, but starting with **v0.3.3** you can host the MCP endpoint on any HTTP stack — `axum`, `hyper`, `actix-web`, or a hand-rolled adapter — by implementing a single trait.
+Neva's Streamable HTTP transport is **pluggable**. The default server is built on [Volga](https://docs.rs/volga) and is enabled by `server-full` / `http-server-volga`, but you can host the MCP endpoint on any HTTP stack — `axum`, `hyper`, `actix-web`, or a hand-rolled adapter — by implementing a single trait.
 
 All JSON-RPC framing, SSE replay & dedup, batch fast-path, and pending-oneshot routing stay inside neva. Your adapter is the thinnest possible shim that maps your framework's native request/response/SSE types onto neva's neutral ones.
 
@@ -78,24 +78,14 @@ Inside your route handlers, three free helpers do everything else:
 The last two compile in either build, but under MCP 2026-07-28 the stateless
 transport gives them nothing to serve.
 
-:::warning `tracked_event` takes an `EventId` — changed in v0.5.5
-The parameter was a `u64` sequence number. It is now
-[`EventId`](https://docs.rs/neva/latest/neva/transport/http/core/types/struct.EventId.html),
-because a session may hold [several SSE streams at
-once](../legacy-spec#concurrent-sse-streams) and an event id is a cursor
-*within one stream* rather than within the session — so it has to name the
-stream as well as the position.
-
-The migration is the signature and nothing else: engines write the id out the
-way they wrote the number.
+:::warning Write the whole `EventId`
+`tracked_event` is handed an
+[`EventId`](https://docs.rs/neva/latest/neva/transport/http/core/types/struct.EventId.html)
+rather than a bare sequence number, because a session may hold [several SSE
+streams at once](../legacy-spec#concurrent-sse-streams): an event id is a cursor
+*within one stream*, so it has to name the stream as well as the position.
 
 ```rust
-// 0.5.4
-fn tracked_event(seq: u64, msg: &Message) -> Self::SseEvent {
-    Ok(Event::default().id(seq.to_string()).json_data(msg).unwrap_or_default())
-}
-
-// 0.5.5
 fn tracked_event(id: EventId, msg: &Message) -> Self::SseEvent {
     Ok(Event::default().id(id.to_string()).json_data(msg).unwrap_or_default())
 }
@@ -126,18 +116,11 @@ enum StreamResponse<S> {
 `Stream` is a live SSE feed; `Complete` carries a full JSON reply or an
 HTTP-level error (you just `adapt_response` it).
 
-:::warning Renamed in v0.5.0
-`SseResponse` became `StreamResponse` and its `Status` variant became
-`Complete` — it carries full JSON replies, not just error statuses. A
-deprecated `SseResponse` alias remains for one release.
-
-`dispatch_post` also changed shape: it now returns
-`Result<StreamResponse<impl Stream<Item = E::SseEvent>>, Error>` rather than
-`E::Response`, so engines handle the same two-arm match their GET route
-already had. `handlers::handle_post` stays available as the JSON-only
-building block. Builds without `tracing` — and `legacy-spec` builds — always
-produce `Complete`, so the behavior is unchanged there.
-:::
+`dispatch_post` returns `Result<StreamResponse<impl Stream<Item = E::SseEvent>>, Error>`,
+so an engine handles the same two-arm match on its POST route that its GET route
+already has. `handlers::handle_post` stays available as the JSON-only building
+block. Builds without `tracing` — and `legacy-spec` builds — always produce
+`Complete`.
 
 ## End-to-End: axum Adapter
 
@@ -345,14 +328,6 @@ That wait is bounded by
 [`App::with_shutdown_drain`](./shutdown#what-shutdown-actually-does), so an
 engine that ignores the token costs its server that budget on every stop rather
 than hanging it — but it costs it every time.
-
-:::note Fixed in v0.5.5
-The bundled Volga engine had exactly this bug: it took the token and used it
-only to report failures, so a server stopped through an
-[`App::with_shutdown()`](./shutdown) handle returned from `run` with the port
-still bound, until whatever owned the runtime dropped it. Signals still worked,
-because Volga handled those itself.
-:::
 
 **Route handlers are one-liners.** All of the per-method logic — protocol dispatch, batch fast-path, SSE setup, oneshot routing — lives behind `dispatch_post` / `dispatch_delete` / `dispatch_get_sse`. Handlers just forward the request and the context.
 

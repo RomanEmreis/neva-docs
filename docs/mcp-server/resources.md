@@ -65,7 +65,7 @@ async fn main() {
 In the example above, the resource template name must be set explicitly.
 When using the [`#[resource]`](https://docs.rs/neva/latest/neva/attr.resource.html) attribute macro, the resource template name is automatically inferred from the function name.
 
-:::info A handler need not be `async` — new in 0.6.0
+:::info A handler need not be `async`
 A resource read or listing handler may also be a plain `fn`. Reading from disk
 *blocks*, so that is the textbook case for `#[resource(blocking)]` or
 `neva::blocking`, which moves the body onto Tokio's blocking pool instead of
@@ -243,9 +243,9 @@ Use
 to skip expensive local work nobody is listening for — but not to decide
 whether to notify: it is **node-local**, and under a
 [notification bus](./subscriptions#running-more-than-one-instance) a subscriber
-on another instance may be waiting for exactly what this one would skip. Since
-**0.5.3** `resource_updated` no longer pre-checks it and publishes
-unconditionally, letting the subscription filters route the result.
+on another instance may be waiting for exactly what this one would skip.
+`resource_updated` therefore does not pre-check it: it publishes
+unconditionally and lets the subscription filters route the result.
 
 :::note Under `legacy-spec`
 The `resources/subscribe` / `resources/unsubscribe` RPC pair comes back, and

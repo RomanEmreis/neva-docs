@@ -265,10 +265,8 @@ async fn main() {
 Also set `App::with_request_state_store(<shared store>)` — the default
 `InMemoryStateStore` is per-process, and without a shared one a
 lost-response retry re-runs the handler and double-fires `on_commit`.
-Implement `RequestStateStore` over Redis or similar. Since **0.5.5** its
-methods are plain `async fn`s (they returned `BoxFuture` before, so every
-impl opened with `Box::pin(async move { .. })` and carried the lifetimes
-that needed):
+Implement `RequestStateStore` over Redis or similar. Its methods are plain
+`async fn`s:
 
 ```rust
 use neva::RequestStateStore;
@@ -293,10 +291,10 @@ no-op, which is correct only for a single process — a **shared** store must
 implement it with a real distributed lock for the same reason it must share
 the MRTR secret.
 
-**0.5.3 — bind the state to this service.** The sealed state was bound to
-its request and principal but not to the service, so where several share
-one `with_request_state_secret`, a state minted by one was a state the
-others accepted. `App::with_request_state_audience("https://weather.example.com/mcp")`
+**Bind the state to this service.** A sealed state is bound to its request and
+principal, but not by itself to the service — so where several services share
+one `with_request_state_secret`, a state minted by one is a state the others
+accept. `App::with_request_state_audience("https://weather.example.com/mcp")`
 closes that. It must be identical on every instance of the same service; a
 mismatch is `InvalidParams`, and the check runs both ways — a state naming
 an audience is refused by a server configuring none. An audience-bound

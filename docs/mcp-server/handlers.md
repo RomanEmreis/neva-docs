@@ -32,13 +32,10 @@ async fn main() {
 }
 ```
 
-:::info New in neva 0.6.0
-Before **0.6.0** a handler had to return a future, so a body doing nothing but
-arithmetic still had to be an `async fn`. Synchronous handlers are **additive**:
-which shape a handler has is read off its signature, the published schema and
-the argument slots are identical either way, and existing `async fn` handlers
-are untouched.
-:::
+Which shape a handler has is read off its signature — there is nothing to
+declare. The published schema, the argument slots and the response are
+identical either way, so the choice is about how the body runs and nothing
+else.
 
 ## Choosing a shape
 
@@ -211,22 +208,9 @@ handlers existed.
 A `blocking(..)` handler carries `marker::Immediate` too — it is a synchronous
 handler with a different execution strategy, not a third shape.
 
-:::warning Spelled-out generics need one more argument
-The registration methods gained the marker as a generic parameter, so a call
-site that writes its generics out by hand needs a fourth argument:
-
-```rust
-// 0.5.x
-app.map_tool::<_, _, (String,)>("greet", greet);
-
-// 0.6.0 — fails with E0107 until the marker is added
-app.map_tool::<_, _, (String,), _>("greet", greet);
-```
-
-This is the only source-breaking part of the change. Every call site that
-leaves inference to do its job — which is the normal way to write them — is
-unaffected. See the [0.6.0 migration notes](../spec-2026-07-28#migrating-to-060).
-:::
+A call site that writes its generics out by hand has to spell the marker too —
+`app.map_tool::<_, _, (String,), _>("greet", greet)`. Leaving inference to do
+its job, which is how these are normally written, needs nothing.
 
 ## What's next
 

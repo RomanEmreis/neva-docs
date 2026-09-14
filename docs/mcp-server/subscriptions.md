@@ -10,14 +10,6 @@ carrying a filter. On the server side there is **no handler to write**: neva
 answers `subscriptions/listen` itself and fans your existing `Context` calls
 out to every stream whose filter admits them.
 
-:::info New in neva 0.5.1
-Subscription delivery arrived in **neva 0.5.1**. Until then `listChanged` and
-`resources.subscribe` were masked off in the default build because nothing
-could deliver them. A listen stream now can, so a server that configures
-`with_list_changed()` / `with_subscribe()` starts seeing those capabilities on
-the wire again.
-:::
-
 ## Advertise what you can push
 
 The accepted filter is the requested one **narrowed to the advertised
@@ -105,15 +97,15 @@ if ctx.is_subscribed(&"res://config".into()) {
 ctx.resource_updated("res://config").await?;
 ```
 
-:::warning `is_subscribed` is node-local — changed in 0.5.3
+:::warning `is_subscribed` is node-local
 It can only answer for the instance running the handler. Under a
 [notification bus](#running-more-than-one-instance) a subscriber elsewhere may
 be waiting for exactly the update this instance would skip.
 
-That is why `Context::resource_updated` **no longer pre-checks it**: since
-**0.5.3** it publishes unconditionally and lets the filters route the result,
-which is what they already did. Use `is_subscribed` to skip work, never to
-decide whether to notify.
+That is why `Context::resource_updated` does not pre-check it: it publishes
+unconditionally and lets the filters route the result, which is what they
+already do. Use `is_subscribed` to skip work, never to decide whether to
+notify.
 :::
 
 ## Running more than one instance
@@ -133,11 +125,9 @@ client --- tools/call (mutates the tools) --> instance B   (ctx.add_tool)
 The subscriber was told its filter was accepted, so the loss reads as "the
 server never changes" rather than as a delivery failure.
 
-:::info New in neva 0.5.3
 [`App::with_notification_bus(..)`](https://docs.rs/neva/latest/neva/app/struct.App.html#method.with_notification_bus)
-carries notifications between instances: each one publishes what it produces
-and delivers what it receives to the streams it holds.
-:::
+closes that gap: each instance publishes what it produces and delivers what it
+receives to the streams it holds.
 
 ```rust
 use neva::prelude::*;
@@ -224,25 +214,18 @@ nothing about who opened the stream, so closing the response body is the
 sound mechanism there — and the client sees `Cancelled` rather than a final
 result.
 
-:::info Graceful close on shutdown — fixed in 0.5.4
+:::info Graceful close on shutdown
 The spec says a server ending a subscription on its own initiative SHOULD send
 the empty result first, so a client can tell an orderly end from a dropped
-connection. neva constructed that result but rarely delivered it: one
-cancellation token drove both the subscription and the transport, so the result
-raced a writer that had already broken out of its loop on the very same signal
-— and clients saw `SubscriptionEnd::Abrupt` where `Graceful` was owed.
+connection.
 
-Shutdown is [two-phase](./shutdown#what-shutdown-actually-does) now. The signal
-ends the subscriptions and waits until every result has reached the outbound
-channel; only then is the transport torn down.
-[`App::with_shutdown_drain(..)`](./shutdown) caps that wait (2 seconds by
-default) and is skipped outright when no subscription is open, so a server that
-never uses them shuts down exactly as fast as before.
-
-**0.5.5** finished the job: `run` now waits for the transport writers before it
-returns, so the result survives a runtime dropped right behind it — and the
-bundled Volga engine actually stops on the transport's token, which is what
-makes any of this reach an HTTP client.
+Shutdown is [two-phase](./shutdown#what-shutdown-actually-does) for that reason.
+The signal ends the subscriptions and waits until every result has reached the
+outbound channel; only then is the transport torn down, and `run` waits for the
+transport writers before returning so the result survives a runtime dropped
+right behind it. [`App::with_shutdown_drain(..)`](./shutdown) caps that wait
+(2 seconds by default) and is skipped outright when no subscription is open, so
+a server that never uses them shuts down as fast as one that cannot.
 :::
 
 ## Transports

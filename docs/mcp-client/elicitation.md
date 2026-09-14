@@ -73,7 +73,7 @@ async fn elicitation_handler(params: ElicitRequestParams) -> ElicitResult {
 }
 ```
 
-:::info A handler need not be `async` — new in 0.6.0
+:::info A handler need not be `async`
 `Client::map_elicitation` and `#[elicitation]` accept a plain `fn` returning an
 `ElicitResult` directly. A handler that puts a **blocking** dialog in front of a
 user — a terminal prompt, a native modal — is exactly what

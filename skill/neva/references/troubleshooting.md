@@ -113,8 +113,8 @@ property names differ from the parameter names. Fix with `map_tool!`,
 
 ### `-32602 invalid type: map, expected a boolean`
 
-An old neva reading a conformant client's per-request capabilities. Upgrade
-to 0.5.2 or later; both shapes are accepted there.
+An old neva reading a conformant client's per-request capabilities. Upgrade —
+current releases accept both shapes.
 
 ### `HeaderMismatch` (-32020) out of nowhere
 
@@ -165,7 +165,7 @@ The instances do not share a state secret. Set
 warns at startup when it is missing. A doubled `on_commit` across
 instances means the state *store* is not shared either.
 
-If it started after adding `with_request_state_audience` (0.5.3): the value
+If it started after adding `with_request_state_audience`: the value
 must be identical on every instance, and states in flight when it was
 turned on are refused until they lapse (5 minutes). A mixed rollout also
 refuses — an audience-bound state is sealed under wire version `v2.`, which
@@ -175,7 +175,7 @@ a binary predating the option cannot read, deliberately.
 
 The stateless transport pins nothing, so the `subscriptions/listen` stream
 and the request that mutated the server landed on different processes.
-Configure `App::with_notification_bus(..)` (0.5.3). If a bus is installed
+Configure `App::with_notification_bus(..)`. If a bus is installed
 and it still happens, check the bus does not suppress echo — local delivery
 goes through `subscribe()` too, so an implementation that hides an
 instance's own publishes silences that instance's own subscribers.
@@ -185,41 +185,35 @@ node-local and answers only for the instance running the handler.
 
 ### `SubscriptionEnd::Abrupt` when the server shuts down
 
-Owed a `Graceful`. Fixed in **0.5.4** — before it, one cancellation token
-drove both the subscription and the transport, so the empty result raced a
-writer that had already broken out of its loop. Under `App::run_blocking`
-take **0.5.5**: there `run` also waits for the transport writers, where
-before it returned on the same signal that started them draining and the
-dropped runtime aborted a writer mid-drain.
+Owed a `Graceful`. A neva server sends the empty result first and `run` waits
+for the transport writers to put it on the wire, so check what is actually
+on the other end: an older neva, or a peer that does not send it, produces an
+`Abrupt` that is not a fault on this side.
 `App::with_shutdown_drain(Duration::ZERO)` opts out of the graceful close
 deliberately, and the two teardown phases share that one budget rather than
 each taking it afresh.
 
 ### The server "stops" but the port stays bound
 
-A shutdown requested through `ShutdownHandle` rather than Ctrl+C, on 0.5.4
-or earlier: the Volga engine took the transport token and used it only to
-report its own failures, so the listener came down on Volga's own signal
-handling and nothing else. `run` returned while the endpoint was still
-serving. Fixed in **0.5.5**. A *custom* `HttpEngine` has the same duty —
-wire the token to the framework's graceful shutdown, and remember that
-`run` returning is what neva waits for.
+The engine did not bring its listener down. An `HttpEngine` is handed a
+`CancellationToken` and must wire it to the framework's graceful shutdown;
+`run` returning is what neva waits for. An engine that takes the token and only
+reports its own failures leaves the endpoint serving after `App::run` returned.
 
 ### `Box::pin(async move { .. })` no longer compiles in a trait impl
 
-0.5.5 converted the last two boxed traits to plain `async fn`s:
-`AuthorizationHandler` (`redirect_uri`, `authorize`) and
-`RequestStateStore` (`get`, `put`, `reserve`). Drop the wrapper and the
-explicit lifetimes; the body is what it always was. `neva::shared::BoxFuture`
+`AuthorizationHandler` (`redirect_uri`, `authorize`) and `RequestStateStore`
+(`get`, `put`, `reserve`) take plain `async fn`s. Drop the wrapper and the
+explicit lifetimes; the body is unchanged. `neva::shared::BoxFuture`
 is still public — the middleware `Next` returns one — it is just no longer
 part of any trait you implement.
 
 ### A custom engine fails to compile on `tracked_event`
 
-0.5.5 changed the parameter from `seq: u64` to `EventId` (re-exported from
-`neva::prelude`). Take the id and write `id.to_string()` where the sequence
-number went: it renders `<stream>:<seq>`, because an event id is a cursor
-within one SSE stream rather than within the session.
+The parameter is an `EventId` (re-exported from `neva::prelude`), not a `u64`.
+Take the id and write `id.to_string()` where a sequence number would go: it
+renders `<stream>:<seq>`, because an event id is a cursor within one SSE stream
+rather than within the session.
 
 ### A resumed SSE stream replays the wrong events, or is answered `404`
 
@@ -227,9 +221,8 @@ The engine is writing out a trimmed id — the `seq` half alone, or its own
 counter. A `Last-Event-ID` has to name the stream it resumes, so neva
 refuses one that names a stream the session does not hold rather than
 serving it from whatever stream is at hand. Write the whole `EventId`.
-(Ids in the pre-0.5.5 shape are read as the standalone stream's cursor
-while the session holds only that one, so an upgrade does not strand
-clients.)
+(An id that names no stream is read as the standalone stream's cursor while the
+session holds only that one, so an older client is not stranded.)
 
 ### A second `GET` on the same session gets `429`
 
@@ -242,21 +235,20 @@ seeing this means eight are genuinely connected. Legacy profile only.
 A stored refresh token is only read back under the authorization server
 that minted it, and nothing records which one that was without
 `OAuthClientConfig::with_issuer(..)`. Set it. Dynamically registered
-clients never reuse a token either. (0.5.3 tightened this: the server a
-flow discovers is vouched for by the resource alone, which is what an
-attacker controlling the resource rewrites.)
+clients never reuse a token either. The reason is that the server a flow
+discovers is vouched for by the resource alone, which is exactly what an
+attacker controlling the resource rewrites.
 
-Related, same release: the `TokenStore` key became
-`{issuer}|{client}|{resource}`. Entries written by 0.5.2 or earlier are not
-found under it and are left in place; those sessions re-authorize once.
+Relatedly, the `TokenStore` key is `{issuer}|{client}|{resource}` — the whole
+identity a credential belongs to — so two servers never share a slot.
 
 ### The OAuth flow registers, then fails at the token request
 
 The registration response named no `token_endpoint_auth_method`, RFC 7591
 fills that silence with `client_secret_basic`, and the server advertises
-only `none`. Fixed in 0.5.4 — the server's own metadata decides. Likewise a
-secret is now presented the way `token_endpoint_auth_methods_supported`
-says it is accepted, rather than always as HTTP Basic.
+only `none`. The server's own metadata decides, and a secret is presented the
+way `token_endpoint_auth_methods_supported` says it is accepted rather than
+always as HTTP Basic — so check what the server actually advertises.
 
 ### A DPoP request fails on a `3xx`
 
@@ -280,10 +272,11 @@ Pin it with `LoopbackHandler::new().with_port(8919)` and register both the
 
 ### A loopback server accepts any `Origin`
 
-Check the bind string. `bind("::1:3000")` really listens on `[::1]:3000`,
-but before **0.5.4** the DNS-rebinding policy read it whole, where it parses
-as the different, non-loopback address `::1:3000` — and a non-loopback bind
-defaults to `allow_any_origin`. Write `[::1]:3000`, or upgrade.
+Check the bind string: a non-loopback bind defaults to `allow_any_origin`,
+because the legitimate names are not knowable from there. Bind strings are read
+the way `std` reads them, so `bind("::1:3000")` does listen on `[::1]:3000` and
+is treated as loopback — write `[::1]:3000` anyway, so it does not depend on the
+last-colon rule.
 
 ### `--all-features` behaves like a different SDK
 
@@ -300,9 +293,8 @@ under `client` / `legacy-spec`, so a server-only build needs
 
 ### An unknown attribute on `#[tool]` / `#[resource]` / `#[prompt]`
 
-New in **0.5.6**: these macros reject an attribute they do not know instead
-of ignoring it. The code compiled before because the attribute was being
-dropped, which is the bug — a misspelled `visibility` published an app-only
+These macros reject an attribute they do not know rather than ignoring it —
+a dropped attribute is how a misspelled `visibility` would publish an app-only
 tool to the agent. Fix the spelling or delete the attribute.
 
 ### An MCP App renders nothing, or as unstyled plain text

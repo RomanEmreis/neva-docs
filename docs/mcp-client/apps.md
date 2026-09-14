@@ -102,20 +102,9 @@ A server reads it back with
 [`Context::supports_apps()`](../mcp-server/apps#asking-whether-the-caller-can-render),
 and can then vary its `content` by whether you can render.
 
-:::info New in 0.6.0
-Before 0.6.0 a neva client advertised **nothing** to a 2026-07-28 server: the
-declaration existed only on the legacy `initialize` path, so `with_apps()`
-reached such a server not at all and a handler had no way to ask. Nothing on
-this page depended on it — reading the metadata off `tools/list` and
-`resources/read` needs no negotiation — but a server could not *vary* its answer.
-Now it can.
-:::
-
-:::note New in 0.5.6
-`ClientCapabilities::extensions` is no longer gated on the protocol generation,
-so a legacy `initialize` can carry it. Additive; its counterpart on
-`ServerCapabilities` stays 2026-07-28-only.
-:::
+Note that the declaration is only needed for a server to *vary* its answer.
+Reading the metadata off `tools/list` and `resources/read` — everything else on
+this page — needs no negotiation at all.
 
 ## Finding the tools that have a face
 
@@ -232,12 +221,9 @@ therefore allow" — that inverts the specification's intent and hands an untrus
 document the network.
 :::
 
-:::note New in 0.5.6
-[`ResourceContents`](https://docs.rs/neva/latest/neva/types/enum.ResourceContents.html)'s
-accessors — `uri`, `text`, `blob`, `json`, `mime`, `title`, `annotations` — are
-now available to a client build. Previously they were server-side only, which
-made a client read the enum's variants by hand. The *builders* stay server-side.
-:::
+[`ResourceContents`](https://docs.rs/neva/latest/neva/types/enum.ResourceContents.html)
+gives a client the accessors `uri`, `text`, `blob`, `json`, `mime`, `title` and
+`annotations`; the *builders* are server-side.
 
 ## What's next
 

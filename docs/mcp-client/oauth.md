@@ -83,9 +83,8 @@ resource now points somewhere else*:
 :::warning A stored refresh token needs `with_issuer`
 A refresh token is a bearer credential for its token endpoint, and the
 authorization server a flow discovers is vouched for by the resource alone —
-exactly what an attacker controlling the resource rewrites. Since **0.5.3**
-the after-restart refresh therefore requires `with_issuer` and reads the token
-back under it. Without one the session re-authorizes interactively; pointing
+exactly what an attacker controlling the resource rewrites. The after-restart
+refresh therefore requires `with_issuer` and reads the token back under it. Without one the session re-authorizes interactively; pointing
 `with_issuer` at a new server does not carry the old server's token over, and
 dynamically registered clients never reuse one.
 :::
@@ -340,30 +339,10 @@ impl AuthorizationHandler for MyUi {
 `redirect_uri` is called once per flow, before registration — the URI it
 returns is what gets registered and sent with the authorization request.
 
-:::warning Plain `async fn`s — changed in 0.5.5
-Both methods used to return `neva::shared::BoxFuture`, so every implementation
-opened with `Box::pin(async move { … })`. That was a fact about how the
-configuration keeps the handler — behind `Arc<dyn ..>` — rather than about the
-seam you implement, and the boxing has moved to an internal bridge.
-
-To migrate, drop the wrapper:
-
-```rust
-// 0.5.4
-fn redirect_uri(&self) -> BoxFuture<'_, Result<String, Error>> {
-    Box::pin(async { Ok("https://my.app/oauth/callback".into()) })
-}
-
-// 0.5.5
-async fn redirect_uri(&self) -> Result<String, Error> {
-    Ok("https://my.app/oauth/callback".into())
-}
-```
-
-The futures still have to be `Send`, which an `async fn` holding nothing
-thread-bound across an `.await` already satisfies. Users of the default
-`LoopbackHandler` have nothing to change.
-:::
+Both methods are plain `async fn`s — the boxing the configuration needs to keep
+the handler behind an `Arc<dyn ..>` lives on an internal bridge, not on the seam
+you implement. The futures still have to be `Send`, which an `async fn` holding
+nothing thread-bound across an `.await` already satisfies.
 
 ## Storing tokens
 
@@ -376,12 +355,10 @@ it an encrypted file or an OS keychain to survive a restart:
     .with_token_store(my_keychain_store))
 ```
 
-:::warning The store key changed in 0.5.3
+:::note How entries are keyed
 An entry is filed under `{issuer}|{client}|{resource}` — the whole identity a
-credential belongs to — rather than the resource alone, so two servers (or two
-clients sharing one durable store) never share a slot. Entries written by an
-earlier version are not found under the new key and are left in place; the
-affected sessions re-authorize once.
+credential belongs to, not the resource alone — so two servers, or two clients
+sharing one durable store, never share a slot.
 :::
 
 ## Configuration reference
