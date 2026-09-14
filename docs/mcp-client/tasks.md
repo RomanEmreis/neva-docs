@@ -102,9 +102,8 @@ notification is `notifications/tasks`.
 :::note
 In the spec, `notifications/tasks` is opted into through the
 [`subscriptions/listen`](./subscriptions) mechanism. neva implements
-`subscriptions/listen` as of 0.5.1, but task status is not one of its filter
-categories yet — nothing carries the notification, so **poll with
-`tasks/get`**.
+`subscriptions/listen`, but task status is not one of its filter categories —
+nothing carries the notification, so **poll with `tasks/get`**.
 :::
 
 ## Handling Elicitation in Tasks

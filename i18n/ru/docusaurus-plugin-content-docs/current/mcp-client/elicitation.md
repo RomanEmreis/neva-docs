@@ -73,7 +73,7 @@ async fn elicitation_handler(params: ElicitRequestParams) -> ElicitResult {
 }
 ```
 
-:::info Обработчик не обязан быть `async` — появилось в 0.6.0
+:::info Обработчик не обязан быть `async`
 `Client::map_elicitation` и `#[elicitation]` принимают и обычную `fn`,
 возвращающую `ElicitResult` напрямую. Обработчик, который показывает
 пользователю **блокирующий** диалог — приглашение в терминале, нативное

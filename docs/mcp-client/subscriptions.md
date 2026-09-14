@@ -14,13 +14,6 @@ stream, and the `resources/subscribe` / `resources/unsubscribe` RPC pair. A
 per-resource subscription did not disappear; it became a URI in the filter,
 scoped to the stream that carries it.
 
-:::info New in neva 0.5.1
-`Client::listen` arrived in **neva 0.5.1**. Before it, server-initiated
-notifications had no channel on the stateless HTTP transport, and this site
-told you to poll instead — that advice described the release candidate, not
-the final spec. It no longer applies.
-:::
-
 ## Opening a subscription
 
 ```rust compile
@@ -148,16 +141,12 @@ resolves to a
 | `Graceful(SubscriptionsListenResult)` | The server answered the listen request with its close result. The result names the subscription it closes, and a reply naming a different one is reported as `Abrupt` instead |
 | `Abrupt` | The stream went away without a final result — dropped connection, timeout, or a server that died |
 
-:::info Server shutdown gives you `Graceful` — since neva 0.5.4
+:::info An `Abrupt` close is not necessarily a fault on this side
 A server ending a subscription on its own initiative SHOULD send the empty
-result first, and until **0.5.4** neva constructed that result but rarely
-delivered it: one cancellation token drove both the subscription and the
-transport, so the result raced a writer that had already broken out of its
-loop on the very same signal. **0.5.5** completed it — until then `run` could
-return into a drain that was still writing, and under `run_blocking` the
-runtime dropped behind it cut the writer off. Against an older server, read an
-`Abrupt` at shutdown as "the peer stopped", not as a fault on this side. See
-[Server → Graceful Shutdown](../mcp-server/shutdown).
+result first, and a neva server does — see
+[Server → Graceful Shutdown](../mcp-server/shutdown). Not every peer delivers
+it, so treat an `Abrupt` at shutdown as "the peer stopped" rather than as a
+local error.
 :::
 
 Subscriptions are **not resumable**: a client that wants to keep listening

@@ -153,12 +153,11 @@ async fn main() {
 | `with_ui` | Replaces the whole `_meta.ui` block at once — the escape hatch for a block built elsewhere |
 | `with_roles` / `with_permissions` | Who may **read** the resource — see [Authorization](#authorization) |
 
-:::warning `with_permissions` changed meaning in 0.6.0
-On a `UiResource` it now sets **who may read the resource**, as on every other
-resource. The iframe's browser permissions moved to **`with_ui_permissions`**,
-so a 0.5.6 `with_permissions(UiPermissions::..)` call no longer compiles. The
-rename is mechanical — see the [0.6.0 migration notes](../spec-2026-07-28#migrating-to-060).
-`UiResourceMeta::with_permissions` is unchanged.
+:::warning Two permissions, two meanings
+`with_ui_permissions` requests **browser** permissions for the iframe — camera,
+geolocation and the rest. `with_permissions` says **who may read the resource**,
+checked against a caller's claims exactly as on any other resource. They are
+unrelated, and only the second one refuses anybody.
 :::
 
 ### Generated HTML — a `ui://` resource like any other
@@ -355,13 +354,10 @@ that off while the literals are still in hand:
 | `#[resource(uri = "ui://x", mime = "text/html")]` | A `ui://` resource is served as `text/html;profile=mcp-app` and nothing else |
 | `ui_meta` on a non-`ui://` resource | The block only means anything on a `ui://` resource; hosts ignore it elsewhere |
 
-:::info New in 0.5.6: unknown attributes are rejected
-`#[tool]`, `#[resource]`, `#[resources]`, `#[prompt]` and `#[handler]` now
-**reject** an attribute they do not know instead of ignoring it. The motivating
-case is exactly this page's: a misspelled `visibility` used to publish an
-app-only tool to the agent. If an existing macro invocation suddenly fails to
-compile, the attribute was never doing anything.
-:::
+A misspelled attribute is caught the same way: the macros
+[reject an attribute they do not know](./tools#unknown-attributes-are-rejected)
+rather than ignoring it, which is what keeps a mistyped `visibility` from
+publishing an app-only tool to the agent.
 
 Two mistakes the macros cannot catch are checked at startup instead, and logged
 as warnings: a tool pointing at a `ui://` resource **nothing serves** (the host's
@@ -434,17 +430,12 @@ async fn main() {
 A caller holding none of the roles is refused on `resources/read`. Combined,
 `with_roles` and `with_permissions` must **both** be satisfied.
 
-:::info New in 0.6.0
-Before 0.6.0 the only way to restrict a `ui://` document was to register it with
-`map_ui_resource` and put the requirement on the returned `ResourceTemplate`.
-That still works; `add_ui_resource` now carries the same pair directly.
+Registering the document with `map_ui_resource` and putting the requirement on
+the returned `ResourceTemplate` does the same job, if the markup is generated
+rather than fixed.
 
-Both builders are gated on the `http-server` feature — roles and permissions come
-from a validated token, which is an HTTP-transport concern. Do not confuse
-`with_permissions` (who may read) with
-[`with_ui_permissions`](#serving-the-document) (what the iframe may ask the
-browser for).
-:::
+Both builders are gated on the `http-server` feature: roles and permissions come
+from a validated token, which is an HTTP-transport concern.
 
 `resources/read` checks the requirement on the **matched route**, rather than
 looking up and cloning the resource template on every read — a template's
@@ -525,18 +516,13 @@ A UI-bound tool must return meaningful `content` either way — the model reads
 between a terse datum and a full sentence, never between an answer and nothing.
 :::
 
-:::info New in 0.6.0
-Both halves of this landed together: a neva client now writes its `extensions`
-map into every request's `_meta`, so `with_apps()` reaches a 2026-07-28 server
-with no handshake, and the server reads it back through `Context`. Previously
-the declaration went out only on a `legacy-spec` `initialize`, and a handler had
-no way to ask. See
-[per-request client extensions](../spec-2026-07-28#capabilities-ride-each-request)
-for the general mechanism — MCP Apps is one extension using it.
+A client declares this by calling `with_apps()`; the map then rides
+[every request's `_meta`](../spec-2026-07-28#capabilities-ride-each-request),
+which is the general mechanism MCP Apps happens to use.
 
-Not available under [`legacy-spec`](../legacy-spec), which has no per-request
-`_meta` channel for capabilities. Under that profile the declaration rides
-`initialize` as before.
+:::note Not available under `legacy-spec`
+That profile has no per-request `_meta` channel for capabilities — the
+declaration rides `initialize` instead, and `supports_apps` is compiled out.
 :::
 
 ## What's next

@@ -219,7 +219,7 @@ Listings are ordered by name and stable across calls, which is what makes
 cursor pagination safe.
 
 `ResourceContents`'s accessors — `uri`, `text`, `blob`, `json`, `mime`,
-`title`, `annotations` — are available to a client build **as of 0.5.6**.
+`title`, `annotations` — are available to a client build.
 Before it they were server-only and a client had to match on the enum's
 variants. The builders are still server-side.
 
@@ -320,10 +320,9 @@ client), `Graceful(result)` (the server closed it), or `Abrupt` (stream
 went away). Subscriptions are not resumable — call `listen` again.
 Dropping the handle, or `disconnect()`, ends the subscription too.
 
-A server shutting down owes you `Graceful`. neva servers only started
-delivering it in **0.5.4**, and **0.5.5** made it survive the writer teardown
-under `run_blocking` — before that the empty result raced it, so an older
-peer stopping reads as `Abrupt` and is not a fault on this side. Over HTTP your own `cancel()` is always `Cancelled`, never
+A server shutting down owes you `Graceful`, and a neva server delivers it. Not
+every peer does, so an `Abrupt` at shutdown reads as "the peer stopped" rather
+than as a fault on this side. Over HTTP your own `cancel()` is always `Cancelled`, never
 `Graceful`: cancelling closes the listen `POST`'s body, which *is* the
 spec's cancellation mechanism there, and leaves no channel for a result.
 

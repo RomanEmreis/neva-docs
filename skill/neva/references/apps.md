@@ -269,7 +269,7 @@ macros make these compile errors:
 | `#[resource(uri = "ui://x", mime = "text/html")]` | A `ui://` resource is served as `text/html;profile=mcp-app` and nothing else |
 | `ui_meta` on a non-`ui://` resource | The block means nothing there |
 
-**Changed in 0.5.6:** `#[tool]`, `#[resource]`, `#[resources]`, `#[prompt]`
+`#[tool]`, `#[resource]`, `#[resources]`, `#[prompt]`
 and `#[handler]` now reject *any* unknown attribute instead of ignoring it.
 A misspelled `visibility` used to publish an app-only tool to the agent. If
 an existing macro invocation stops compiling after the upgrade, the
@@ -428,7 +428,7 @@ share that leniency** — an explicit `visibility` that cannot be decoded
 denies, so a garbled block can never promote an app-only tool into the
 agent's list.
 
-**Changed in 0.5.6:** `ResourceContents`'s accessors — `uri`, `text`,
+`ResourceContents`'s accessors — `uri`, `text`,
 `blob`, `json`, `mime`, `title`, `annotations` — are available to a client
 build. They used to be server-only. The builders stay server-side.
 
@@ -519,7 +519,7 @@ API.
 | A CSP setting appears to be ignored | A snake_case key in a hand-written `_meta`. The macro's `ui_meta` catches this; a hand-built `serde_json::json!` does not |
 | Fetches from the app are blocked | The origin is not in `csp.connectDomains` — including your own asset host |
 | An app-only tool shows up in the agent's tool list | Expected on the server; the host filters. Check `is_model_visible()` on the host side |
-| A tool was published to the agent despite `visibility` | Pre-0.5.6, a misspelled attribute was ignored. Upgrade — it is now a compile error |
+| A tool was published to the agent despite `visibility` | Check the spelling — an unknown attribute is a compile error, so a build that passed spelled it right |
 | The app renders one report for every id | The tool's `resourceUri` is a template. Point it at a concrete document and put the id in the result |
 | `with_apps` / `add_ui_resource` not found | Either the `apps` feature is off, or the build has `legacy-spec` on (which includes `--all-features`) |
 | `with_permissions` no longer takes `UiPermissions` | 0.6.0 renamed the iframe builder to `with_ui_permissions`; `with_permissions` now means who may read the resource |

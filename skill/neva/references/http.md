@@ -218,9 +218,9 @@ async fn main() -> Result<(), Error> {
 belong to one authorization server; naming it is what makes a stored
 refresh token reusable across a restart, and what refuses credentials to a
 server that never issued them. **Without `with_issuer` the session
-re-authorizes interactively on every start** (0.5.3 tightened this: the
-resource alone vouches for the authorization server a flow discovers, and
-that is exactly what an attacker controlling the resource rewrites).
+re-authorizes interactively on every start** — the resource alone vouches for
+the authorization server a flow discovers, and that is exactly what an attacker
+controlling the resource rewrites.
 
 A CIMD describes a *public* client, so pairing it with a client secret is
 refused. Generate the JSON to host with `client_metadata_document`, listing
@@ -330,15 +330,13 @@ nowhere in the 2026-07-28 text.
 **Other knobs:** `with_scopes([..])` (defaults to the resource's
 `scopes_supported`), `require_https(false)` (local dev issuers only),
 `with_token_store(..)` (the default is in-process; the key is
-`{issuer}|{client}|{resource}` as of 0.5.3, so entries written by 0.5.2 are
-not found and those sessions re-authorize once), `with_handler(..)` (replace
+`{issuer}|{client}|{resource}`, the whole identity a credential belongs to, so
+two servers never share a slot), `with_handler(..)` (replace
 the browser round; `LoopbackHandler::new().with_port(8919)` pins the port a
 registered redirect URI needs).
 
 **A custom `AuthorizationHandler`** drives the browser round for a headless
-or GUI-embedded client. Since **0.5.5** both methods are plain `async fn`s —
-they returned `BoxFuture` before, so every impl opened with
-`Box::pin(async move { .. })`:
+or GUI-embedded client. Both methods are plain `async fn`s:
 
 ```rust
 use neva::auth::oauth::{AuthorizationHandler, CallbackParams};
@@ -376,12 +374,10 @@ accepted — `localhost`, `127.0.0.0/8`, `[::1]` — on any port. Bound to
 anything else, everything is accepted, because the legitimate names are not
 knowable from there.
 
-Fixed in 0.5.4: `bind("::1:3000")` now gets the protection. `std` reads the
-last colon of an unbracketed IPv6 string as the port separator, so that
-address listens on `[::1]:3000` — but the policy read the string whole,
-where it parses as the *different*, non-loopback `::1:3000`, and the server
-silently defaulted to `allow_any_origin`. On 0.5.3 or earlier, write
-`[::1]:3000`.
+Bind strings are read the way `std` reads them, so an unbracketed IPv6 address
+still gets the loopback policy: `bind("::1:3000")` listens on `[::1]:3000` and
+is treated as loopback. Prefer the bracketed `[::1]:3000` anyway — it does not
+lean on the last-colon rule.
 
 ```rust
 use neva::prelude::*;
@@ -465,7 +461,6 @@ that are easy to get wrong:
 
 <!-- snippet: skip -->
 ```rust
-// 0.5.5 — the parameter was `seq: u64`
 fn tracked_event(id: EventId, msg: &Message) -> Self::SseEvent {
     Ok(Event::default().id(id.to_string()).json_data(msg).unwrap_or_default())
 }
@@ -480,19 +475,18 @@ async fn run(self, ctx: HttpContext, token: CancellationToken) -> Result<(), Err
 }
 ```
 
-* **`tracked_event` takes an `EventId`** (0.5.5; it was a `u64`). It is
+* **`tracked_event` takes an `EventId`**, not a bare sequence number. It is
   re-exported from `neva::prelude` and renders as `<stream>:<seq>` — an
   event id is a cursor within one SSE stream rather than within the
-  session, since a session may hold several. `id.to_string()` is the whole
-  migration; `stream()` / `seq()` expose the halves. Writing out a trimmed
-  id names no stream, and the resuming `GET` is answered `404`.
+  session, since a session may hold several. Write `id.to_string()`;
+  `stream()` / `seq()` expose the halves. Writing out a trimmed id names no
+  stream, and the resuming `GET` is answered `404`.
 * **`run` must honour the token, and returning is the shutdown signal.**
   `App::run` waits for it, so a response still being written reaches the
   socket before the runtime under it goes away. An engine that takes the
   token and only reports its own failures leaves the listener bound and
   serving after the `App` stopped, and costs the whole
-  `with_shutdown_drain` budget on every stop. (The bundled Volga engine had
-  exactly this bug before 0.5.5.)
+  `with_shutdown_drain` budget on every stop.
 
 Working adapters live in the neva repository under `examples/axum`,
 `examples/hyper` and `examples/actix`.
@@ -520,8 +514,8 @@ async fn main() {
 |---|---|
 | `with_request_state_secret(..)` | A cross-instance MRTR retry cannot decrypt its `requestState`. neva warns at startup |
 | `with_request_state_store(<shared store>)` | A lost-response retry re-runs the handler and double-fires `on_commit`. The default store is per-process |
-| `with_notification_bus(<shared bus>)` | **0.5.3.** A subscriber on one instance never hears a mutation produced on another — see `server.md` |
-| `with_request_state_audience(..)` | **0.5.3.** Where several services share one state secret, a state minted by one is accepted by the others |
+| `with_notification_bus(<shared bus>)` | A subscriber on one instance never hears a mutation produced on another — see `server.md` |
+| `with_request_state_audience(..)` | Where several services share one state secret, a state minted by one is accepted by the others |
 
 `with_request_state_audience` must be **identical on every instance of the
 same service**. The check runs both ways — a state naming an audience is
@@ -534,9 +528,8 @@ than signed.
 
 ## Stopping a server
 
-Signals (`SIGINT` / `SIGTERM`) work with no configuration. **New in 0.5.4:**
-stop one from code — a test, or neva embedded in a service that owns its
-lifecycle:
+Signals (`SIGINT` / `SIGTERM`) work with no configuration. To stop one from
+code — a test, or neva embedded in a service that owns its lifecycle:
 
 ```rust
 use neva::prelude::*;
@@ -571,13 +564,6 @@ The two phases share **one** deadline, stamped when the request arrives:
 waiting for the subscriptions spends part of the budget and the writers get
 the remainder.
 
-Two shutdown bugs to know when triaging a version:
-
-| Symptom | Fixed in |
-|---|---|
-| Clients see `SubscriptionEnd::Abrupt` where `Graceful` was owed | 0.5.4 (the drain), and **0.5.5** for the last leg — before it `run` returned on the same signal that started the writers draining, so under `run_blocking` the runtime drop aborted a writer mid-drain |
-| A server stopped through `ShutdownHandle` returns from `run` **with the port still bound and serving** | **0.5.5.** The Volga engine took the transport token and used it only to report its own failures, so the listener came down on Volga's own signal handling and nothing else. Ctrl+C was unaffected |
-
 ## Feature flags
 
 | Preset | Contains |
@@ -593,11 +579,11 @@ Individually: `server`, `server-macros`, `http-server`,
 `apps`, `tracing`.
 
 `client-oauth-jwt` (`private_key_jwt` client authentication) and
-`client-oauth-dpop` (RFC 9449 sender-constrained tokens) are new in 0.5.4.
-Both are opt-in because they are the only parts of the OAuth client needing
-a JWS signing backend, and both are in `client-full`.
+`client-oauth-dpop` (RFC 9449 sender-constrained tokens) are opt-in because they
+are the only parts of the OAuth client needing a JWS signing backend; both are
+in `client-full`.
 
-`apps` (MCP Apps, new in 0.5.6) is additive and pulls in no dependencies. Its
+`apps` (MCP Apps) is additive and pulls in no dependencies. Its
 **server** half needs the default protocol generation and is compiled out
 under `legacy-spec`; the client half works in both. See `apps.md`.
 

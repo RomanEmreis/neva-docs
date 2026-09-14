@@ -43,7 +43,7 @@ async fn main() {
 In the example above, the prompt name must be set explicitly.
 When using the [`#[prompt]`](https://docs.rs/neva/latest/neva/attr.prompt.html) attribute macro, the prompt name is automatically inferred from the function name.
 
-:::info A handler need not be `async` — new in 0.6.0
+:::info A handler need not be `async`
 A prompt handler may also be a plain `fn` returning its `PromptMessage`
 directly, and `#[prompt(blocking)]` moves a blocking one onto Tokio's blocking
 pool. See [Handler shapes](./handlers).

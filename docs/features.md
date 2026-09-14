@@ -118,10 +118,6 @@ axum = "0.8"
 
 The `http-server` feature ships the engine-agnostic abstractions only — no Volga, no framework dependency. You implement [`HttpEngine`](./mcp-server/custom-http) for your stack and wire it in via `HttpServer::from_engine(...)`. See [Custom HTTP Stack](./mcp-server/custom-http) for a complete walk-through.
 
-:::warning Breaking change in v0.3.3
-Before v0.3.3, the `http-server` flag transitively pulled in Volga. Starting with v0.3.3, `http-server` is engine-agnostic and contains **no** framework. If you depend on the bundled Volga server, switch to `http-server-volga` (or stay on `server-full`, which now selects `http-server-volga` for you).
-:::
-
 ### Minimal HTTP client
 
 ```toml

@@ -144,11 +144,10 @@ async fn greet(name: String) -> String {
 | `ui` | A `ui://` resource that renders this tool — [MCP Apps](apps.md), `apps` feature |
 | `visibility` | `["model"]` / `["app"]` / both — who may call a UI-bound tool. `apps` feature |
 
-**Since 0.5.6 an unknown attribute is a compile error** rather than being
-ignored — on `#[tool]`, `#[resource]`, `#[resources]`, `#[prompt]` and
-`#[handler]` alike. A misspelled `visibility` used to publish an app-only
-tool to the agent. If a macro invocation stops compiling after an upgrade,
-the attribute it names was never doing anything.
+**An unknown attribute is a compile error**, not a warning — on `#[tool]`,
+`#[resource]`, `#[resources]`, `#[prompt]` and `#[handler]` alike. That is
+deliberate: a misspelled `visibility` that was merely ignored would publish an
+app-only tool to the agent.
 
 ### The builder form
 
@@ -743,11 +742,11 @@ opens.
 `Context::is_subscribed(&uri)` answers from the live streams, so you can
 skip **expensive local work** nobody will receive. Do not use it to decide
 whether to notify: it is node-local, and it can only answer for the instance
-running the handler. Since 0.5.3 `Context::resource_updated` no longer
-pre-checks it — it publishes unconditionally and lets the subscription
-filters route the result, which is what they already did.
+running the handler. `Context::resource_updated` therefore does not pre-check
+it — it publishes unconditionally and lets the subscription filters route the
+result, which is what they already do.
 
-### Fanning out across instances (0.5.3)
+### Fanning out across instances
 
 A `subscriptions/listen` stream is a socket held by exactly one process, and
 the stateless transport pins nothing — so the subscriber and the request
@@ -817,13 +816,13 @@ The subscriber table itself stays node-local by construction: half of every
 entry is a handle to a socket on one node. Nothing changes without a bus —
 there is none by default, and a single-instance server pays nothing.
 
-### Shutdown answers the streams first (0.5.4/0.5.5)
+### Shutdown answers the streams first
 
 A server ending a subscription on its own initiative SHOULD send the empty
 result first. Shutdown is two-phase for that reason — see `http.md` for
-`App::with_shutdown()` and `with_shutdown_drain(..)`. **0.5.5** completed it:
-`App::run` waits for the transport writers to put those results on the wire
-before returning, so the result survives a runtime dropped right after.
+`App::with_shutdown()` and `with_shutdown_drain(..)`. `App::run` waits for the
+transport writers to put those results on the wire before returning, so the
+result survives a runtime dropped right after.
 
 ## Access control
 
