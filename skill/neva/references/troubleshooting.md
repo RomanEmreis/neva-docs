@@ -379,6 +379,60 @@ to **`with_ui_permissions`**, and gave `with_permissions` the meaning it has
 on every other resource: **who may read it**. Rename the call.
 `UiResourceMeta::with_permissions` is unchanged.
 
+### `Transport protocol must be specified` on a second `connect`
+
+The first `connect` failed — typically a stdio command that could not be
+spawned — and took the configured transport with it, so the retry had nothing
+to start and blamed the caller for a step they did take. Fixed in **0.6.1**:
+the options keep the transport until `start` succeeds, and the retry reports
+the spawn failure again. On 0.6.0, build a fresh `Client` for the second
+attempt.
+
+Still not retryable on any version: a failure *after* the transport started.
+That needs a new `Client` — a stdio server needs a new child process.
+
+### An HTTP client times out instead of naming a bad TLS or OAuth config
+
+Before **0.6.1** both HTTP `start` implementations logged the failure and
+answered `Ok`, so a rejected configuration surfaced as an unanswered handshake
+and a failed bind as an already-cancelled token. Upgrade; `connect()` / `run()`
+then report the real cause. A client with no transport at all is likewise
+reported at `connect` rather than at the first send.
+
+### `description` is N characters; the registry allows 100
+
+A `server.json` limit, not a crates.io one, so a crate description filled in by
+`with_cargo` is the usual cause. Say a shorter one with `with_description`
+**before** the `with_cargo*` call — what is already set is never overwritten.
+
+### A registry name is refused: "no `/`"
+
+`ServerManifest`'s `name` is the registry identifier —
+`io.github.<user>/<server>`, inside a namespace the publisher has proved they
+own — and not the MCP server name that `with_name` sets. Passing the MCP name
+produces a manifest that fails namespace verification, so it is refused here
+instead.
+
+### "this manifest came from an app with no transport"
+
+`App::server_manifest` reads the transport off the app, and an app that was
+never given one cannot start, so no package can honestly say how to reach it.
+Configure `with_stdio()` / `with_http(..)` before calling `server_manifest`, or
+build the manifest with `ServerManifest::new` and state the package yourself.
+
+### The registry rejects a manifest that `to_json()` accepted
+
+Expected. `validate` checks the document against the schema it is written for;
+a registry adds rules of its own — which hosts it fetches archives from, which
+base URLs it takes, what it makes of a loopback address — and reports which one
+was broken. Act on that message, not on the local `Ok`.
+
+### `neva::registry` / `server_manifest!` / `cargo_env!` not found
+
+The `registry` feature is off, or the crate is 0.6.0 or older. It is in
+`server-full` from **0.6.1**; add `registry` explicitly to a hand-picked
+feature list.
+
 ### `proto-2026-07-28-rc` is not a known feature
 
 That flag existed only during the release candidate. Remove it — the

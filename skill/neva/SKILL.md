@@ -1,9 +1,9 @@
 ---
 name: neva
-description: Build, review and debug MCP (Model Context Protocol) servers and clients in Rust with the neva crate — tools, prompts, resources, elicitation and multi round-trip requests, MCP Apps (`ui://` UI resources), Streamable HTTP and stdio transports, OAuth 2.1 auth, DI and deployment. Use whenever Rust code imports `neva`, whenever the task is to expose something as an MCP server or to talk to one from Rust, and when upgrading such code across neva or MCP-spec versions.
+description: Build, review and debug MCP (Model Context Protocol) servers and clients in Rust with the neva crate — tools, prompts, resources, elicitation and multi round-trip requests, MCP Apps (`ui://` UI resources), Streamable HTTP and stdio transports, OAuth 2.1 auth, DI, deployment and publishing to the MCP Registry. Use whenever Rust code imports `neva`, whenever the task is to expose something as an MCP server or to talk to one from Rust, and when upgrading such code across neva or MCP-spec versions.
 license: MIT
 metadata:
-  neva-version: "0.6.0"
+  neva-version: "0.6.1"
   mcp-protocol: "2026-07-28"
   docs: "https://romanemreis.github.io/neva-docs/"
   api-reference: "https://docs.rs/neva"
@@ -38,6 +38,7 @@ In an existing project, read `Cargo.toml`:
 | What you find | What it means |
 |---|---|
 | `neva = "0.6"` and no `legacy-spec` | Default profile, MCP 2026-07-28. This skill applies as written |
+| `neva = "0.6.0"` exactly | Same API, minus the `registry` feature and a retryable `Client::connect` — both 0.6.1. Prefer 0.6.1; it is drop-in |
 | `neva = "0.5"` and no `legacy-spec` | Same protocol and same API, minus synchronous handlers and per-request extensions. Everything here still applies; see [Handler shapes](#handler-shapes) for what 0.6 added |
 | `features = [… "legacy-spec" …]` | **Legacy profile**, MCP 2024-11-05 … 2025-11-25. A *different* API. Read `references/legacy.md` before touching anything |
 | `neva = "0.4"` or older | Pre-2026-07-28 by default. Read `references/legacy.md` for the upgrade |
@@ -65,6 +66,7 @@ Load only what the task calls for; each file is self-contained.
 | OAuth 2.1 — protecting a server, authorizing a client, DPoP, CIMD, grants | `references/http.md` |
 | Stopping a server from code; graceful shutdown; draining subscriptions | `references/http.md` |
 | A custom HTTP stack (axum, hyper, actix-web) | `references/http.md` |
+| Publishing a server: `server.json`, the MCP Registry, `mcp-publisher` | `references/http.md` |
 | Giving a tool a UI; `ui://` resources; `_meta.ui`; MCP Apps | `references/apps.md` |
 | An error code, a `-320xx` on the wire, or "why is this rejected" | `references/troubleshooting.md` |
 | `legacy-spec`, MCP ≤ 2025-11-25, upgrading from 0.4.x | `references/legacy.md` |

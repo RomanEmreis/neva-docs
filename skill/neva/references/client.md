@@ -57,6 +57,45 @@ carries.
 `disconnect()` is **local** — it shuts down the transport and sends
 nothing. There is no goodbye message in the protocol.
 
+### A `connect` that failed
+
+`connect()` starts the transport, so a transport that will not start reports
+there: a stdio command that cannot be spawned, a rejected OAuth or TLS
+configuration, a failed bind. Before 0.6.1 both HTTP `start` implementations
+answered `Ok` after logging the failure, and the real cause surfaced as a
+request timeout — if you are debugging exactly that against 0.6.0, upgrade
+before reading any further into it.
+
+A failure on the way up leaves the client's configuration intact, so the same
+client can be retried or pointed elsewhere (0.6.1+; on 0.6.0 the second attempt
+reports `Transport protocol must be specified`, and needs a fresh `Client`):
+
+```rust
+use neva::prelude::*;
+
+#[tokio::main]
+async fn main() -> Result<(), Error> {
+    let mut client = Client::new()
+        .with_options(|opt| opt.with_stdio("weather-mcp", ["--stdio"]));
+
+    if client.connect().await.is_err() {
+        client = client.with_options(|opt| opt
+            .with_stdio("cargo", ["run", "-p", "weather-mcp"]));
+        client.connect().await?;
+    }
+
+    client.disconnect().await
+}
+```
+
+Retryable is exactly what the transport refuses **as a whole** — nothing has
+been consumed, so the next attempt is a real one. Once the transport is
+running, a later failure is not undone by retrying: build a new `Client`, since
+a stdio server needs a fresh child process anyway.
+
+A client that was never given a transport is told so by `connect`, not by its
+first call.
+
 ### Talking to an older server
 
 The client is **dual-mode**. If `server/discover` is rejected at the wire

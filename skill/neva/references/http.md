@@ -564,16 +564,134 @@ The two phases share **one** deadline, stamped when the request arrives:
 waiting for the subscriptions spends part of the budget and the writers get
 the remainder.
 
+## Publishing to the MCP Registry
+
+A listing in the [MCP Registry](https://registry.modelcontextprotocol.io) is a
+`server.json`. **Generate it from the app** — the version, the transport and
+the crate are already known, and a hand-written file drifts on the next
+release. Feature: `registry`, in `server-full`.
+
+```rust
+use neva::prelude::*;
+
+#[tokio::main]
+async fn main() {
+    let app = App::new().with_options(|opt| opt
+        .with_stdio()
+        .with_name("weather")
+        .with_version(env!("CARGO_PKG_VERSION")));
+
+    if std::env::args().any(|arg| arg == "--emit-manifest") {
+        match neva::server_manifest!(app, "io.github.example-user/weather").to_json() {
+            Ok(json) => print!("{json}"),
+            Err(err) => {
+                eprintln!("this server.json is not the shape the schema asks for: {err}");
+                std::process::exit(1);
+            }
+        }
+        return;
+    }
+
+    app.run().await;
+}
+```
+
+`server_manifest!(app, name)` is `app.server_manifest(name).with_cargo(cargo_env!())`.
+Split them when the manifest needs more saying about it:
+
+```rust
+use neva::prelude::*;
+use neva::registry::KeyValueInput;
+
+fn main() {
+    let app = App::new().with_options(|opt| opt.with_stdio().with_version("0.3.0"));
+
+    let manifest = app
+        .server_manifest("io.github.example-user/weather")
+        .with_title("Weather")
+        // Before `with_cargo*`: what is already set is never overwritten.
+        .with_description("Forecasts from the national weather service")
+        .with_cargo_package(neva::cargo_env!(), |package| package
+            .with_environment_variable(
+                KeyValueInput::new("WEATHER_API_KEY")
+                    .with_description("API key for the weather provider")
+                    .required()
+                    .secret()));
+
+    print!("{}", manifest.to_json().expect("a complete manifest"));
+}
+```
+
+Five things to get right:
+
+1. **The registry name is not the MCP server name.** `with_name("weather")` is
+   the MCP one, carried in `serverInfo`. The registry's is a reverse-DNS
+   identifier in a namespace the publisher has proved they own —
+   `io.github.<user>/<server>` — which is why `server_manifest(name)` always
+   takes it explicitly. A bare name is refused by `validate`, and would fail
+   namespace verification if it were not.
+
+2. **`cargo_env!()` is a macro on purpose.** It reads `CARGO_PKG_*` of the
+   crate it is expanded in; a function inside neva would read neva's. Works in
+   a `build.rs` too.
+
+3. **The version must be set deliberately.** `App::server_manifest` publishes
+   the version only when `with_version` was actually *called* — an app that
+   never calls it reports neva's own version, and that is no server's version.
+   The field is then left for `with_cargo` to fill from the crate, and refused
+   if nothing does.
+
+4. **The transport is read off the app.** `with_stdio()` → `stdio`;
+   `with_http(..)` → `streamable-http` at the server's URL, with a wildcard
+   bind republished as the address a client can dial (`0.0.0.0:3000` →
+   `127.0.0.1:3000`, `[::]` → `[::1]`). An app with **no** transport yields
+   none — not a defaulted `stdio` — and `validate` refuses a package built from
+   it.
+
+5. **`description` is capped at 100 characters**, which crates.io is not. A
+   crate description copied in is the most common rejection.
+
+`to_json()` validates first: the reverse-DNS name, the description, a blank
+title, exact versions rather than ranges, the `format: uri` fields, an icon
+source that must be HTTPS and ≤ 255 characters, a `{template}` nothing
+declares, a manifest with nothing to install and nothing to call, a remote over
+stdio. It is **not** a registry's validator — host rules, base URLs and
+loopback policy belong to the registry, which says which of its own rules was
+broken.
+
+Beyond the cargo package: `Package::new(RegistryType::Oci | Mcpb | Other(..), ..)`
+for other distributions, `with_package_argument` / `with_runtime_argument` /
+`with_runtime_hint` / `with_file_sha256` to shape one, and `Remote::new(
+Transport::streamable_http(url))` for a server that is already running (never
+stdio; every `{placeholder}` in the URL must be declared beside it). Prefer
+`KeyValueInput` environment variables over arguments for anything
+user-supplied — arguments reach a command line.
+
+Publishing, once `server.json` is written:
+
+```bash
+cargo publish
+mcp-publisher login github     # proves io.github.<user>/...; DNS for a domain namespace
+mcp-publisher publish
+```
+
+The crate's README must carry `mcp-name: io.github.<user>/<server>` as
+**visible text** — crates.io strips HTML comments when it renders markdown and
+the validator reads the rendered HTML, so the hidden-comment form that works
+for PyPI does not work here. Do not run `mcp-publisher init` for a Rust crate:
+it detects the package type from `package.json` / `pyproject.toml` / a
+`Dockerfile` and falls back to npm.
+
 ## Feature flags
 
 | Preset | Contains |
 |---|---|
-| `server-full` | `server-macros`, `tracing`, `http-server-volga`, `server-tls`, `server-oauth`, `di`, `tasks`, `apps` |
+| `server-full` | `server-macros`, `tracing`, `http-server-volga`, `server-tls`, `server-oauth`, `di`, `tasks`, `apps`, `registry` |
 | `client-full` | `client-macros`, `tracing`, `http-client`, `client-tls`, `client-oauth`, `client-oauth-jwt`, `client-oauth-dpop`, `tasks`, `apps` |
 | `full` | both |
 
 Individually: `server`, `server-macros`, `http-server`,
-`http-server-volga`, `server-tls`, `server-oauth`; `client`,
+`http-server-volga`, `server-tls`, `server-oauth`, `registry`; `client`,
 `client-macros`, `http-client`, `client-tls`, `client-oauth`,
 `client-oauth-jwt`, `client-oauth-dpop`; shared `macros`, `di`, `tasks`,
 `apps`, `tracing`.
@@ -582,6 +700,10 @@ Individually: `server`, `server-macros`, `http-server`,
 `client-oauth-dpop` (RFC 9449 sender-constrained tokens) are opt-in because they
 are the only parts of the OAuth client needing a JWS signing backend; both are
 in `client-full`.
+
+`registry` (`server.json` for the MCP Registry, 0.6.1+) is types and a
+validator only, and pulls in no dependencies — opt-in so an embedded server
+does not carry them.
 
 `apps` (MCP Apps) is additive and pulls in no dependencies. Its
 **server** half needs the default protocol generation and is compiled out

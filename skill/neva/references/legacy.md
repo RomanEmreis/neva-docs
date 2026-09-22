@@ -253,6 +253,27 @@ None of this reaches the legacy profile except the two breaking renames,
 which apply to any build that uses those APIs. Synchronous handlers and
 `blocking` work under `legacy-spec` too.
 
+## Upgrading 0.6.0 → 0.6.1
+
+Drop-in: nothing renamed, nothing removed, no call site to change. Bump the
+version and keep going. What it adds is worth knowing about:
+
+* **`registry`**, a new feature in `server-full`: `server.json` for the MCP
+  Registry, generated from the app and the crate and validated locally. A
+  hand-picked feature list needs `registry` added to it. See the registry
+  section of `http.md`.
+* **A failed `Client::connect` can be retried** on the same client. On 0.6.0
+  the second attempt reported `Transport protocol must be specified`; a client
+  that worked around it by rebuilding itself still works.
+* **A transport that cannot start says so at `connect` / `run`** rather than as
+  a later timeout — a rejected TLS or OAuth configuration, a failed bind, a
+  client or server with no transport at all. Code that inferred "misconfigured"
+  from a timeout can stop.
+* An icon that names no theme leaves `theme` out instead of writing null.
+
+This is also where the volga dependency moves to 0.11.x, which matters only if
+you depend on volga directly alongside neva.
+
 ## Examples in the neva repository
 
 Legacy variants live under a `legacy/` sub-directory, each its own Cargo
