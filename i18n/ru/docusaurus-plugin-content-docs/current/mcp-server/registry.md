@@ -46,7 +46,7 @@ async fn main() {
 
     if std::env::args().any(|arg| arg == "--emit-manifest") {
         // То, что знает приложение, плюс то, что знает Cargo об этом крейте.
-        match neva::server_manifest!(app, "io.github.romanemreis/weather").to_json() {
+        match neva::server_manifest!(app, "io.github.example-user/weather").to_json() {
             Ok(json) => print!("{json}"),
             Err(err) => {
                 eprintln!("такой server.json схеме не подходит: {err}");
@@ -109,7 +109,7 @@ fn main() {
         .with_version("0.3.0"));
 
     let manifest = app
-        .server_manifest("io.github.romanemreis/weather")
+        .server_manifest("io.github.example-user/weather")
         .with_title("Weather")
         // Сказано до `with_cargo_package`, поэтому описание крейта не победит:
         // реестр даёт 100 символов, а crates.io на это не смотрит.
@@ -195,7 +195,7 @@ fn main() {
 use neva::registry::{Input, Remote, ServerManifest, Transport};
 
 fn main() {
-    let manifest = ServerManifest::new("io.github.romanemreis/weather", "0.3.0")
+    let manifest = ServerManifest::new("io.github.example-user/weather", "0.3.0")
         .with_description("Прогнозы национальной метеослужбы")
         .with_remote(
             Remote::new(Transport::streamable_http("https://{tenant}.weather.example/mcp"))
