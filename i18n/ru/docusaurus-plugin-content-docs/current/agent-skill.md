@@ -36,9 +36,9 @@ import useBaseUrl from '@docusaurus/useBaseUrl';
 | `references/client.md` | Подключение, вызовы, структурированные результаты, батчи, подписки, ответы на input-запросы, задачи |
 | `references/mrtr.md` | Модель повторного выполнения, `memo` / `once` / `on_commit`, режимы elicitation, задачи |
 | `references/apps.md` | MCP Apps: ресурсы `ui://`, блоки `_meta.ui`, видимость, блок безопасности, рукопожатие View |
-| `references/http.md` | Транспорты, TLS, JWT и OAuth 2.1 (обе стороны, DPoP, CIMD, grants), DNS-rebinding, остановка сервера, свои движки, фича-флаги, развёртывание на нескольких экземплярах |
+| `references/http.md` | Транспорты, TLS, JWT и OAuth 2.1 (обе стороны, DPoP, CIMD, grants), DNS-rebinding, остановка сервера, свои движки, публикация в MCP Registry, фича-флаги, развёртывание на нескольких экземплярах |
 | `references/troubleshooting.md` | Коды ошибок, «симптом → причина», всё удалённое в этом поколении |
-| `references/legacy.md` | Профиль `legacy-spec` и все пути обновления, с 0.4.x по 0.6.0 |
+| `references/legacy.md` | Профиль `legacy-spec` и все пути обновления, с 0.4.x по 0.6.1 |
 
 `SKILL.md` намеренно короткий: это точка входа, которую агент читает всегда,
 и семь справочников, которые он подгружает только под задачу.
@@ -91,12 +91,12 @@ python3 ci/check-snippets.py --docs-dir skill --default-mode compile --default-f
 
 ## Версия {#version}
 
-Скилл описывает neva **0.6.0** / MCP **2026-07-28**, легаси-поколение
+Скилл описывает neva **0.6.1** / MCP **2026-07-28**, легаси-поколение
 вынесено отдельно. Обе версии записаны во frontmatter, чтобы ассистент мог
 понять, соответствует ли скилл крейту перед ним:
 
 ```yaml
 metadata:
-  neva-version: "0.6.0"
+  neva-version: "0.6.1"
   mcp-protocol: "2026-07-28"
 ```

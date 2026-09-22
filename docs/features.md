@@ -29,7 +29,7 @@ neva = { version = "...", features = ["full"] }
 | Feature | Includes | Description |
 |---------|----------|-------------|
 | `full` | `server-full` + `client-full` | Everything — for apps that run both a server and a client |
-| `server-full` | `server-macros`, `tracing`, `http-server-volga`, `server-tls`, `server-oauth`, `di`, `tasks`, `apps` | All server capabilities, including the default Volga-based HTTP server |
+| `server-full` | `server-macros`, `tracing`, `http-server-volga`, `server-tls`, `server-oauth`, `di`, `tasks`, `apps`, `registry` | All server capabilities, including the default Volga-based HTTP server |
 | `client-full` | `client-macros`, `tracing`, `http-client`, `client-tls`, `client-oauth`, `client-oauth-jwt`, `client-oauth-dpop`, `tasks`, `apps` | All client capabilities |
 
 Note that `full` is *every* feature **except** the protocol-generation flag
@@ -45,6 +45,7 @@ below — it is the default build, which is also what `docs.rs` publishes.
 | `http-server-volga` | `http-server` | Default [Volga](https://docs.rs/volga)-based HTTP server adapter, including JWT auth |
 | `server-tls` | `http-server-volga` | TLS support for the default HTTP server, including automatic dev certificate generation |
 | `server-oauth` | `http-server` | [OAuth 2.1](./mcp-server/oauth) protected-resource metadata and token validation on the server |
+| `registry` | `server` | [`server.json` manifests](./mcp-server/registry) for the [MCP Registry](https://registry.modelcontextprotocol.io), generated from the app and the crate, and validated before the upload. Types and a validator only — no new dependencies |
 
 ### Client Features
 
@@ -154,7 +155,9 @@ full
 │   ├── tracing
 │   ├── di
 │   ├── tasks
-│   └── apps
+│   ├── apps
+│   └── registry
+│       └── server
 └── client-full
     ├── client-macros
     │   ├── client
