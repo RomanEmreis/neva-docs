@@ -37,7 +37,7 @@ import useBaseUrl from '@docusaurus/useBaseUrl';
 | `references/mrtr.md` | Модель повторного выполнения, `memo` / `once` / `on_commit`, режимы elicitation, задачи |
 | `references/apps.md` | MCP Apps: ресурсы `ui://`, блоки `_meta.ui`, видимость, блок безопасности, рукопожатие View |
 | `references/svir.md` | Мост svir: `RemoteTools`, `into_toolbox` / `with_toolbox`, `ctx.tools().toolbox()`, что сообщается модели, промпты и ресурсы как сообщения, сэмплирование ответом модели |
-| `references/http.md` | Транспорты, TLS, JWT и OAuth 2.1 (обе стороны, DPoP, CIMD, grants), DNS-rebinding, остановка сервера, свои движки, фича-флаги, развёртывание на нескольких экземплярах |
+| `references/http.md` | Транспорты, TLS, JWT и OAuth 2.1 (обе стороны, DPoP, CIMD, grants), DNS-rebinding, остановка сервера, свои движки, публикация в MCP Registry, фича-флаги, развёртывание на нескольких экземплярах |
 | `references/troubleshooting.md` | Коды ошибок, «симптом → причина», всё удалённое в этом поколении |
 | `references/legacy.md` | Профиль `legacy-spec` и все пути обновления, с 0.4.x по 0.7.0 |
 

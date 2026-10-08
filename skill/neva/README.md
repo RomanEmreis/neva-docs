@@ -16,7 +16,7 @@ neva/
     ├── mrtr.md                   elicitation, the re-run model, tasks
     ├── apps.md                   MCP Apps: ui:// resources, _meta.ui, visibility, the View
     ├── svir.md                   the svir bridge: MCP tools, prompts and sampling handed to a model
-    ├── http.md                   transports, TLS, JWT/OAuth 2.1, origins, shutdown, deployment, features
+    ├── http.md                   transports, TLS, JWT/OAuth 2.1, origins, shutdown, deployment, registry publishing, features
     ├── troubleshooting.md        error codes, symptom → cause, removed APIs
     └── legacy.md                 the legacy-spec profile and upgrade paths
 ```

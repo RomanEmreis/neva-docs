@@ -27,7 +27,7 @@ sidebar_position: 9
 
 ```toml
 [dependencies]
-neva = { version = "0.6", features = ["http-server", "server-macros", "tracing", "di"] }
+neva = { version = "0.7", features = ["http-server", "server-macros", "tracing", "di"] }
 
 axum = "0.8"
 http = "1.4"

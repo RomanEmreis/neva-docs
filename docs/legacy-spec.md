@@ -189,6 +189,19 @@ draws an `unused_mut` warning.
 And, additively: `list_all()` on every listing, `client.tasks()` for the task
 methods, and the [svir bridge](./svir) behind the new `svir` feature.
 
+## Upgrading 0.6.0 → 0.6.1 {#migrating-to-061}
+
+Drop-in — nothing renamed, nothing removed. Two things are worth knowing about
+afterwards:
+
+* The [`registry`](./mcp-server/registry) feature joins `server-full`. A
+  hand-picked feature list needs it added explicitly.
+* A transport that cannot start now reports at `connect()` / `run()` instead of
+  as a later timeout, and a failed
+  [`Client::connect`](./mcp-client/basics#when-connect-fails) can be retried on
+  the same client. Code that treated a timeout as "probably misconfigured", or
+  rebuilt the whole `Client` to retry, can be simplified.
+
 ## Upgrading 0.5.x → 0.6.0 {#migrating-to-060}
 
 Two calls changed. Both fail the build rather than changing behaviour quietly,

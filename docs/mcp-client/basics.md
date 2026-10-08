@@ -72,6 +72,50 @@ spec's own schema, and a server learns the client is gone from the closed
 connection anyway.
 :::
 
+## When `connect` fails
+
+`connect()` starts the transport, and a transport that will not start says so
+**there** — a stdio command that cannot be spawned, a rejected OAuth or TLS
+configuration, a bind that fails. It is not reported later as a request that
+timed out, and a client that was never given a transport is told at `connect`
+rather than at its first call.
+
+A `connect` that failed on the way up leaves the client intact: the configured
+transport is still there, so the same client can try again, or be pointed
+somewhere else.
+
+```rust compile
+use neva::prelude::*;
+
+#[tokio::main]
+async fn main() -> Result<(), Error> {
+    let mut client = Client::new()
+        .with_options(|opt| opt.with_stdio("weather-mcp", ["--stdio"]));
+
+    if let Err(err) = client.connect().await {
+        eprintln!("the installed server did not start: {err}");
+
+        // The same client, pointed at a locally built copy instead.
+        client = client.with_options(|opt| opt
+            .with_stdio("cargo", ["run", "-p", "weather-mcp"]));
+        client.connect().await?;
+    }
+
+    let tools = client.tools().list(None).await?;
+    println!("{} tools", tools.tools.len());
+
+    client.disconnect().await
+}
+```
+
+:::note What is retryable, and what is not
+Anything the transport refuses **as a whole** — nothing has been consumed, so
+the next attempt is a real attempt. Once the transport is running, a later
+failure (a server that answers discovery with an error) is not undone by
+retrying: that needs a fresh `Client`, because a stdio server needs a fresh
+child process anyway.
+:::
+
 ## Get a Prompt
 
 Next, let’s fetch a [prompt](/docs/mcp-server/basics#adding-a-prompt-handler) to see how prompts work from the client side.

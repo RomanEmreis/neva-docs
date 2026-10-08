@@ -1,6 +1,6 @@
 ---
 name: neva
-description: Build, review and debug MCP (Model Context Protocol) servers and clients in Rust with the neva crate — tools, prompts, resources, elicitation and multi round-trip requests, MCP Apps (`ui://` UI resources), Streamable HTTP and stdio transports, OAuth 2.1 auth, DI and deployment, and handing MCP tools to a model through the svir bridge. Use whenever Rust code imports `neva`, whenever the task is to expose something as an MCP server, to talk to one from Rust, or to let a model call an MCP server's tools, and when upgrading such code across neva or MCP-spec versions.
+description: Build, review and debug MCP (Model Context Protocol) servers and clients in Rust with the neva crate — tools, prompts, resources, elicitation and multi round-trip requests, MCP Apps (`ui://` UI resources), Streamable HTTP and stdio transports, OAuth 2.1 auth, DI, deployment and publishing to the MCP Registry, and handing MCP tools to a model through the svir bridge. Use whenever Rust code imports `neva`, whenever the task is to expose something as an MCP server, to talk to one from Rust, or to let a model call an MCP server's tools, and when upgrading such code across neva or MCP-spec versions.
 license: MIT
 metadata:
   neva-version: "0.7.0"
@@ -38,7 +38,7 @@ In an existing project, read `Cargo.toml`:
 | What you find | What it means |
 |---|---|
 | `neva = "0.7"` and no `legacy-spec` | Default profile, MCP 2026-07-28. This skill applies as written |
-| `neva = "0.6"` and no `legacy-spec` | Same protocol, but the client and `Context` calls are **flat** — `client.call_tool(..)`, `ctx.find_tool(..)` — where 0.7 has [namespaces](#the-namespaced-api). Write the flat ones on 0.6; no `svir` feature |
+| `neva = "0.6"` and no `legacy-spec` | Same protocol, but the client and `Context` calls are **flat** — `client.call_tool(..)`, `ctx.find_tool(..)` — where 0.7 has [namespaces](#the-namespaced-api). Write the flat ones on 0.6; no `svir` feature. `registry` and a retryable `Client::connect` need 0.6.1, not 0.6.0 |
 | `neva = "0.5"` and no `legacy-spec` | As 0.6, minus synchronous handlers and per-request extensions; see [Handler shapes](#handler-shapes) for what 0.6 added |
 | `features = [… "legacy-spec" …]` | **Legacy profile**, MCP 2024-11-05 … 2025-11-25. A *different* API. Read `references/legacy.md` before touching anything |
 | `neva = "0.4"` or older | Pre-2026-07-28 by default. Read `references/legacy.md` for the upgrade |
@@ -66,6 +66,7 @@ Load only what the task calls for; each file is self-contained.
 | OAuth 2.1 — protecting a server, authorizing a client, DPoP, CIMD, grants | `references/http.md` |
 | Stopping a server from code; graceful shutdown; draining subscriptions | `references/http.md` |
 | A custom HTTP stack (axum, hyper, actix-web) | `references/http.md` |
+| Publishing a server: `server.json`, the MCP Registry, `mcp-publisher` | `references/http.md` |
 | Giving a tool a UI; `ui://` resources; `_meta.ui`; MCP Apps | `references/apps.md` |
 | Letting a model call MCP tools; an agent loop over a server's tools; answering sampling with a model (`svir` feature) | `references/svir.md` |
 | An error code, a `-320xx` on the wire, or "why is this rejected" | `references/troubleshooting.md` |

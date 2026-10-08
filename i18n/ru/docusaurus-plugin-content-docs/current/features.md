@@ -47,7 +47,7 @@ neva = { version = "...", features = ["full"] }
 | `http-server-volga` | `http-server` | Адаптер HTTP-сервера по умолчанию на базе [Volga](https://docs.rs/volga), включая JWT-аутентификацию |
 | `server-tls` | `http-server-volga` | Поддержка TLS для HTTP-сервера по умолчанию, включая автоматическую генерацию сертификата для разработки |
 | `server-oauth` | `http-server` | [OAuth 2.1](./mcp-server/oauth): метаданные защищённого ресурса и проверка токенов на сервере |
-| `registry` | `server` | Манифесты `server.json` для [MCP Registry](https://registry.modelcontextprotocol.io): типы и валидатор, без новых зависимостей |
+| `registry` | `server` | [Манифесты `server.json`](./mcp-server/registry) для [MCP Registry](https://registry.modelcontextprotocol.io): генерируются из приложения и крейта и проверяются до публикации. Только типы и валидатор — новых зависимостей не тянет |
 
 ### Компоненты клиента
 

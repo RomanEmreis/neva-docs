@@ -36,7 +36,7 @@ The skill front-loads exactly those traps, then routes to detail on demand.
 | `references/mrtr.md` | The re-run model, `memo` / `once` / `on_commit`, elicitation modes, tasks |
 | `references/apps.md` | MCP Apps: `ui://` resources, the `_meta.ui` blocks, visibility, the security block, the View handshake |
 | `references/svir.md` | The svir bridge: `RemoteTools`, `into_toolbox` / `with_toolbox`, `ctx.tools().toolbox()`, what a model is told, prompts and resources as messages, sampling answered with a model |
-| `references/http.md` | Transports, TLS, JWT and OAuth 2.1 (both sides, DPoP, CIMD, grants), DNS-rebinding, shutdown, custom engines, feature flags, multi-instance deploy |
+| `references/http.md` | Transports, TLS, JWT and OAuth 2.1 (both sides, DPoP, CIMD, grants), DNS-rebinding, shutdown, custom engines, publishing to the MCP Registry, feature flags, multi-instance deploy |
 | `references/troubleshooting.md` | Error codes, symptom → cause, everything removed in this generation |
 | `references/legacy.md` | The `legacy-spec` profile and every upgrade path, 0.4.x → 0.7.0 |
 

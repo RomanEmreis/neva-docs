@@ -46,7 +46,7 @@ flag below, and [`svir`](#the-svir-bridge), which stays opt-in while svir is
 | `http-server-volga` | `http-server` | Default [Volga](https://docs.rs/volga)-based HTTP server adapter, including JWT auth |
 | `server-tls` | `http-server-volga` | TLS support for the default HTTP server, including automatic dev certificate generation |
 | `server-oauth` | `http-server` | [OAuth 2.1](./mcp-server/oauth) protected-resource metadata and token validation on the server |
-| `registry` | `server` | `server.json` manifests for the [MCP Registry](https://registry.modelcontextprotocol.io): the types and a validator, no new dependencies |
+| `registry` | `server` | [`server.json` manifests](./mcp-server/registry) for the [MCP Registry](https://registry.modelcontextprotocol.io), generated from the app and the crate, and validated before the upload. Types and a validator only — no new dependencies |
 
 ### Client Features
 
