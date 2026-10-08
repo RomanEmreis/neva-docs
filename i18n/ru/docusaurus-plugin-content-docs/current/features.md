@@ -29,12 +29,13 @@ neva = { version = "...", features = ["full"] }
 | Компонент | Включает | Описание |
 |-----------|----------|----------|
 | `full` | `server-full` + `client-full` | Всё сразу — для приложений, которые запускают и сервер, и клиент |
-| `server-full` | `server-macros`, `tracing`, `http-server-volga`, `server-tls`, `server-oauth`, `di`, `tasks`, `apps` | Все возможности сервера, включая HTTP-сервер по умолчанию на базе Volga |
+| `server-full` | `server-macros`, `tracing`, `http-server-volga`, `server-tls`, `server-oauth`, `di`, `tasks`, `apps`, `registry` | Все возможности сервера, включая HTTP-сервер по умолчанию на базе Volga |
 | `client-full` | `client-macros`, `tracing`, `http-client`, `client-tls`, `client-oauth`, `client-oauth-jwt`, `client-oauth-dpop`, `tasks`, `apps` | Все возможности клиента |
 
-Обратите внимание: `full` — это *все* компоненты, **кроме** флага поколения
-протокола (см. ниже). Это и есть сборка по умолчанию, которую публикует
-`docs.rs`.
+Обратите внимание: `full` — это *все* компоненты, **кроме** двух: флага
+поколения протокола (см. ниже) и [`svir`](#the-svir-bridge), который остаётся
+опциональным, пока svir в версии `0.x`. `full` — это сборка по умолчанию;
+`docs.rs` публикует её с `svir` сверху.
 
 ### Компоненты сервера
 
@@ -46,6 +47,7 @@ neva = { version = "...", features = ["full"] }
 | `http-server-volga` | `http-server` | Адаптер HTTP-сервера по умолчанию на базе [Volga](https://docs.rs/volga), включая JWT-аутентификацию |
 | `server-tls` | `http-server-volga` | Поддержка TLS для HTTP-сервера по умолчанию, включая автоматическую генерацию сертификата для разработки |
 | `server-oauth` | `http-server` | [OAuth 2.1](./mcp-server/oauth): метаданные защищённого ресурса и проверка токенов на сервере |
+| `registry` | `server` | Манифесты `server.json` для [MCP Registry](https://registry.modelcontextprotocol.io): типы и валидатор, без новых зависимостей |
 
 ### Компоненты клиента
 
@@ -68,6 +70,21 @@ neva = { version = "...", features = ["full"] }
 | `tasks` | [Задачи с расширенными запросами](./mcp-server/tasks) — долгосрочное асинхронное выполнение инструментов с опросом |
 | `apps` | [MCP Apps](./mcp-server/apps) ([SEP-1865](https://github.com/modelcontextprotocol/ext-apps)) — HTML-ресурсы `ui://` и блоки `_meta.ui`, привязывающие к ним инструмент. Аддитивна и не тянет новых зависимостей. Серверной половине нужно поколение протокола по умолчанию; [клиентская](./mcp-client/apps) работает в обоих |
 | `tracing` | Структурированное логирование через экосистему [`tracing`](https://docs.rs/tracing) и MCP-уведомления журнала |
+
+### Мост svir {#the-svir-bridge}
+
+| Компонент | Описание |
+|-----------|----------|
+| `svir` | [Отдаёт инструменты MCP модели](./svir) как `Toolbox` из [svir](https://docs.rs/svir) — инструменты подключённого сервера через `RemoteTools`, собственные инструменты сервера через `App::into_toolbox` и `ctx.tools().toolbox()`, — а также превращает промпты, ресурсы и сэмплирование в типы svir. Работает с сервером, клиентом или обоими. svir подключается без своих компонентов по умолчанию, поэтому, чтобы обращаться к модели, добавьте `svir` в собственные зависимости |
+
+`svir` не входит **ни в один пресет**: svir пока в версии `0.x`, и пресет,
+включающий его, превращал бы каждый ломающий релиз svir в ломающий релиз
+neva. Укажите его рядом с пресетом:
+
+```toml
+neva = { version = "...", features = ["full", "svir"] }
+svir = "0.1.4"
+```
 
 ### Поколение протокола
 
@@ -156,7 +173,9 @@ full
 │   ├── tracing
 │   ├── di
 │   ├── tasks
-│   └── apps
+│   ├── apps
+│   └── registry
+│       └── server
 └── client-full
     ├── client-macros
     │   ├── client
@@ -174,5 +193,6 @@ full
     ├── tasks
     └── apps
 
+svir          (опционален, ни в одном пресете: мост к модели для сервера, клиента или обоих)
 legacy-spec   (ортогонален: выбирает поколение протокола, а не возможность)
 ```

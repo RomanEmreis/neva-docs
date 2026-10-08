@@ -9,7 +9,7 @@ In this section, we’ll explore in more detail how to **call tools**, **pass ar
 
 ## Calling a Tool
 
-To call a tool, use the [`call_tool()`](https://docs.rs/neva/latest/neva/client/struct.Client.html#method.call_tool) method.
+To call a tool, use [`client.tools().call()`](https://docs.rs/neva/latest/neva/client/api/struct.Tools.html#method.call).
 It requires the tool name and optional arguments.
 
 ```rust
@@ -26,7 +26,7 @@ async fn main() -> Result<(), Error> {
     client.connect().await?;
 
     let args = ("name", "John");
-    let result = client.call_tool("hello", args).await?;
+    let result = client.tools().call("hello", args).await?;
 
     println!("{:?}", result.content);
 
@@ -40,7 +40,7 @@ If a tool accepts a single parameter, pass a tuple containing the parameter name
 
 ```rust
 let args = ("name", "John");
-let result = client.call_tool("hello", args).await?;
+let result = client.tools().call("hello", args).await?;
 ```
 
 If a tool has **multiple parameters**, pass them as an array, [`Vec`](https://doc.rust-lang.org/std/vec/struct.Vec.html), or [`HashMap`](https://doc.rust-lang.org/std/collections/struct.HashMap.html):
@@ -50,13 +50,13 @@ let args = [
     ("name", "John"),
     ("say", "Hi"),
 ];
-let result = client.call_tool("hello", args).await?;
+let result = client.tools().call("hello", args).await?;
 ```
 
 If a tool is **parameterless**, pass the [unit type `()`](https://doc.rust-lang.org/std/primitive.unit.html):
 
 ```rust
-let result = client.call_tool("hello", ()).await?;
+let result = client.tools().call("hello", ()).await?;
 ```
 
 ## Structured Content
@@ -66,7 +66,7 @@ Some tools return structured JSON data (see [MCP Structured Content spec](https:
 You can access it directly through the [`struct_content`](https://docs.rs/neva/latest/neva/types/tool/call_tool_response/struct.CallToolResponse.html#structfield.struct_content) field:
 
 ```rust
-let result = client.call_tool("weather-forecast", args).await?;
+let result = client.tools().call("weather-forecast", args).await?;
 println!("{:?}", result.struct_content);
 ```
 
@@ -81,7 +81,7 @@ struct Weather {
 }
 
 let args = ("location", "London");
-let result = client.call_tool("weather-forecast", args).await?;
+let result = client.tools().call("weather-forecast", args).await?;
 let weather: Weather = result.as_json()?;
 ```
 
@@ -89,7 +89,7 @@ let weather: Weather = result.as_json()?;
 
 It’s a good practice to validate structured responses against the [**output schema**](/docs/mcp-server/tools#output-schema) that every MCP server should provide.
 
-When you call [`list_tools()`](https://docs.rs/neva/latest/neva/client/struct.Client.html#method.list_tools), you receive metadata for each tool, including input and output schemas.
+When you list tools with [`client.tools().list()`](https://docs.rs/neva/latest/neva/client/api/struct.Tools.html#method.list), you receive metadata for each tool, including input and output schemas.
 
 ```rust
 #[json_schema(de, debug)]
@@ -100,7 +100,7 @@ struct Weather {
 }
 
 // Get the list of available tools
-let tools = client.list_tools(None).await?;
+let tools = client.tools().list(None).await?;
 
 // Find a specific tool
 let tool = tools.get("weather-forecast")
@@ -108,7 +108,7 @@ let tool = tools.get("weather-forecast")
 
 // Call the tool
 let args = ("location", "London");
-let result = client.call_tool(&tool.name, args).await?;
+let result = client.tools().call(&tool.name, args).await?;
 
 // Validate and deserialize the result
 let weather: Weather = tool
@@ -124,6 +124,20 @@ You can configure its behavior using attributes such as:
 * `serde` - derive both serialization and deserialization
 * `debug` - include debug metadata in the generated schema
 
+
+## Raw Calls
+
+[`call_raw()`](https://docs.rs/neva/latest/neva/client/api/struct.Tools.html#method.call_raw) takes fully formed
+[`CallToolRequestParams`](https://docs.rs/neva/latest/neva/types/tool/struct.CallToolRequestParams.html)
+and answers with the raw JSON-RPC `Response`, an error response included. The
+`_meta` the params carry goes out as given — a `traceparent`, say — except the
+progress token, which is the client's, since progress notifications find their
+call by it:
+
+```rust
+let params = CallToolRequestParams::new("add").with_args([("a", 1), ("b", 2)]);
+let response = client.tools().call_raw(params).await?;
+```
 
 ## Tools with a UI
 

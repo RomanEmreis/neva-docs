@@ -41,13 +41,14 @@ The 2025-11-25 surface applies: `with_tasks(|t| t.with_all())` configures a
 
 ## Calling a Tool as a Task
 
-Use [`client.task()`](https://docs.rs/neva/latest/neva/client/struct.Client.html#method.task) to obtain a task builder, then call [`call_tool()`](https://docs.rs/neva/latest/neva/client/task/struct.TaskBuilder.html#method.call_tool) to execute a tool asynchronously as a managed task.
+Use [`client.tools().as_task()`](https://docs.rs/neva/latest/neva/client/api/struct.Tools.html#method.as_task) to obtain a task builder, then [`call()`](https://docs.rs/neva/latest/neva/client/task/struct.TaskBuilder.html#method.call) the tool to execute it asynchronously as a managed task.
 This is required when calling a tool that has `task_support = "required"` on the server side (see the [server Tasks guide](/docs/mcp-server/tasks)).
 
 ```rust
 let result = client
-    .task()
-    .call_tool("my_long_tool", ()).await;
+    .tools()
+    .as_task()
+    .call("my_long_tool", ()).await;
 
 println!("{:?}", result);
 ```
@@ -59,22 +60,24 @@ Chain [`with_ttl()`](https://docs.rs/neva/latest/neva/client/task/struct.TaskBui
 ```rust
 let ttl = 10_000; // 10 seconds
 let result = client
-    .task()
+    .tools()
+    .as_task()
     .with_ttl(ttl)
-    .call_tool("endless_tool", ()).await;
+    .call("endless_tool", ()).await;
 ```
 
 If the TTL expires before the tool completes, the task is cancelled and an appropriate error is returned.
 
 ### With Arguments
 
-Pass arguments the same way as with [`call_tool()`](https://docs.rs/neva/latest/neva/client/struct.Client.html#method.call_tool):
+Pass arguments the same way as with [`client.tools().call()`](https://docs.rs/neva/latest/neva/client/api/struct.Tools.html#method.call):
 
 ```rust
 let args = [("city1", "London"), ("city2", "Paris")];
 let result = client
-    .task()
-    .call_tool("generate_weather_report", args).await;
+    .tools()
+    .as_task()
+    .call("generate_weather_report", args).await;
 ```
 
 ## Polling a Task
@@ -85,8 +88,22 @@ status plus, depending on it, the outstanding `inputRequests`, the terminal
 `tasks/cancel` acknowledges with an empty result (cancellation is
 cooperative, so the outcome is learned by polling).
 
-`client.task().call_tool(...)` drives that loop for you and resolves to the
-terminal outcome, so most code never issues the methods directly.
+`client.tools().as_task().call(...)` drives that loop for you and resolves to
+the terminal outcome, so most code never issues the methods directly. When it
+does — a task id kept across a restart, say — they are on
+[`client.tasks()`](https://docs.rs/neva/latest/neva/client/api/struct.Tasks.html):
+
+```rust
+let tasks = client.tasks();
+
+let task = tasks.get("task-1").await?;
+println!("{:?}", task.status);
+
+tasks.cancel("task-1").await?;
+```
+
+A `tasks/update` or `tasks/cancel` the server refuses is an error, not
+`Ok(())`.
 
 :::warning There is no `tasks/list`
 `tasks/list` and `tasks/result` were removed in MCP 2026-07-28, and so was

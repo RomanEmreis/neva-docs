@@ -51,7 +51,7 @@ async fn endless_tool() {
 }
 ```
 
-Инструмент, помеченный `task_support = "required"`, должен вызываться как задача (через [`client.task().call_tool()`](https://docs.rs/neva/latest/neva/client/task/struct.TaskBuilder.html#method.call_tool) на стороне клиента). Вызов его как обычного инструмента будет отклонён.
+Инструмент, помеченный `task_support = "required"`, должен вызываться как задача (через [`client.tools().as_task().call()`](https://docs.rs/neva/latest/neva/client/task/struct.TaskBuilder.html#method.call) на стороне клиента). Вызов его как обычного инструмента будет отклонён.
 
 ## Методы задач
 
@@ -83,7 +83,7 @@ async fn endless_tool() {
 
 ```rust
 #[tool(task_support = "required")]
-async fn tool_with_elicitation(mut ctx: Context, task: Meta<RelatedTaskMetadata>) -> String {
+async fn tool_with_elicitation(ctx: Context, task: Meta<RelatedTaskMetadata>) -> String {
     let params = ElicitRequestParams::form("Are you sure to proceed?")
         .with_related_task(task);
 

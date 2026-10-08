@@ -9,8 +9,8 @@ sidebar_position: 3
 
 ## Чтение ресурса
 
-Для чтения ресурса используйте метод [`read_resource()`](https://docs.rs/neva/latest/neva/client/struct.Client.html#method.read_resource).
-Он принимает имя инструмента и необязательные аргументы.
+Для чтения ресурса используйте [`client.resources().read()`](https://docs.rs/neva/latest/neva/client/api/struct.Resources.html#method.read).
+Он принимает URI ресурса.
 
 ```rust
 use neva::prelude::*;
@@ -25,9 +25,9 @@ async fn main() -> Result<(), Error> {
 
     client.connect().await?;
 
-    let resource = client.read_resource("res://resource-1").await?
+    let resource = client.resources().read("res://resource-1").await?;
 
-    println!("{:?}", result.contents);
+    println!("{:?}", resource.contents);
 
     client.disconnect().await
 }
@@ -35,7 +35,7 @@ async fn main() -> Result<(), Error> {
 
 ## Содержимое
 
-В приведённом выше примере метод [`read_resource`](https://docs.rs/neva/latest/neva/client/struct.Client.html#method.read_resource) возвращает [`ReadResourceResult`](https://docs.rs/neva/latest/neva/types/resource/read_resource_result/struct.ReadResourceResult.html),
+В приведённом выше примере [`read`](https://docs.rs/neva/latest/neva/client/api/struct.Resources.html#method.read) возвращает [`ReadResourceResult`](https://docs.rs/neva/latest/neva/types/resource/read_resource_result/struct.ReadResourceResult.html),
 содержащий [`Vec`](https://doc.rust-lang.org/std/vec/struct.Vec.html) из [`ResourceContents`](https://docs.rs/neva/latest/neva/types/resource/read_resource_result/enum.ResourceContents.html).
 
 Доступ к отдельным полям ресурса осуществляется с помощью следующих методов:
@@ -52,6 +52,14 @@ async fn main() -> Result<(), Error> {
 
 Ресурс, отданный как `text/html;profile=mcp-app`, — это документ
 [MCP App](./apps); его блок безопасности читается через `ui()`.
+
+## Список ресурсов {#listing-resources}
+
+| Вызов | Отправляет |
+|---|---|
+| [`client.resources().list(cursor)`](https://docs.rs/neva/latest/neva/client/api/struct.Resources.html#method.list) | Одну страницу `resources/list` |
+| [`client.resources().list_all()`](https://docs.rs/neva/latest/neva/client/api/struct.Resources.html#method.list_all) | Все страницы `resources/list` вместе |
+| [`client.resources().templates(cursor)`](https://docs.rs/neva/latest/neva/client/api/struct.Resources.html#method.templates) | Одну страницу `resources/templates/list` |
 
 ## Подписка на обновления ресурсов
 
@@ -94,9 +102,9 @@ subscription.cancel().await?;
 О фильтре, подтверждении и жизненном цикле подписки см.
 [Подписки](./subscriptions).
 
-:::note Замена `subscribe_to_resource`
-`client.subscribe_to_resource(uri)` / `unsubscribe_from_resource(uri)` — это
-легаси-пара. Они остаются скомпилированными (двойной режим по-прежнему
+:::note Легаси-`resources/subscribe`
+`client.resources().subscribe(uri)` / `unsubscribe(uri)` отправляют
+легаси-пару RPC. Они остаются скомпилированными (двойной режим по-прежнему
 достаёт до легаси-серверов), но на узле 2026-07-28 отвечают
 `MethodNotFound`. Используйте `SubscriptionFilter::with_resource(uri)`, как
 выше.

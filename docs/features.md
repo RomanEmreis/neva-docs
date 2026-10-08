@@ -29,11 +29,12 @@ neva = { version = "...", features = ["full"] }
 | Feature | Includes | Description |
 |---------|----------|-------------|
 | `full` | `server-full` + `client-full` | Everything — for apps that run both a server and a client |
-| `server-full` | `server-macros`, `tracing`, `http-server-volga`, `server-tls`, `server-oauth`, `di`, `tasks`, `apps` | All server capabilities, including the default Volga-based HTTP server |
+| `server-full` | `server-macros`, `tracing`, `http-server-volga`, `server-tls`, `server-oauth`, `di`, `tasks`, `apps`, `registry` | All server capabilities, including the default Volga-based HTTP server |
 | `client-full` | `client-macros`, `tracing`, `http-client`, `client-tls`, `client-oauth`, `client-oauth-jwt`, `client-oauth-dpop`, `tasks`, `apps` | All client capabilities |
 
-Note that `full` is *every* feature **except** the protocol-generation flag
-below — it is the default build, which is also what `docs.rs` publishes.
+Note that `full` is *every* feature **except** two: the protocol-generation
+flag below, and [`svir`](#the-svir-bridge), which stays opt-in while svir is
+`0.x`. `full` is the default build; `docs.rs` publishes it with `svir` on top.
 
 ### Server Features
 
@@ -45,6 +46,7 @@ below — it is the default build, which is also what `docs.rs` publishes.
 | `http-server-volga` | `http-server` | Default [Volga](https://docs.rs/volga)-based HTTP server adapter, including JWT auth |
 | `server-tls` | `http-server-volga` | TLS support for the default HTTP server, including automatic dev certificate generation |
 | `server-oauth` | `http-server` | [OAuth 2.1](./mcp-server/oauth) protected-resource metadata and token validation on the server |
+| `registry` | `server` | `server.json` manifests for the [MCP Registry](https://registry.modelcontextprotocol.io): the types and a validator, no new dependencies |
 
 ### Client Features
 
@@ -67,6 +69,21 @@ below — it is the default build, which is also what `docs.rs` publishes.
 | `tasks` | [Task-augmented requests](./mcp-server/tasks) — long-running async tool execution with polling |
 | `apps` | [MCP Apps](./mcp-server/apps) ([SEP-1865](https://github.com/modelcontextprotocol/ext-apps)) — `ui://` HTML resources and the `_meta.ui` blocks that bind a tool to one. Additive, and pulls in no new dependencies. The server half needs the default protocol generation; the [client half](./mcp-client/apps) works in both |
 | `tracing` | Structured logging via the [`tracing`](https://docs.rs/tracing) ecosystem and MCP log notifications |
+
+### The svir Bridge
+
+| Feature | Description |
+|---------|-------------|
+| `svir` | [Hands MCP tools to a model](./svir) as a [svir](https://docs.rs/svir) `Toolbox` — a connected server's through `RemoteTools`, a server's own through `App::into_toolbox` and `ctx.tools().toolbox()` — and turns prompts, resources and sampling into svir's types. Works with the server, the client, or both. svir comes in without its default features, so add `svir` to your own dependencies to call a model |
+
+`svir` is in **no preset**: svir is still `0.x`, and a preset that included it
+would make each breaking svir release a breaking neva one. Name it next to
+the preset:
+
+```toml
+neva = { version = "...", features = ["full", "svir"] }
+svir = "0.1.4"
+```
 
 ### Protocol Generation
 
@@ -154,7 +171,9 @@ full
 │   ├── tracing
 │   ├── di
 │   ├── tasks
-│   └── apps
+│   ├── apps
+│   └── registry
+│       └── server
 └── client-full
     ├── client-macros
     │   ├── client
@@ -172,5 +191,6 @@ full
     ├── tasks
     └── apps
 
+svir          (opt-in, in no preset: the bridge to a model, for the server, the client or both)
 legacy-spec   (orthogonal: selects the protocol generation, not a capability)
 ```

@@ -47,7 +47,7 @@ use neva::prelude::*;
 use neva::types::sampling::CreateMessageRequestParams;
 
 #[tool]
-async fn generate_weather_report(mut ctx: Context, city: String) -> Result<String, Error> {
+async fn generate_weather_report(ctx: Context, city: String) -> Result<String, Error> {
     let params = CreateMessageRequestParams::new()
         .with_message(format!("What's the weather in {city}?"))
         .with_sys_prompt("You are a helpful assistant.");
@@ -116,7 +116,7 @@ let params = CreateMessageRequestParams::new()
 use neva::prelude::*;
 use neva::types::sampling::CreateMessageRequestParams;
 
-let Some(tool) = ctx.find_tool("get_weather").await else {
+let Some(tool) = ctx.tools().find("get_weather").await else {
     return Err(ErrorCode::MethodNotFound.into());
 };
 
@@ -126,7 +126,7 @@ let params = CreateMessageRequestParams::new()
     .with_tools([tool]);
 ```
 
-У `Context` также есть методы [tools()](https://docs.rs/neva/latest/neva/app/context/struct.Context.html#method.tools), [find_tool()](https://docs.rs/neva/latest/neva/app/context/struct.Context.html#method.find_tool) и [find_tools()](https://docs.rs/neva/latest/neva/app/context/struct.Context.html#method.find_tools), которые могут быть полезны для получения метаданных инструментов для клиента.
+У [`ctx.tools()`](https://docs.rs/neva/latest/neva/app/context/api/struct.Tools.html) есть также [list()](https://docs.rs/neva/latest/neva/app/context/api/struct.Tools.html#method.list) и [find_many()](https://docs.rs/neva/latest/neva/app/context/api/struct.Tools.html#method.find_many) — чтобы передать модели клиента метаданные сразу нескольких инструментов.
 
 ### Настройка выбора инструмента
 
@@ -135,7 +135,7 @@ let params = CreateMessageRequestParams::new()
 use neva::prelude::*;
 use neva::types::sampling::{CreateMessageRequestParams, ToolChoiceMode};
 
-let Some(tool) = ctx.find_tool("get_weather").await else {
+let Some(tool) = ctx.tools().find("get_weather").await else {
     return Err(ErrorCode::MethodNotFound.into());
 };
 
@@ -162,8 +162,8 @@ use neva::prelude::*;
 use neva::types::sampling::{CreateMessageRequestParams, SamplingMessage, StopReason, ToolChoiceMode};
 
 #[tool]
-async fn generate_weather_report(mut ctx: Context, city: String) -> Result<String, Error> {
-    let Some(tool) = ctx.find_tool("get_weather").await else {
+async fn generate_weather_report(ctx: Context, city: String) -> Result<String, Error> {
+    let Some(tool) = ctx.tools().find("get_weather").await else {
         return Err(ErrorCode::MethodNotFound.into());
     };
 
@@ -195,7 +195,7 @@ async fn generate_weather_report(mut ctx: Context, city: String) -> Result<Strin
             // предыдущего шага выполнялись бы заново на каждом следующем
             // раунде, ведь обработчик стартует с начала.
             let tool_results = ctx
-                .memo(format!("tools-{step}"), async { Ok(ctx.use_tools(tools).await) })
+                .memo(format!("tools-{step}"), async { Ok(ctx.tools().call_all(tools).await) })
                 .await?;
 
             // Записываем результаты инструментов как сообщения пользователя
@@ -237,7 +237,7 @@ async fn generate_weather_report(mut ctx: Context, city: String) -> Result<Strin
 
 И ключ **на каждую итерацию** нужен не только вызову `sample`, но и любому
 побочному эффекту в теле цикла: обработчик стартует с начала на каждом
-раунде, поэтому незащищённый `ctx.use_tools` заново выполнял бы инструменты
+раунде, поэтому незащищённый `ctx.tools().call_all` заново выполнял бы инструменты
 всех предыдущих шагов.
 :::
 
@@ -247,6 +247,12 @@ async fn generate_weather_report(mut ctx: Context, city: String) -> Result<Strin
 - Задача детерминирована
 - Рассуждение на естественном языке не требуется
 - Достаточно обычного вызова инструмента или функции
+
+Сэмплирование одалживает модель **клиента**. Сервер со своей моделью может
+управлять ею напрямую: [мост svir](../svir#a-tool-that-drives-a-model) прямо
+из обработчика отдаёт модели остальные инструменты сервера через
+`ctx.tools().toolbox()`, и вызовы выполняются в том же процессе — без
+обращения к клиенту и без устаревших API.
 
 ## Обучение на примерах
 Полный рабочий пример доступен [здесь](https://github.com/RomanEmreis/neva/blob/main/examples/sampling/server/src/main.rs).

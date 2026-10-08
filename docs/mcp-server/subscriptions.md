@@ -52,18 +52,18 @@ working, and a server that never had a subscription now feeds one:
 use neva::prelude::*;
 
 // Emits `notifications/tools/list_changed` to every stream that asked for it
-ctx.add_tool(Tool::new("greet", || async { "hello" })).await?;
-let _ = ctx.remove_tool("greet").await?;
+ctx.tools().add(Tool::new("greet", || async { "hello" })).await?;
+let _ = ctx.tools().remove("greet").await?;
 
 // `notifications/prompts/list_changed`
-let _ = ctx.remove_prompt("summarize").await?;
+let _ = ctx.prompts().remove("summarize").await?;
 
 // `notifications/resources/list_changed`
-ctx.add_resource(Resource::new("res://config", "config")).await?;
-let _ = ctx.remove_resource("res://config").await?;
+ctx.resources().add(Resource::new("res://config", "config")).await?;
+let _ = ctx.resources().remove("res://config").await?;
 
 // `notifications/resources/updated` — only to streams listing this URI
-ctx.resource_updated("res://config").await?;
+ctx.resources().notify_updated("res://config").await?;
 ```
 
 The registry lives on the shared `McpOptions`, so a `Context` belonging to any
@@ -81,20 +81,21 @@ a default build and clients learn task status by polling
 
 ## Asking who is listening
 
-[`Context::is_subscribed`](https://docs.rs/neva/latest/neva/app/context/struct.Context.html#method.is_subscribed)
+[`ctx.resources().is_subscribed`](https://docs.rs/neva/latest/neva/app/context/api/struct.Resources.html#method.is_subscribed)
 answers from the live streams, so you can skip **expensive local work** nobody
 will receive:
 
 ```rust compile-fragment
 use neva::prelude::*;
 
-if ctx.is_subscribed(&"res://config".into()) {
+let resources = ctx.resources();
+if resources.is_subscribed(&"res://config".into()) {
     // re-render the snapshot, refresh the cache — the expensive part,
     // worth skipping when nobody on this node is listening
 }
 
 // Publish either way — the subscription filters route it.
-ctx.resource_updated("res://config").await?;
+resources.notify_updated("res://config").await?;
 ```
 
 :::warning `is_subscribed` is node-local
@@ -102,7 +103,7 @@ It can only answer for the instance running the handler. Under a
 [notification bus](#running-more-than-one-instance) a subscriber elsewhere may
 be waiting for exactly the update this instance would skip.
 
-That is why `Context::resource_updated` does not pre-check it: it publishes
+That is why `notify_updated` does not pre-check it: it publishes
 unconditionally and lets the filters route the result, which is what they
 already do. Use `is_subscribed` to skip work, never to decide whether to
 notify.
@@ -117,7 +118,7 @@ routinely land on different ones:
 
 ```text
 client --- subscriptions/listen ------------> instance A   (stream held here)
-client --- tools/call (mutates the tools) --> instance B   (ctx.add_tool)
+client --- tools/call (mutates the tools) --> instance B   (ctx.tools().add)
                                               instance B has no subscribers
                                               instance A's subscriber hears nothing
 ```
@@ -238,11 +239,11 @@ a server that never uses them shuts down as fast as one that cannot.
 ## Under `legacy-spec`
 
 The RPC pair comes back and the server owns the subscription again:
-`Context::subscribe_to_resource`, `Context::unsubscribe_from_resource` and
+`ctx.resources().subscribe(uri)`, `ctx.resources().unsubscribe(&uri)` and
 `resource::commands::{SUBSCRIBE, UNSUBSCRIBE}` exist only under
-[`legacy-spec`](../legacy-spec). In the default build, drop
-`ctx.subscribe_to_resource(..)` from your handlers — the client owns the
-subscription now, and there is nothing for the server to add.
+[`legacy-spec`](../legacy-spec). In the default build, drop the subscribe
+calls from your handlers — the client owns the subscription now, and there is
+nothing for the server to add.
 
 ## Learn By Example
 

@@ -10,7 +10,7 @@ Behind the `apps` feature, which is in `server-full` and `client-full`.
 Additive — it pulls in no new dependencies.
 
 ```toml
-neva = { version = "0.6", features = ["server-macros", "apps"] }
+neva = { version = "0.7", features = ["server-macros", "apps"] }
 ```
 
 ## The single most important fact
@@ -354,7 +354,7 @@ async fn main() -> Result<(), Error> {
 
     client.connect().await?;
 
-    let tools = client.list_tools(None).await?;
+    let tools = client.tools().list(None).await?;
 
     for tool in tools.tools.iter() {
         let Some(ui) = tool.ui() else { continue };
@@ -371,7 +371,7 @@ async fn main() -> Result<(), Error> {
         .and_then(|tool| tool.ui())
         .and_then(|ui| ui.resource_uri)
     {
-        let result = client.read_resource(uri).await?;
+        let result = client.resources().read(uri).await?;
         for contents in result.contents.iter() {
             println!("{} [{}]", contents.uri(), contents.mime().unwrap_or("?"));
             println!("  _meta.ui: {:?}", contents.ui());

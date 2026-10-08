@@ -6,7 +6,7 @@ let mut client = Client::new()
 client.connect().await?;
 
 let args = ("name", "John");
-let result = client.call_tool("hello", args).await?;
+let result = client.tools().call("hello", args).await?;
 
 // Prints: "Hello John!"
 println!("{:?}", result.content);                 

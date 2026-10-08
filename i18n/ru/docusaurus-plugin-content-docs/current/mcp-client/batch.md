@@ -41,13 +41,13 @@ async fn main() -> Result<(), Error> {
 
 | Метод | Эквивалент одиночного вызова |
 |---|---|
-| `.list_tools()` | `client.list_tools(None)` |
-| `.call_tool(name, args)` | `client.call_tool(name, args)` |
-| `.list_resources()` | `client.list_resources(None)` |
-| `.read_resource(uri)` | `client.read_resource(uri)` |
-| `.list_resource_templates()` | `client.list_resource_templates(None)` |
-| `.list_prompts()` | `client.list_prompts(None)` |
-| `.get_prompt(name, args)` | `client.get_prompt(name, args)` |
+| `.list_tools()` | `client.tools().list(None)` |
+| `.call_tool(name, args)` | `client.tools().call(name, args)` |
+| `.list_resources()` | `client.resources().list(None)` |
+| `.read_resource(uri)` | `client.resources().read(uri)` |
+| `.list_resource_templates()` | `client.resources().templates(None)` |
+| `.list_prompts()` | `client.prompts().list(None)` |
+| `.get_prompt(name, args)` | `client.prompts().get(name, args)` |
 | `.notify(method, params)` | уведомление без ожидания ответа |
 
 :::warning `ping` удалён
@@ -139,6 +139,20 @@ let responses = client
 // responses содержит 1 элемент (только list_tools вернул ответ)
 let tools = responses[0].clone().into_result::<ListToolsResult>()?;
 ```
+
+## Пакеты, собранные вручную {#hand-built-batches}
+
+[`client.call_batch(items)`](https://docs.rs/neva/latest/neva/client/struct.Client.html#method.call_batch)
+отправляет `Vec<MessageEnvelope>`, собранный вами, — `BatchBuilder` построен
+поверх него. Клиент нумерует каждый отправляемый запрос, и эти тоже: в сети
+каждый несёт идентификатор, сгенерированный клиентом, а каждый ответ
+возвращается с тем идентификатором, который дали вы. Ваш собственный
+идентификатор мог бы совпасть с идентификатором запроса, ответ на который ещё
+не пришёл, — брошенного запроса или другого пакета в полёте, — и тогда этот
+ответ достался бы не тому ожидающему.
+
+Как и любой запрос, пакет, который вызывающий перестал ждать,
+[отменяется](./basics#timeouts-and-cancellation) — каждый запрос в нём.
 
 ## На стороне сервера
 

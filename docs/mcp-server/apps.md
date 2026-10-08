@@ -13,7 +13,7 @@ Enabled by the `apps` feature (included in `server-full`).
 
 ```toml
 [dependencies]
-neva = { version = "0.6", features = ["server-macros", "apps"] }
+neva = { version = "0.7", features = ["server-macros", "apps"] }
 ```
 
 ## What a server is actually responsible for

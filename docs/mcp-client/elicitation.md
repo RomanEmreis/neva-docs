@@ -14,10 +14,10 @@ server answers a tool call with `input_required`; the client's handler
 produces the answer and **re-issues the call**, carrying the sealed
 `requestState` back.
 
-Neva does that loop for you, inside `call_tool`:
+Neva does that loop for you, inside `client.tools().call(..)`:
 
 * your handler is invoked once per `input_required` round;
-* `Client::call_tool` returns only the final result — the caller sees a
+* `client.tools().call` returns only the final result — the caller sees a
   single call;
 * registering a handler is what makes the client declare
   `clientCapabilities.elicitation`, and a server may only ask for a kind the

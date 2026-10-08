@@ -40,7 +40,7 @@ async fn main() -> Result<(), Error> {
     client.connect().await?;
 
     let args = ("name", "John");
-    let result = client.call_tool("hello", args).await?;
+    let result = client.tools().call("hello", args).await?;
 
     println!("{:?}", result.content);
 
@@ -50,6 +50,20 @@ async fn main() -> Result<(), Error> {
 
 Здесь мы настраиваем [MCP-клиент](https://docs.rs/neva/latest/neva/client/struct.Client.html) для подключения к серверу через `stdio`.
 После подключения можно вызывать инструменты, получать запросы или читать ресурсы вплоть до отключения (или удаления клиента).
+
+Примитивы сервера сгруппированы так же, как MCP называет свои методы, — по
+одному пространству имён на префикс:
+
+| Пространство имён | Методы |
+|---|---|
+| [`client.tools()`](https://docs.rs/neva/latest/neva/client/api/struct.Tools.html) | `tools/list`, `tools/call` |
+| [`client.resources()`](https://docs.rs/neva/latest/neva/client/api/struct.Resources.html) | `resources/list`, `resources/templates/list`, `resources/read` |
+| [`client.prompts()`](https://docs.rs/neva/latest/neva/client/api/struct.Prompts.html) | `prompts/list`, `prompts/get` |
+| [`client.tasks()`](https://docs.rs/neva/latest/neva/client/api/struct.Tasks.html) | `tasks/get`, `tasks/update`, `tasks/cancel` — см. [Задачи](./tasks) |
+
+Каждое пространство имён — `Copy`-представление, заимствованное у клиента,
+поэтому их можно держать сколько угодно одновременно:
+`let (tools, prompts) = (client.tools(), client.prompts());`.
 
 :::note `disconnect()` — локальная операция
 Он останавливает транспорт и **ничего** не отправляет по сети. В протоколе
@@ -64,14 +78,14 @@ neva отправляла раньше, не проходит проверку �
 
 ```rust
 let args = ("lang", "Rust");
-let prompt = client.get_prompt("hello_world_code", args).await?;
+let prompt = client.prompts().get("hello_world_code", args).await?;
 ```
 
 ## Чтение ресурса {#read-a-resource}
 
 Затем прочитаем ресурс, объявленный [здесь](/docs/mcp-server/basics#adding-a-resource-tempate-handler).
 ```rust
-let resource = client.read_resource("res://resource-1").await?;
+let resource = client.resources().read("res://resource-1").await?;
 ```
 
 ## Список инструментов, промптов и ресурсов
@@ -79,52 +93,102 @@ let resource = client.read_resource("res://resource-1").await?;
 Наконец, вот как динамически изучить все доступные инструменты, промпты и ресурсы.
 
 ```rust
-// Возвращает список инструментов
-let tools = client
-    .list_tools(None)
-    .await?;
+// Все инструменты, со всех страниц
+let tools = client.tools().list_all().await?;
 
-// Возвращает список ресурсов
-let resources = client
-    .list_resources(None)
-    .await?;
+// Все ресурсы
+let resources = client.resources().list_all().await?;
 
-// Возвращает список шаблонов ресурсов
-let templates = client
-    .list_resource_templates(None)
-    .await?;
+// Первая страница шаблонов ресурсов
+let templates = client.resources().templates(None).await?;
 
-// Возвращает список промптов
-let prompts = client
-    .list_prompts(None)
-    .await?;
+// Все промпты
+let prompts = client.prompts().list_all().await?;
 ```
+
+`list_all()` обходит список страница за страницей и возвращает элементы
+вместе. Если сервер всё ещё отдаёт страницы после 64-й, это **ошибка**, а не
+частичный список: обрезанный список выглядел бы полным.
 
 ## Пагинация {#pagination}
 
 Большие списки по умолчанию возвращаются постранично по 10 элементов.
-Используйте значение [`next_cursor`](https://docs.rs/neva/latest/neva/types/cursor/struct.Cursor.html) для получения следующих страниц:
+Чтобы обходить их самостоятельно, `list(cursor)` запрашивает одну страницу:
+`None` — первую, а [`next_cursor`](https://docs.rs/neva/latest/neva/types/cursor/struct.Cursor.html)
+предыдущей страницы — следующую:
 
 ```rust
 // Первые 10
-let resources = client
-    .list_resources(None)
-    .await?;
+let resources = client.resources().list(None).await?;
 
 // Следующие 10
-let resources = client
-    .list_resources(resources.next_cursor)
-    .await?;
+let resources = client.resources().list(resources.next_cursor).await?;
 
 // Ещё 10
-let resources = client
-    .list_resources(resources.next_cursor)
-    .await?;
+let resources = client.resources().list(resources.next_cursor).await?;
 ```
 
 Списки на стороне сервера упорядочены детерминированно по имени, поэтому
 постраничный обход больше не может пропустить или продублировать запись. См.
 [Порядок в списке](../mcp-server/tools#listing-order).
+
+## Совместное использование клиента {#sharing-a-client}
+
+Все методы запросов принимают `&self`, поэтому подключённый клиент можно
+разделить между задачами — положите его в `Arc` и клонируйте дескриптор:
+
+```rust
+use std::sync::Arc;
+use neva::prelude::*;
+
+#[tokio::main]
+async fn main() -> Result<(), Error> {
+    let mut client = Client::new()
+        .with_options(|opt| opt.with_default_http());
+    client.connect().await?;
+
+    let client = Arc::new(client);
+    let calls = ["London", "Paris", "Tokyo"].map(|city| {
+        let client = client.clone();
+        tokio::spawn(async move {
+            client.tools().call("get_weather", ("city", city)).await
+        })
+    });
+
+    for call in calls {
+        println!("{:?}", call.await);
+    }
+    Ok(())
+}
+```
+
+Настройка по-прежнему требует `&mut self`: `connect`, обработчики `map_*` и
+`on_*` и корневые каталоги настраиваются до того, как клиент станет общим.
+
+## Таймауты и отмена {#timeouts-and-cancellation}
+
+Запрос, которого клиент перестал ждать, **отменяется** — когда он превышает
+таймаут ([`with_timeout`](https://docs.rs/neva/latest/neva/client/options/struct.McpOptions.html#method.with_timeout),
+по умолчанию 10 секунд) и когда его future удаляется, например
+`tokio::time::timeout` или проигравшей веткой `select!`:
+
+```rust
+use std::time::Duration;
+
+// Удалён через секунду: сервер получит указание прекратить работу над ним.
+let result = tokio::time::timeout(
+    Duration::from_secs(1),
+    client.tools().call("slow_report", ()),
+).await;
+```
+
+Как об этом узнаёт сервер, зависит от транспорта. Через Streamable HTTP в MCP
+2026-07-28 клиент закрывает поток ответа запроса — там это *и есть* отмена, и
+`notifications/cancelled` не отправляется. Через stdio и легаси-узлу клиент
+отправляет `notifications/cancelled`. В любом случае слот ожидания запроса
+освобождается сразу, а запоздавший ответ на него отбрасывается. Запросы
+брошенного [пакета](./batch) тоже отменяются; легаси-`initialize`, который
+спецификация отменять не разрешает, — никогда.
 
 ## Кэширование
 

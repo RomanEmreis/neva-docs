@@ -50,18 +50,18 @@ async fn main() {
 
 ```rust
 // Отправляет `notifications/tools/list_changed` каждому потоку, который просил
-ctx.add_tool(Tool::new("greet", || async { "hello" })).await?;
-let _ = ctx.remove_tool("greet").await?;
+ctx.tools().add(Tool::new("greet", || async { "hello" })).await?;
+let _ = ctx.tools().remove("greet").await?;
 
 // `notifications/prompts/list_changed`
-let _ = ctx.remove_prompt("summarize").await?;
+let _ = ctx.prompts().remove("summarize").await?;
 
 // `notifications/resources/list_changed`
-ctx.add_resource(Resource::new("res://config", "config")).await?;
-let _ = ctx.remove_resource("res://config").await?;
+ctx.resources().add(Resource::new("res://config", "config")).await?;
+let _ = ctx.resources().remove("res://config").await?;
 
 // `notifications/resources/updated` — только потокам, где указан этот URI
-ctx.resource_updated("res://config").await?;
+ctx.resources().notify_updated("res://config").await?;
 ```
 
 Реестр живёт в общем `McpOptions`, поэтому `Context` любого выполняющегося
@@ -79,18 +79,19 @@ ctx.resource_updated("res://config").await?;
 
 ## Кто слушает
 
-[`Context::is_subscribed`](https://docs.rs/neva/latest/neva/app/context/struct.Context.html#method.is_subscribed)
+[`ctx.resources().is_subscribed`](https://docs.rs/neva/latest/neva/app/context/api/struct.Resources.html#method.is_subscribed)
 отвечает по живым потокам, так что можно пропустить **дорогую локальную
 работу**, которую всё равно никто не получит:
 
 ```rust
-if ctx.is_subscribed(&"res://config".into()) {
+let resources = ctx.resources();
+if resources.is_subscribed(&"res://config".into()) {
     // перерисовать снимок, обновить кэш — та самая дорогая часть,
     // которую стоит пропустить, если на этом узле никто не слушает
 }
 
 // Публикуем в любом случае — фильтры подписок сами всё разошлют.
-ctx.resource_updated("res://config").await?;
+resources.notify_updated("res://config").await?;
 ```
 
 :::warning `is_subscribed` знает только про свой узел
@@ -98,7 +99,7 @@ ctx.resource_updated("res://config").await?;
 [шине уведомлений](#запуск-нескольких-экземпляров) подписчик на другом
 экземпляре может ждать ровно то обновление, которое этот экземпляр пропустит.
 
-Именно поэтому `Context::resource_updated` не делает предпроверку: он публикует
+Именно поэтому `notify_updated` не делает предпроверку: он публикует
 безусловно и оставляет маршрутизацию фильтрам — тем самым, которые этим и
 занимаются. Используйте `is_subscribed`, чтобы пропустить работу, но никогда —
 чтобы решить, слать ли уведомление.
@@ -113,7 +114,7 @@ ctx.resource_updated("res://config").await?;
 
 ```text
 клиент --- subscriptions/listen ------------> экземпляр A   (поток здесь)
-клиент --- tools/call (меняет список) ------> экземпляр B   (ctx.add_tool)
+клиент --- tools/call (меняет список) ------> экземпляр B   (ctx.tools().add)
                                               у B подписчиков нет
                                               подписчик A ничего не услышит
 ```
@@ -235,11 +236,11 @@ App::new()
 ## Под флагом `legacy-spec`
 
 Пара RPC-методов возвращается, и подпиской снова владеет сервер:
-`Context::subscribe_to_resource`, `Context::unsubscribe_from_resource` и
+`ctx.resources().subscribe(uri)`, `ctx.resources().unsubscribe(&uri)` и
 `resource::commands::{SUBSCRIBE, UNSUBSCRIBE}` существуют только под
-[`legacy-spec`](../legacy-spec). В сборке по умолчанию уберите
-`ctx.subscribe_to_resource(..)` из обработчиков — подпиской теперь владеет
-клиент, и серверу добавлять нечего.
+[`legacy-spec`](../legacy-spec). В сборке по умолчанию уберите вызовы
+подписки из обработчиков — подпиской теперь владеет клиент, и серверу
+добавлять нечего.
 
 ## Обучение на примерах
 

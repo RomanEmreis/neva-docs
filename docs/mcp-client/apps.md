@@ -12,7 +12,7 @@ Enabled by the `apps` feature (included in `client-full`).
 
 ```toml
 [dependencies]
-neva = { version = "0.6", features = ["client", "apps"] }
+neva = { version = "0.7", features = ["client", "apps"] }
 ```
 
 :::info A neva client is not a browser
@@ -123,7 +123,7 @@ async fn main() -> Result<(), Error> {
 
     client.connect().await?;
 
-    let tools = client.list_tools(None).await?;
+    let tools = client.tools().list(None).await?;
 
     for tool in tools.tools.iter() {
         // Every tool has a `content` answer; only some have a face.
@@ -185,14 +185,14 @@ async fn main() -> Result<(), Error> {
 
     client.connect().await?;
 
-    let tools = client.list_tools(None).await?;
+    let tools = client.tools().list(None).await?;
 
     if let Some(uri) = tools
         .get("get_time")
         .and_then(|tool| tool.ui())
         .and_then(|ui| ui.resource_uri)
     {
-        let result = client.read_resource(uri).await?;
+        let result = client.resources().read(uri).await?;
         for contents in result.contents.iter() {
             println!(
                 "{} [{}] {} bytes",

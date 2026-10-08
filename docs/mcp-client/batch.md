@@ -41,13 +41,13 @@ async fn main() -> Result<(), Error> {
 
 | Method | Equivalent single call |
 |---|---|
-| `.list_tools()` | `client.list_tools(None)` |
-| `.call_tool(name, args)` | `client.call_tool(name, args)` |
-| `.list_resources()` | `client.list_resources(None)` |
-| `.read_resource(uri)` | `client.read_resource(uri)` |
-| `.list_resource_templates()` | `client.list_resource_templates(None)` |
-| `.list_prompts()` | `client.list_prompts(None)` |
-| `.get_prompt(name, args)` | `client.get_prompt(name, args)` |
+| `.list_tools()` | `client.tools().list(None)` |
+| `.call_tool(name, args)` | `client.tools().call(name, args)` |
+| `.list_resources()` | `client.resources().list(None)` |
+| `.read_resource(uri)` | `client.resources().read(uri)` |
+| `.list_resource_templates()` | `client.resources().templates(None)` |
+| `.list_prompts()` | `client.prompts().list(None)` |
+| `.get_prompt(name, args)` | `client.prompts().get(name, args)` |
 | `.notify(method, params)` | fire-and-forget notification |
 
 :::warning `ping` is gone
@@ -139,6 +139,19 @@ let responses = client
 // responses has 1 element (only list_tools produced a response)
 let tools = responses[0].clone().into_result::<ListToolsResult>()?;
 ```
+
+## Hand-Built Batches
+
+[`client.call_batch(items)`](https://docs.rs/neva/latest/neva/client/struct.Client.html#method.call_batch)
+sends a `Vec<MessageEnvelope>` you assembled yourself — `BatchBuilder` is built
+on it. The client numbers every request it sends, these too: on the wire each
+one carries an id the client generated, and each response comes back carrying
+the id you gave it. An id of your own could repeat one still owed an answer —
+a request given up on, another batch in flight — and that answer would then
+reach the wrong waiter.
+
+Like any request, a batch the caller stops waiting for is
+[cancelled](./basics#timeouts-and-cancellation), every request in it.
 
 ## Server Side
 

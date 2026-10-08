@@ -46,7 +46,7 @@ async fn main() -> Result<(), Error> {
     client.connect().await?;
 
     // Раунд MRTR происходит внутри этого единственного вызова.
-    let result = client.call_tool("scan_workspace", ()).await?;
+    let result = client.tools().call("scan_workspace", ()).await?;
     tracing::info!("Result: {:?}", result.content);
 
     client.disconnect().await
@@ -60,7 +60,7 @@ async fn main() -> Result<(), Error> {
 
 ```rust
 #[tool]
-async fn scan_workspace(mut ctx: Context) -> Result<String, Error> {
+async fn scan_workspace(ctx: Context) -> Result<String, Error> {
     // Первый раунд разворачивает обработчик с `input_required` и конвертом
     // `roots/list`; второй — воспроизводит ответ из `requestState`.
     #[allow(deprecated)]

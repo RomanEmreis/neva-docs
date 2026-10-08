@@ -187,7 +187,7 @@ nothing to cancel it and would outlive the call that made it. Use
 `Client::listen`.
 :::
 
-## Migrating from `subscribe_to_resource`
+## Migrating from `resources/subscribe`
 
 `resources/subscribe` and `resources/unsubscribe` are not deleted by the
 spec, they are folded into `resourceSubscriptions`. On the client the old
@@ -196,9 +196,9 @@ but they reject a 2026-07-28 peer with `MethodNotFound`:
 
 ```rust
 // Before (legacy)
-client.subscribe_to_resource("res://some-resource").await?;
+client.resources().subscribe("res://some-resource").await?;
 // ...
-client.unsubscribe_from_resource("res://some-resource").await?;
+client.resources().unsubscribe("res://some-resource").await?;
 
 // After (MCP 2026-07-28)
 let mut subscription = client
@@ -209,7 +209,7 @@ subscription.cancel().await?;
 ```
 
 The server side loses its half of the pair entirely:
-`Context::subscribe_to_resource` / `unsubscribe_from_resource` moved behind
+`ctx.resources().subscribe(..)` / `unsubscribe(..)` exist only under
 [`legacy-spec`](../legacy-spec), because the client now owns the
 subscription. See [Server → Subscriptions](../mcp-server/subscriptions).
 

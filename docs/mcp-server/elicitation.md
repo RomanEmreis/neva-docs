@@ -34,8 +34,8 @@ Two consequences shape every handler that elicits:
    `ctx.memo` (compute once), `ctx.once` (run once), or `ctx.on_commit`
    (defer to the final result).
 
-The client drives the rounds inside `call_tool`, so its caller still sees a
-single call.
+The client drives the rounds inside `client.tools().call(..)`, so its caller
+still sees a single call.
 
 :::note Under `legacy-spec`
 Elicitation is a capability-driven server→client push request instead:
@@ -54,7 +54,7 @@ without an input can look before it asks:
 use neva::{Context, error::Error, types::elicitation::ElicitRequestParams, tool};
 
 #[tool]
-async fn greet(mut ctx: Context) -> Result<String, Error> {
+async fn greet(ctx: Context) -> Result<String, Error> {
     if ctx.client_capabilities().elicitation.is_none() {
         return Ok("Hello, stranger!".to_string());
     }
@@ -122,7 +122,7 @@ With [#[json_schema]](https://docs.rs/neva/latest/neva/attr.json_schema.html) at
 To create elicit request form params you need to use the [ElicitRequestParams::form()](https://docs.rs/neva/latest/neva/types/elicitation/enum.ElicitRequestParams.html#method.form) method with the following [with_contract()](https://docs.rs/neva/latest/neva/types/elicitation/struct.ElicitRequestFormParams.html#method.with_schema) that specifies the expected JSON schema.
 ```rust
 #[tool]
-async fn generate_business_card(mut ctx: Context) -> Result<String, Error> {
+async fn generate_business_card(ctx: Context) -> Result<String, Error> {
     let params = ElicitRequestParams::form(
         "Please provide your contact information"
     )
@@ -153,7 +153,7 @@ primitive, because that code runs again on every round:
 
 ```rust
 #[tool]
-async fn place_order(mut ctx: Context) -> Result<String, Error> {
+async fn place_order(ctx: Context) -> Result<String, Error> {
     // Computed once, replayed on later rounds.
     let quote: u32 = ctx.memo("quote", async { Ok(fetch_quote().await) }).await?;
 
@@ -177,7 +177,7 @@ async fn place_order(mut ctx: Context) -> Result<String, Error> {
 URL elicitations are used when the user must perform an external action. You can create the [ElicitRequestUrlParams](https://docs.rs/neva/latest/neva/types/elicitation/struct.ElicitRequestUrlParams.html) by leveraging the [ElicitRequestParams::url()](https://docs.rs/neva/latest/neva/types/elicitation/enum.ElicitRequestParams.html#method.url) method.
 ```rust
 #[tool]
-async fn pay_a_bill(mut ctx: Context) -> Result<&'static str, Error> {
+async fn pay_a_bill(ctx: Context) -> Result<&'static str, Error> {
     let params = ElicitRequestParams::url(
         "https://www.paypal.com/us/webapps/mpp/paypal-payment",
         "Please pay your bill using PayPal"

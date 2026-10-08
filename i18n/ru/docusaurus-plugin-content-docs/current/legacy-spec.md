@@ -14,7 +14,7 @@ sidebar_position: 99
 
 ```toml
 [dependencies]
-neva = { version = "0.6", features = ["server-full", "legacy-spec"] }
+neva = { version = "0.7", features = ["server-full", "legacy-spec"] }
 ```
 
 Это **переключатель поколения, а не добавка**: его включение компилирует
@@ -41,9 +41,9 @@ neva = { version = "0.6", features = ["server-full", "legacy-spec"] }
 | Макросы | Атрибутный макрос `#[sampling]` |
 | Логирование | `logging/setLevel`, а также `with_logging(handle)` и глобальный путь отправки `notifications/message` |
 | Инструменты | Легаси-тип `ToolSchema` (не JSON Schema 2020-12) |
-| Задачи | Поверхность 2025-11-25: `tasks/list`, `tasks/result`, поддерево возможностей `cancel`/`list`/`requests`, `with_tasks(\|t\| …)`, задачи на стороне клиента |
+| Задачи | Поверхность 2025-11-25: `tasks/list` и `tasks/result` (`client.tasks().list(cursor)` / `result(id)`), поддерево возможностей `cancel`/`list`/`requests`, `with_tasks(\|t\| …)`, задачи на стороне клиента |
 | Уведомления | `ping`, `notifications/roots/list_changed`, `notifications/elicitation/complete` |
-| Подписки | Пара RPC-методов `resources/subscribe` / `resources/unsubscribe`, `Context::subscribe_to_resource` / `unsubscribe_from_resource` и `resource::commands::{SUBSCRIBE, UNSUBSCRIBE}` — состояние подписки на сервере вместо потока `subscriptions/listen` |
+| Подписки | Пара RPC-методов `resources/subscribe` / `resources/unsubscribe`, `ctx.resources().subscribe` / `unsubscribe` и `resource::commands::{SUBSCRIBE, UNSUBSCRIBE}` — состояние подписки на сервере вместо потока `subscriptions/listen` |
 | Запросы | Нет обязательных ключей `_meta`, нет проверки заголовков маршрутизации, нет `resultType` |
 | [MCP Apps](./mcp-server/apps) | **Ничего** — серверная половина вырезается, потому что расширение едет в `capabilities.extensions`, которому в этом поколении нет места. [Клиентская половина](./mcp-client/apps) работает: легаси-`initialize` несёт объявление на каждом соединении, а в 2026-07-28 оно едет в [`_meta` каждого запроса](./spec-2026-07-28#capabilities-ride-each-request) |
 
@@ -104,6 +104,99 @@ id: 0:7
 На **сервере** такого отката нет — он определяется на этапе компиляции.
 Серверу, который должен обслуживать легаси-клиентов, нужна сборка с
 `legacy-spec`.
+
+## Обновление 0.6.x → 0.7.0 {#migrating-to-070}
+
+Вызовы клиента и `Context` переехали в пространства имён — по одному на
+префикс метода MCP. Старые написания по-прежнему компилируются, каждое с
+предупреждением об устаревании, где названа замена, — кроме одного: его имя
+заняло новое пространство имён.
+
+### `ctx.tools()` — это пространство имён инструментов
+
+Раньше `ctx.tools()` возвращал список инструментов сервера; теперь он
+возвращает пространство имён, которое их перечисляет, находит, вызывает и
+изменяет. Старый вызов больше не компилируется — пространство имён не является
+future:
+
+```rust
+// было
+let tools = ctx.tools().await;
+
+// стало
+let tools = ctx.tools().list().await;
+```
+
+### Плоские вызовы устарели
+
+На клиенте:
+
+| 0.6 | 0.7 |
+|---|---|
+| `client.list_tools(cursor)` | `client.tools().list(cursor)` — или `list_all()` для всех страниц |
+| `client.call_tool(name, args)` | `client.tools().call(name, args)` |
+| `client.call_tool_raw(params)` | `client.tools().call_raw(params)` |
+| `client.task().call_tool(name, args)` | `client.tools().as_task().call(name, args)` |
+| `client.call_tool_as_task(name, args, ttl)` | `client.tools().as_task().with_ttl(ttl).call(name, args)` |
+| `client.list_resources(cursor)` | `client.resources().list(cursor)` |
+| `client.list_resource_templates(cursor)` | `client.resources().templates(cursor)` |
+| `client.read_resource(uri)` | `client.resources().read(uri)` |
+| `client.subscribe_to_resource(uri)` / `unsubscribe_from_resource(uri)` | `client.resources().subscribe(uri)` / `unsubscribe(uri)` — только для легаси-узлов |
+| `client.list_prompts(cursor)` | `client.prompts().list(cursor)` |
+| `client.get_prompt(name, args)` | `client.prompts().get(name, args)` |
+
+На сервере, в обработчике:
+
+| 0.6 | 0.7 |
+|---|---|
+| `ctx.find_tool(name)` / `find_tools(names)` | `ctx.tools().find(name)` / `find_many(names)` |
+| `ctx.use_tool(tool)` / `use_tools(tools)` | `ctx.tools().call(tool)` / `call_all(tools)` |
+| `ctx.add_tool(tool)` / `remove_tool(name)` | `ctx.tools().add(tool)` / `remove(name)` |
+| `ctx.prompt(name, args)` | `ctx.prompts().get(name, args)` |
+| `ctx.add_prompt(prompt)` / `remove_prompt(name)` | `ctx.prompts().add(prompt)` / `remove(name)` |
+| `ctx.resource(uri)` | `ctx.resources().read(uri)` |
+| `ctx.add_resource(res)` / `remove_resource(uri)` | `ctx.resources().add(res)` / `remove(uri)` |
+| `ctx.resource_updated(uri)` | `ctx.resources().notify_updated(uri)` |
+| `ctx.is_subscribed(&uri)` | `ctx.resources().is_subscribed(&uri)` |
+| `ctx.subscribe_to_resource(uri)` / `unsubscribe_from_resource(&uri)` | `ctx.resources().subscribe(uri)` / `unsubscribe(&uri)` — только `legacy-spec` |
+
+Строитель пакетов сохраняет плоские методы — `client.batch().call_tool(..)`
+актуален и не устарел.
+
+### Запросы принимают `&self`
+
+Методы запросов `Client` принимают `&self`, поэтому подключённый клиент можно
+[разделять](./mcp-client/basics#sharing-a-client) как `Arc<Client>`; настройка —
+`connect`, `map_*`, `on_*`, корневые каталоги — по-прежнему требует
+`&mut self`. Методы `Context` тоже принимают `&self`, так что обработчик
+принимает просто `ctx: Context`, а оставшийся `mut ctx` вызывает
+предупреждение `unused_mut`.
+
+### Два более узких изменения
+
+* **Методы `TaskApi` принимают `&self`**, а `wait_to_completion` принимает
+  `&A`. Затронута только реализация трейта вне neva.
+* **`map_sampling` ограничен `ClientHandler<_, Result<CreateMessageResult, Error>, _>`**,
+  поэтому обработчик сэмплирования [может завершиться ошибкой](./mcp-client/sampling#a-handler-that-can-fail).
+  Обработчик, возвращающий просто `CreateMessageResult`, по-прежнему подходит;
+  меняется только код, который называет старое ограничение явно.
+
+### Поведение, изменившееся без смены сигнатур
+
+* **Запрос, которого клиент перестал ждать, отменяется** — по таймауту или при
+  удалении вызова. Сервер получает об этом сигнал и останавливает обработчик;
+  запрос, который раньше тихо доходил до конца после того, как вызывающий
+  сдался, теперь не доходит. См.
+  [Таймауты и отмена](./mcp-client/basics#timeouts-and-cancellation).
+* **Закрытие потока запроса отменяет его** на HTTP-сервере 2026-07-28, как
+  требует спецификация; раньше обработчик продолжал работать.
+* **`call_batch` нумерует запросы сам** и возвращает ваши идентификаторы на
+  ответы.
+* **Отклонённый сервером `tasks/update` или `tasks/cancel` — это ошибка**, а не
+  `Ok(())`, и `wait_to_completion` на ней останавливается.
+
+И добавилось: `list_all()` у каждого списка, `client.tasks()` для методов
+задач и [мост svir](./svir) за новой фичей `svir`.
 
 ## Обновление 0.5.x → 0.6.0 {#migrating-to-060}
 

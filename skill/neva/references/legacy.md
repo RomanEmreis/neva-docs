@@ -13,7 +13,7 @@ that command tests the legacy profile. Exercise the default one with an
 explicit list: `--features "server-full client-full"`.
 
 ```toml
-neva = { version = "0.6", features = ["server-full", "legacy-spec"] }
+neva = { version = "0.7", features = ["server-full", "legacy-spec"] }
 ```
 
 ## You usually do not need it on the client
@@ -38,9 +38,9 @@ that must serve pre-2026-07-28 clients needs the `legacy-spec` build.
 | Macros | The `#[sampling]` attribute macro |
 | Logging | `logging/setLevel`, `with_logging(handle)`, a global `notifications/message` path |
 | Tools | The legacy typed `ToolSchema`, not JSON Schema 2020-12 |
-| Tasks | The 2025-11-25 surface: `tasks/list`, `tasks/result`, the `cancel`/`list`/`requests` capability sub-tree, `with_tasks(\|t\| …)`, client-hosted tasks |
+| Tasks | The 2025-11-25 surface: `tasks/list` and `tasks/result` (`client.tasks().list(cursor)` / `result(id)`), the `cancel`/`list`/`requests` capability sub-tree, `with_tasks(\|t\| …)`, client-hosted tasks |
 | Notifications | `ping`, `notifications/roots/list_changed`, `notifications/elicitation/complete` |
-| Subscriptions | `resources/subscribe` / `resources/unsubscribe`, `Context::subscribe_to_resource` / `unsubscribe_from_resource` |
+| Subscriptions | `resources/subscribe` / `resources/unsubscribe`; on the server `ctx.resources().subscribe(uri)` / `unsubscribe(&uri)` |
 | Requests | No mandatory `_meta` keys, no routing-header validation, no `resultType` |
 
 Everything else — DI, middleware, content types, JWT auth, TLS, custom HTTP
@@ -93,8 +93,9 @@ in that generation. `#[sampling]` exists to register the client handler.
 2020-12 document. Closure bodies passed to `with_input_schema` therefore do
 not port between profiles.
 
-**Subscriptions belong to the server.** `ctx.subscribe_to_resource(uri)`
-exists; the client's `subscriptions/listen` does not.
+**Subscriptions belong to the server.** `ctx.resources().subscribe(uri)`
+exists (`ctx.subscribe_to_resource(uri)` on 0.6); the client's
+`subscriptions/listen` does not.
 
 ## Upgrading 0.4.x → 0.5.x
 
@@ -252,6 +253,57 @@ And, additively:
 None of this reaches the legacy profile except the two breaking renames,
 which apply to any build that uses those APIs. Synchronous handlers and
 `blocking` work under `legacy-spec` too.
+
+## Upgrading 0.6.x → 0.7.0
+
+The client's and `Context`'s calls moved into namespaces, one per MCP method
+prefix. One rename breaks the build; the rest is deprecation warnings, each
+naming its replacement.
+
+* **`ctx.tools()` is now the tools namespace.** The 0.6 listing call
+  `ctx.tools().await` fails to compile — `Tools` is not a future. Write
+  `ctx.tools().list().await`.
+* **Flat calls are `#[deprecated]`.** Client: `list_tools` → `tools().list`,
+  `call_tool` → `tools().call`, `call_tool_raw` → `tools().call_raw`,
+  `task().call_tool(..)` → `tools().as_task().call(..)`, `call_tool_as_task(n, a, ttl)`
+  → `tools().as_task().with_ttl(ttl).call(n, a)`, `list_resources` →
+  `resources().list`, `list_resource_templates` → `resources().templates`,
+  `read_resource` → `resources().read`, `subscribe_to_resource` /
+  `unsubscribe_from_resource` → `resources().subscribe` / `unsubscribe`,
+  `list_prompts` → `prompts().list`, `get_prompt` → `prompts().get`. Context:
+  `find_tool` / `find_tools` → `tools().find` / `find_many`, `use_tool` /
+  `use_tools` → `tools().call` / `call_all`, `add_tool` / `remove_tool` →
+  `tools().add` / `remove`, `prompt` → `prompts().get`, `add_prompt` /
+  `remove_prompt` → `prompts().add` / `remove`, `resource` →
+  `resources().read`, `add_resource` / `remove_resource` → `resources().add` /
+  `remove`, `resource_updated` → `resources().notify_updated`,
+  `is_subscribed` → `resources().is_subscribed`, and under `legacy-spec`
+  `subscribe_to_resource` / `unsubscribe_from_resource` →
+  `resources().subscribe` / `unsubscribe`. `client.batch()`'s builder methods
+  keep their flat names and are not deprecated.
+* **`&self` everywhere.** `Client` request methods take `&self`, so share a
+  connected client as `Arc<Client>`. `Context` methods take `&self`: change
+  `mut ctx: Context` to `ctx: Context`, or live with an `unused_mut` warning.
+* **`TaskApi` methods take `&self`** and `wait_to_completion` takes `&A` —
+  only implementations outside neva care.
+* **`map_sampling` is bound by `ClientHandler<_, Result<CreateMessageResult, Error>, _>`.**
+  A handler returning `CreateMessageResult` still fits; only code naming the
+  old bound changes.
+
+Behaviour that changes without a signature:
+
+* **A request the client stops waiting for is cancelled** on the server — a
+  timeout or a dropped future. Over Streamable HTTP under 2026-07-28 the client
+  closes the request's stream, and the server now treats that as cancellation
+  and stops the handler (it used to run on). Over stdio and to legacy peers,
+  `notifications/cancelled`.
+* **`call_batch` sends client-generated ids** and puts the caller's back on the
+  responses.
+* **A refused `tasks/update` / `tasks/cancel` is an `Err`**, not `Ok(())`, and
+  `wait_to_completion` stops at it.
+
+New: `list_all()` on every listing, `client.tasks()`, a sampling handler that
+returns `Result`, and the `svir` feature (`svir.md`), which is in no preset.
 
 ## Examples in the neva repository
 

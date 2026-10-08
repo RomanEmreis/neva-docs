@@ -214,9 +214,9 @@ A tool or prompt that publishes arguments its handler does not read cannot be
 called successfully by anyone, so `App::run` refuses to start on the
 disagreement instead of failing on a peer's first call — a wrong count of
 declared names, a duplicate name, or a schema property the handler never
-looks for. [`Context::add_tool`](https://docs.rs/neva/latest/neva/app/context/struct.Context.html#method.add_tool)
-and `add_prompt` run the same check and return an error, since a primitive
-registered while the server runs has no startup left to fail.
+looks for. [`ctx.tools().add`](https://docs.rs/neva/latest/neva/app/context/api/struct.Tools.html#method.add)
+and `ctx.prompts().add` run the same check and return an error, since a
+primitive registered while the server runs has no startup left to fail.
 
 ## Mirroring an Argument into a Header
 
@@ -316,17 +316,38 @@ lets LLM prompt caches hit on an unchanged tool listing.
 For more advanced scenarios - for example, when a tool needs to access resources you also declared in your MCP Server -
 you can inject the [Context](https://docs.rs/neva/latest/neva/app/context/struct.Context.html) into your tool handler:
 
-```rust
+```rust compile
+use neva::prelude::*;
+
 #[tool(descr = "Fetches resource metadata")]
 async fn read_resource(ctx: Context, res: Uri) -> Result<Content, Error> {
-    let result = ctx.resource(res).await?;
+    let result = ctx.resources().read(res).await?;
     let resource = result.contents
         .into_iter()
         .next()
-        .expect("No resource contents");
+        .ok_or_else(|| Error::new(ErrorCode::InternalError, "no resource contents"))?;
     Ok(Content::resource(resource))
 }
 ```
+
+The server's own primitives are grouped the way a client sees them, one
+namespace per kind. Each one reads the registry, runs what is in it, and
+changes it — and a change emits the matching `list_changed` to every
+[subscriber](./subscriptions):
+
+| Namespace | Read | Run | Change |
+|---|---|---|---|
+| [`ctx.tools()`](https://docs.rs/neva/latest/neva/app/context/api/struct.Tools.html) | `list()`, `find(name)`, `find_many(names)` | `call(tool_use)`, `call_all(tool_uses)` | `add(tool)`, `remove(name)` |
+| [`ctx.resources()`](https://docs.rs/neva/latest/neva/app/context/api/struct.Resources.html) | `is_subscribed(&uri)` | `read(uri)` | `add(resource)`, `remove(uri)`, `notify_updated(uri)` |
+| [`ctx.prompts()`](https://docs.rs/neva/latest/neva/app/context/api/struct.Prompts.html) | `list()` | `get(name, args)` | `add(prompt)`, `remove(name)` |
+
+A call runs through the handler that serves it, so `read` gets what a client
+reading the resource would. With the `svir` feature, `ctx.tools().toolbox()`
+hands the server's other tools to a model — see the
+[svir bridge](../svir#a-tool-that-drives-a-model).
+
+`Context` methods take `&self`, so the handler parameter is plain `ctx: Context`
+— a `mut ctx` only draws an `unused_mut` warning.
 
 ## Learn By Example
 Here you may find the full [example](https://github.com/RomanEmreis/neva/tree/main/examples/server)

@@ -188,7 +188,7 @@ if !subscription.is_fully_honored() {
 `Client::listen`.
 :::
 
-## Переход с `subscribe_to_resource`
+## Переход с `resources/subscribe`
 
 Спецификация не удаляет `resources/subscribe` и `resources/unsubscribe`, а
 сворачивает их в `resourceSubscriptions`. На клиенте старые методы остаются
@@ -197,9 +197,9 @@ if !subscription.is_fully_honored() {
 
 ```rust
 // Было (легаси)
-client.subscribe_to_resource("res://some-resource").await?;
+client.resources().subscribe("res://some-resource").await?;
 // ...
-client.unsubscribe_from_resource("res://some-resource").await?;
+client.resources().unsubscribe("res://some-resource").await?;
 
 // Стало (MCP 2026-07-28)
 let mut subscription = client
@@ -210,8 +210,8 @@ subscription.cancel().await?;
 ```
 
 Серверная половина пары исчезает целиком:
-`Context::subscribe_to_resource` / `unsubscribe_from_resource` переехали за
-флаг [`legacy-spec`](../legacy-spec), потому что подпиской теперь владеет
+`ctx.resources().subscribe(..)` / `unsubscribe(..)` существуют только под
+флагом [`legacy-spec`](../legacy-spec), потому что подпиской теперь владеет
 клиент. См. [Сервер → Подписки](../mcp-server/subscriptions).
 
 ## Обучение на примерах

@@ -217,8 +217,8 @@ async fn main() {
 стартовать при таком расхождении, а не падает на первом же вызове клиента —
 это касается неверного количества объявленных имён, дубликата имени или
 свойства схемы, которое обработчик не ищет.
-[`Context::add_tool`](https://docs.rs/neva/latest/neva/app/context/struct.Context.html#method.add_tool)
-и `add_prompt` выполняют ту же проверку и возвращают ошибку: у примитива,
+[`ctx.tools().add`](https://docs.rs/neva/latest/neva/app/context/api/struct.Tools.html#method.add)
+и `ctx.prompts().add` выполняют ту же проверку и возвращают ошибку: у примитива,
 зарегистрированного на работающем сервере, старта, на котором можно упасть,
 уже не осталось.
 
@@ -323,16 +323,37 @@ iframe есть не у каждого клиента. `visibility = ["app"]` п
 В более сложных сценариях — например, когда инструменту нужен доступ к ресурсам, объявленным на том же MCP-сервере, — можно внедрить [Context](https://docs.rs/neva/latest/neva/app/context/struct.Context.html) в обработчик инструмента:
 
 ```rust
+use neva::prelude::*;
+
 #[tool(descr = "Fetches resource metadata")]
 async fn read_resource(ctx: Context, res: Uri) -> Result<Content, Error> {
-    let result = ctx.resource(res).await?;
+    let result = ctx.resources().read(res).await?;
     let resource = result.contents
         .into_iter()
         .next()
-        .expect("No resource contents");
+        .ok_or_else(|| Error::new(ErrorCode::InternalError, "no resource contents"))?;
     Ok(Content::resource(resource))
 }
 ```
+
+Собственные примитивы сервера сгруппированы так же, как их видит клиент, — по
+одному пространству имён на вид. Каждое читает реестр, выполняет то, что в нём
+есть, и изменяет его, а изменение отправляет соответствующий `list_changed`
+каждому [подписчику](./subscriptions):
+
+| Пространство имён | Чтение | Выполнение | Изменение |
+|---|---|---|---|
+| [`ctx.tools()`](https://docs.rs/neva/latest/neva/app/context/api/struct.Tools.html) | `list()`, `find(name)`, `find_many(names)` | `call(tool_use)`, `call_all(tool_uses)` | `add(tool)`, `remove(name)` |
+| [`ctx.resources()`](https://docs.rs/neva/latest/neva/app/context/api/struct.Resources.html) | `is_subscribed(&uri)` | `read(uri)` | `add(resource)`, `remove(uri)`, `notify_updated(uri)` |
+| [`ctx.prompts()`](https://docs.rs/neva/latest/neva/app/context/api/struct.Prompts.html) | `list()` | `get(name, args)` | `add(prompt)`, `remove(name)` |
+
+Вызов проходит через обработчик, который обслуживает примитив, поэтому `read`
+получает то же, что получил бы клиент, читающий ресурс. С фичей `svir`
+`ctx.tools().toolbox()` отдаёт модели остальные инструменты сервера — см.
+[мост svir](../svir#a-tool-that-drives-a-model).
+
+Методы `Context` принимают `&self`, поэтому параметр обработчика — просто
+`ctx: Context`; `mut ctx` лишь вызывает предупреждение `unused_mut`.
 
 ## Обучение на примерах
 Полный [пример](https://github.com/RomanEmreis/neva/tree/main/examples/server) доступен здесь.

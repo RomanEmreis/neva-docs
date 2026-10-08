@@ -51,7 +51,7 @@ async fn endless_tool() {
 }
 ```
 
-A tool marked with `task_support = "required"` must be called as a task (via [`client.task().call_tool()`](https://docs.rs/neva/latest/neva/client/task/struct.TaskBuilder.html#method.call_tool) on the client side). Calling it as a regular tool will be rejected.
+A tool marked with `task_support = "required"` must be called as a task (via [`client.tools().as_task().call()`](https://docs.rs/neva/latest/neva/client/task/struct.TaskBuilder.html#method.call) on the client side). Calling it as a regular tool will be rejected.
 
 ## The Task Methods
 
@@ -81,7 +81,7 @@ A task-capable tool can await user input mid-execution via `ctx.task()`:
 
 ```rust
 #[tool(task_support = "required")]
-async fn tool_with_elicitation(mut ctx: Context, task: Meta<RelatedTaskMetadata>) -> String {
+async fn tool_with_elicitation(ctx: Context, task: Meta<RelatedTaskMetadata>) -> String {
     let params = ElicitRequestParams::form("Are you sure to proceed?")
         .with_related_task(task);
 

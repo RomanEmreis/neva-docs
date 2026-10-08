@@ -9,8 +9,8 @@ In this section, we’ll explore in more detail how deal with resources provided
 
 ## Reading a Resource
 
-To read a resource, use the [`read_resource()`](https://docs.rs/neva/latest/neva/client/struct.Client.html#method.read_resource) method.
-It requires the tool name and optional arguments.
+To read a resource, use [`client.resources().read()`](https://docs.rs/neva/latest/neva/client/api/struct.Resources.html#method.read).
+It requires the resource URI.
 
 ```rust
 use neva::prelude::*;
@@ -25,9 +25,9 @@ async fn main() -> Result<(), Error> {
 
     client.connect().await?;
 
-    let resource = client.read_resource("res://resource-1").await?
+    let resource = client.resources().read("res://resource-1").await?;
 
-    println!("{:?}", result.contents);
+    println!("{:?}", resource.contents);
 
     client.disconnect().await
 }
@@ -35,7 +35,7 @@ async fn main() -> Result<(), Error> {
 
 ## Contents
 
-In the example above, the [`read_resource`](https://docs.rs/neva/latest/neva/client/struct.Client.html#method.read_resource) method returns a [`ReadResourceResult`](https://docs.rs/neva/latest/neva/types/resource/read_resource_result/struct.ReadResourceResult.html),
+In the example above, [`read`](https://docs.rs/neva/latest/neva/client/api/struct.Resources.html#method.read) returns a [`ReadResourceResult`](https://docs.rs/neva/latest/neva/types/resource/read_resource_result/struct.ReadResourceResult.html),
 which contains a [`Vec`](https://doc.rust-lang.org/std/vec/struct.Vec.html) of [`ResourceContents`](https://docs.rs/neva/latest/neva/types/resource/read_resource_result/enum.ResourceContents.html).
 
 You can access individual resource fields using the following methods:
@@ -52,6 +52,14 @@ The *builders* — `with_mime`, `with_title`, … — are server-side; a client 
 
 A resource served as `text/html;profile=mcp-app` is an
 [MCP App](./apps) document; `ui()` reads its security block.
+
+## Listing Resources
+
+| Call | Sends |
+|---|---|
+| [`client.resources().list(cursor)`](https://docs.rs/neva/latest/neva/client/api/struct.Resources.html#method.list) | One page of `resources/list` |
+| [`client.resources().list_all()`](https://docs.rs/neva/latest/neva/client/api/struct.Resources.html#method.list_all) | Every page of `resources/list`, together |
+| [`client.resources().templates(cursor)`](https://docs.rs/neva/latest/neva/client/api/struct.Resources.html#method.templates) | One page of `resources/templates/list` |
 
 ## Subscribing to resource updates
 
@@ -95,10 +103,10 @@ subscription.cancel().await?;
 See [Subscriptions](./subscriptions) for the filter, the acknowledgment, and
 the subscription's lifecycle.
 
-:::note Replacing `subscribe_to_resource`
-`client.subscribe_to_resource(uri)` / `unsubscribe_from_resource(uri)` are the
-legacy pair. They stay compiled — the dual-mode fallback still reaches legacy
-peers — but reject a 2026-07-28 peer with `MethodNotFound`. Use
+:::note The legacy `resources/subscribe`
+`client.resources().subscribe(uri)` / `unsubscribe(uri)` send the legacy RPC
+pair. They stay compiled — the dual-mode fallback still reaches legacy peers —
+but reject a 2026-07-28 peer with `MethodNotFound`. Use
 `SubscriptionFilter::with_resource(uri)` instead, as above.
 :::
 
