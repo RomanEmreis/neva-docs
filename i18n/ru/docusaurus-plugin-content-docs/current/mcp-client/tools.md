@@ -9,7 +9,7 @@ sidebar_position: 2
 
 ## Вызов инструмента
 
-Для вызова инструмента используйте метод [`call_tool()`](https://docs.rs/neva/latest/neva/client/struct.Client.html#method.call_tool).
+Для вызова инструмента используйте [`client.tools().call()`](https://docs.rs/neva/latest/neva/client/api/struct.Tools.html#method.call).
 Он принимает имя инструмента и необязательные аргументы.
 
 ```rust
@@ -26,7 +26,7 @@ async fn main() -> Result<(), Error> {
     client.connect().await?;
 
     let args = ("name", "John");
-    let result = client.call_tool("hello", args).await?;
+    let result = client.tools().call("hello", args).await?;
 
     println!("{:?}", result.content);
 
@@ -40,7 +40,7 @@ async fn main() -> Result<(), Error> {
 
 ```rust
 let args = ("name", "John");
-let result = client.call_tool("hello", args).await?;
+let result = client.tools().call("hello", args).await?;
 ```
 
 Если инструмент принимает **несколько параметров**, передайте их в виде массива, [`Vec`](https://doc.rust-lang.org/std/vec/struct.Vec.html) или [`HashMap`](https://doc.rust-lang.org/std/collections/struct.HashMap.html):
@@ -50,13 +50,13 @@ let args = [
     ("name", "John"),
     ("say", "Hi"),
 ];
-let result = client.call_tool("hello", args).await?;
+let result = client.tools().call("hello", args).await?;
 ```
 
 Если инструмент **не принимает параметров**, передайте [тип-единицу `()`](https://doc.rust-lang.org/std/primitive.unit.html):
 
 ```rust
-let result = client.call_tool("hello", ()).await?;
+let result = client.tools().call("hello", ()).await?;
 ```
 
 ## Структурированное содержимое
@@ -66,7 +66,7 @@ let result = client.call_tool("hello", ()).await?;
 Доступ к ним можно получить напрямую через поле [`struct_content`](https://docs.rs/neva/latest/neva/types/tool/call_tool_response/struct.CallToolResponse.html#structfield.struct_content):
 
 ```rust
-let result = client.call_tool("weather-forecast", args).await?;
+let result = client.tools().call("weather-forecast", args).await?;
 println!("{:?}", result.struct_content);
 ```
 
@@ -81,7 +81,7 @@ struct Weather {
 }
 
 let args = ("location", "London");
-let result = client.call_tool("weather-forecast", args).await?;
+let result = client.tools().call("weather-forecast", args).await?;
 let weather: Weather = result.as_json()?;
 ```
 
@@ -89,7 +89,7 @@ let weather: Weather = result.as_json()?;
 
 Хорошей практикой является валидация структурированных ответов по [**схеме выходных данных**](/docs/mcp-server/tools#output-schema), которую должен предоставлять каждый MCP-сервер.
 
-При вызове [`list_tools()`](https://docs.rs/neva/latest/neva/client/struct.Client.html#method.list_tools) вы получаете метаданные каждого инструмента, включая схемы входных и выходных данных.
+Получая список инструментов через [`client.tools().list()`](https://docs.rs/neva/latest/neva/client/api/struct.Tools.html#method.list), вы получаете метаданные каждого инструмента, включая схемы входных и выходных данных.
 
 ```rust
 #[json_schema(de, debug)]
@@ -100,7 +100,7 @@ struct Weather {
 }
 
 // Получаем список доступных инструментов
-let tools = client.list_tools(None).await?;
+let tools = client.tools().list(None).await?;
 
 // Находим конкретный инструмент
 let tool = tools.get("weather-forecast")
@@ -108,7 +108,7 @@ let tool = tools.get("weather-forecast")
 
 // Вызываем инструмент
 let args = ("location", "London");
-let result = client.call_tool(&tool.name, args).await?;
+let result = client.tools().call(&tool.name, args).await?;
 
 // Валидируем и десериализуем результат
 let weather: Weather = tool
@@ -124,6 +124,20 @@ let weather: Weather = tool
 * `serde` — и сериализация, и десериализация
 * `debug` — включение отладочных метаданных в сгенерированную схему
 
+
+## Сырые вызовы {#raw-calls}
+
+[`call_raw()`](https://docs.rs/neva/latest/neva/client/api/struct.Tools.html#method.call_raw) принимает полностью
+сформированные [`CallToolRequestParams`](https://docs.rs/neva/latest/neva/types/tool/struct.CallToolRequestParams.html)
+и отвечает сырым JSON-RPC `Response`, включая ответ-ошибку. `_meta`, который
+несут параметры, уходит как есть — например, `traceparent`, — кроме токена
+прогресса: он принадлежит клиенту, потому что уведомления о прогрессе находят
+свой вызов именно по нему:
+
+```rust
+let params = CallToolRequestParams::new("add").with_args([("a", 1), ("b", 2)]);
+let response = client.tools().call_raw(params).await?;
+```
 
 ## Инструменты с UI {#tools-with-a-ui}
 

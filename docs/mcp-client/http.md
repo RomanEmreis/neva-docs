@@ -149,7 +149,7 @@ async fn main() -> Result<(), Error> {
 
     client.connect().await?;
 
-    let result = client.call_tool("my_tool", ("input", "value")).await?;
+    let result = client.tools().call("my_tool", ("input", "value")).await?;
     println!("{:?}", result.content);
 
     client.disconnect().await

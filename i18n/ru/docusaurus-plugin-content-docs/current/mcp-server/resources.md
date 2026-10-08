@@ -195,31 +195,33 @@ mcp_server.run().await;
 
 ## Обновление ресурсов
 
-Помимо [чтения ресурсов](/docs/mcp-server/tools#mcp-context), [инструменты MCP-сервера](https://modelcontextprotocol.io/specification/draft/server/tools) также могут добавлять, обновлять или удалять их:
+Помимо [чтения ресурсов](/docs/mcp-server/tools#mcp-context), [инструменты MCP-сервера](https://modelcontextprotocol.io/specification/draft/server/tools) также могут добавлять, обновлять или удалять их через
+[`ctx.resources()`](https://docs.rs/neva/latest/neva/app/context/api/struct.Resources.html):
 
 ```rust
 use neva::prelude::*;
 
 /// Добавление нового ресурса
 #[tool]
-async fn add_resource(mut ctx: Context, uri: Uri) -> Result<(), Error> {
+async fn add_resource(ctx: Context, uri: Uri) -> Result<(), Error> {
     let resource = Resource::from(uri); // Создаём новый ресурс
-    ctx.add_resource(resource).await
+    ctx.resources().add(resource).await
 }
 
 /// Удаление ресурса
 #[tool]
-async fn remove_resource(mut ctx: Context, uri: Uri) -> Result<(), Error> {
-    ctx.remove_resource(uri).await
+async fn remove_resource(ctx: Context, uri: Uri) -> Result<(), Error> {
+    ctx.resources().remove(uri).await?;
+    Ok(())
 }
 
 /// Обновление существующего ресурса
 #[tool]
-async fn update_resource(mut ctx: Context, uri: Uri) -> Result<(), Error> {
+async fn update_resource(ctx: Context, uri: Uri) -> Result<(), Error> {
     // Читаем и обновляем ресурс с указанным URI
     // ...
 
-    ctx.resource_updated(uri).await
+    ctx.resources().notify_updated(uri).await
 }
 ```
 
@@ -241,17 +243,17 @@ App::new()
 
 Чтобы не делать дорогую локальную работу, которую никто не слушает,
 используйте
-[`ctx.is_subscribed(&uri)`](https://docs.rs/neva/latest/neva/app/context/struct.Context.html#method.is_subscribed) —
+[`ctx.resources().is_subscribed(&uri)`](https://docs.rs/neva/latest/neva/app/context/api/struct.Resources.html#method.is_subscribed) —
 но не для того, чтобы решить, слать ли уведомление: он **знает только про свой
 узел**, и при [шине уведомлений](./subscriptions#запуск-нескольких-экземпляров)
-подписчик на другом экземпляре может ждать ровно то, что этот пропустит. Начиная
-`resource_updated` предпроверку не делает и публикует безусловно,
+подписчик на другом экземпляре может ждать ровно то, что этот пропустит.
+Поэтому `notify_updated` предпроверку не делает и публикует безусловно,
 оставляя маршрутизацию фильтрам подписок.
 
 :::note Под флагом `legacy-spec`
 Возвращается пара RPC-методов `resources/subscribe` / `resources/unsubscribe`,
-а вместе с ней `Context::subscribe_to_resource` /
-`unsubscribe_from_resource`. В сборке по умолчанию этих методов нет —
+а вместе с ней `ctx.resources().subscribe(uri)` / `unsubscribe(&uri)`. В
+сборке по умолчанию этих методов нет —
 подпиской теперь владеет клиент. См. [Подписки](./subscriptions) и
 [Легаси-спецификация](../legacy-spec.md).
 :::

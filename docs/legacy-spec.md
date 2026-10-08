@@ -13,7 +13,7 @@ protocol generation — MCP 2024-11-05 … 2025-11-25.
 
 ```toml
 [dependencies]
-neva = { version = "0.6", features = ["server-full", "legacy-spec"] }
+neva = { version = "0.7", features = ["server-full", "legacy-spec"] }
 ```
 
 It is a **generation switch, not an addition**: enabling it compiles the
@@ -40,9 +40,9 @@ explicit feature list — e.g. `--features "server-full client-full"` or
 | Macros | The `#[sampling]` attribute macro |
 | Logging | `logging/setLevel` plus `with_logging(handle)` and a global `notifications/message` emission path |
 | Tools | The legacy `ToolSchema` (not JSON Schema 2020-12) |
-| Tasks | The 2025-11-25 surface: `tasks/list`, `tasks/result`, the `cancel`/`list`/`requests` capability sub-tree, `with_tasks(|t| …)`, client-hosted tasks |
+| Tasks | The 2025-11-25 surface: `tasks/list` and `tasks/result` (`client.tasks().list(cursor)` / `result(id)`), the `cancel`/`list`/`requests` capability sub-tree, `with_tasks(\|t\| …)`, client-hosted tasks |
 | Notifications | `ping`, `notifications/roots/list_changed`, `notifications/elicitation/complete` |
-| Subscriptions | The `resources/subscribe` / `resources/unsubscribe` RPC pair, `Context::subscribe_to_resource` / `unsubscribe_from_resource`, and `resource::commands::{SUBSCRIBE, UNSUBSCRIBE}` — server-side subscription state instead of a `subscriptions/listen` stream |
+| Subscriptions | The `resources/subscribe` / `resources/unsubscribe` RPC pair, `ctx.resources().subscribe` / `unsubscribe`, and `resource::commands::{SUBSCRIBE, UNSUBSCRIBE}` — server-side subscription state instead of a `subscriptions/listen` stream |
 | Requests | No mandatory `_meta` keys, no routing-header validation, no `resultType` |
 | [MCP Apps](./mcp-server/apps) | **Nothing** — the server half is compiled out, since the extension rides `capabilities.extensions`, which this generation has no place for. The [client half](./mcp-client/apps) does work: a legacy `initialize` carries the declaration on every connection, where a 2026-07-28 one puts it on [each request's `_meta`](./spec-2026-07-28#capabilities-ride-each-request) instead |
 
@@ -99,6 +99,95 @@ speaks legacy to that peer for the rest of the connection. See
 
 The **server** side has no such fallback — it is compile-time pure. A server
 that must serve legacy clients needs the `legacy-spec` build.
+
+## Upgrading 0.6.x → 0.7.0 {#migrating-to-070}
+
+The client's and the `Context`'s calls moved into namespaces, one per MCP method
+prefix. The old spellings still compile, each with a deprecation warning naming
+its replacement — except one, whose name the new namespace took.
+
+### `ctx.tools()` is the tools namespace
+
+`ctx.tools()` used to list the server's tools; it now returns the namespace that
+lists, finds, calls and changes them. The old call no longer compiles — the
+namespace is not a future:
+
+```rust
+// before
+let tools = ctx.tools().await;
+
+// after
+let tools = ctx.tools().list().await;
+```
+
+### The flat calls are deprecated
+
+On the client:
+
+| 0.6 | 0.7 |
+|---|---|
+| `client.list_tools(cursor)` | `client.tools().list(cursor)` — or `list_all()` for every page |
+| `client.call_tool(name, args)` | `client.tools().call(name, args)` |
+| `client.call_tool_raw(params)` | `client.tools().call_raw(params)` |
+| `client.task().call_tool(name, args)` | `client.tools().as_task().call(name, args)` |
+| `client.call_tool_as_task(name, args, ttl)` | `client.tools().as_task().with_ttl(ttl).call(name, args)` |
+| `client.list_resources(cursor)` | `client.resources().list(cursor)` |
+| `client.list_resource_templates(cursor)` | `client.resources().templates(cursor)` |
+| `client.read_resource(uri)` | `client.resources().read(uri)` |
+| `client.subscribe_to_resource(uri)` / `unsubscribe_from_resource(uri)` | `client.resources().subscribe(uri)` / `unsubscribe(uri)` — legacy peers only |
+| `client.list_prompts(cursor)` | `client.prompts().list(cursor)` |
+| `client.get_prompt(name, args)` | `client.prompts().get(name, args)` |
+
+On the server, in a handler:
+
+| 0.6 | 0.7 |
+|---|---|
+| `ctx.find_tool(name)` / `find_tools(names)` | `ctx.tools().find(name)` / `find_many(names)` |
+| `ctx.use_tool(tool)` / `use_tools(tools)` | `ctx.tools().call(tool)` / `call_all(tools)` |
+| `ctx.add_tool(tool)` / `remove_tool(name)` | `ctx.tools().add(tool)` / `remove(name)` |
+| `ctx.prompt(name, args)` | `ctx.prompts().get(name, args)` |
+| `ctx.add_prompt(prompt)` / `remove_prompt(name)` | `ctx.prompts().add(prompt)` / `remove(name)` |
+| `ctx.resource(uri)` | `ctx.resources().read(uri)` |
+| `ctx.add_resource(res)` / `remove_resource(uri)` | `ctx.resources().add(res)` / `remove(uri)` |
+| `ctx.resource_updated(uri)` | `ctx.resources().notify_updated(uri)` |
+| `ctx.is_subscribed(&uri)` | `ctx.resources().is_subscribed(&uri)` |
+| `ctx.subscribe_to_resource(uri)` / `unsubscribe_from_resource(&uri)` | `ctx.resources().subscribe(uri)` / `unsubscribe(&uri)` — `legacy-spec` only |
+
+The batch builder keeps its flat methods — `client.batch().call_tool(..)` is
+current, not deprecated.
+
+### Requests take `&self`
+
+`Client`'s request methods take `&self`, so a connected client can be
+[shared](./mcp-client/basics#sharing-a-client) as an `Arc<Client>`; setup —
+`connect`, `map_*`, `on_*`, roots — keeps `&mut self`. `Context`'s methods take
+`&self` too, so a handler takes plain `ctx: Context`, and a leftover `mut ctx`
+draws an `unused_mut` warning.
+
+### Two narrower breaks
+
+* **`TaskApi` methods take `&self`**, and `wait_to_completion` takes `&A`. Only
+  an implementation of the trait outside neva is affected.
+* **`map_sampling` is bound by `ClientHandler<_, Result<CreateMessageResult, Error>, _>`**,
+  so a sampling handler [can fail](./mcp-client/sampling#a-handler-that-can-fail).
+  A handler returning a plain `CreateMessageResult` still fits; only code that
+  names the old bound changes.
+
+### Behaviour that changed without a signature
+
+* **A request the client stops waiting for is cancelled** — on a timeout, or
+  when the call is dropped. The server is told, and stops the handler; a
+  request that used to finish quietly after its caller gave up now does not. See
+  [Timeouts and Cancellation](./mcp-client/basics#timeouts-and-cancellation).
+* **Closing a request's stream cancels it** on a 2026-07-28 HTTP server, as the
+  spec requires; the handler used to run on.
+* **`call_batch` numbers the requests itself** and puts your ids back on the
+  responses.
+* **A `tasks/update` or `tasks/cancel` the server refuses is an error**, not
+  `Ok(())`, and `wait_to_completion` stops at it.
+
+And, additively: `list_all()` on every listing, `client.tasks()` for the task
+methods, and the [svir bridge](./svir) behind the new `svir` feature.
 
 ## Upgrading 0.6.0 → 0.6.1 {#migrating-to-061}
 

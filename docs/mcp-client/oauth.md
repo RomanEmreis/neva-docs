@@ -35,7 +35,7 @@ async fn main() -> Result<(), Error> {
 
     client.connect().await?;
 
-    let result = client.call_tool("whoami", ()).await?;
+    let result = client.tools().call("whoami", ()).await?;
     println!("{:?}", result.content);
 
     client.disconnect().await

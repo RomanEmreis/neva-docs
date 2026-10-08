@@ -180,7 +180,7 @@ and it still happens, check the bus does not suppress echo — local delivery
 goes through `subscribe()` too, so an implementation that hides an
 instance's own publishes silences that instance's own subscribers.
 
-Also: do not gate the notification on `ctx.is_subscribed(..)`. It is
+Also: do not gate the notification on `ctx.resources().is_subscribed(..)`. It is
 node-local and answers only for the instance running the handler.
 
 ### `SubscriptionEnd::Abrupt` when the server shuts down
@@ -432,6 +432,78 @@ was broken. Act on that message, not on the local `Ok`.
 The `registry` feature is off, or the crate is 0.6.0 or older. It is in
 `server-full` from **0.6.1**; add `registry` explicitly to a hand-picked
 feature list.
+
+### `ctx.tools().await` — "`Tools<'_>` is not a future"
+
+0.7.0 made `ctx.tools()` the tools **namespace**; in 0.6 it was the listing
+call. Write `ctx.tools().list().await`. It is the one 0.6 call on `Context`
+that breaks rather than warns, because the namespace took its name.
+
+### Deprecation warnings on `call_tool`, `read_resource`, `find_tool`, …
+
+0.7.0 code written against the 0.6 flat API. Each warning names its
+replacement — `client.call_tool(..)` → `client.tools().call(..)`,
+`ctx.resource_updated(uri)` → `ctx.resources().notify_updated(uri)`, and so
+on; `legacy.md` has the whole list. `client.batch().call_tool(..)` is **not**
+deprecated: the batch builder keeps its flat names.
+
+### `unused_mut` on `mut ctx: Context`
+
+`Context`'s methods take `&self` since 0.7.0. Drop the `mut`.
+
+### A request times out, and the server stopped working on it too
+
+Since 0.7.0 a request the client stops waiting for is **cancelled**, not
+abandoned: on a timeout, or when the call's future is dropped. Over Streamable
+HTTP the client closes the request's stream and the server stops the handler.
+For work that legitimately runs long, raise `with_timeout` or make the tool a
+task (`task_support = "required"` + `client.tools().as_task().call(..)`).
+
+### A custom `TaskApi` implementation stops compiling
+
+Its methods take `&self` since 0.7.0, and `wait_to_completion` takes `&A`.
+Match the new signatures; nothing else changed.
+
+### `neva::svir`, `into_toolbox` or `ctx.tools().toolbox()` not found
+
+The `svir` feature is off — and it is in **no preset**, not even `full`, so it
+has to be named: `features = ["full", "svir"]`. A separate "unresolved crate
+`svir`" means svir itself is missing from `[dependencies]`: neva pulls it in
+without its HTTP client, so to call a model add `svir = "0.1.4"` yourself.
+
+### "Tool `…` cannot be offered to a model"
+
+A function name a model API accepts is `[a-zA-Z0-9_-]{1,64}`; MCP also allows
+`.` and up to 128 characters. The bridge fails the snapshot rather than rename
+silently. `.rename(|n| n.replace('.', "_"))` or `.filter(..)` on the toolbox.
+The same failure for two tools under one name — usually two servers' tools in
+one request, which `.with_prefix("a_")` separates.
+
+### A tool is missing from the toolbox
+
+By design, the bridge never offers: a task-only tool
+(`task_support = "required"`); with `apps`, a tool hidden from the model; a
+tool requiring roles or permissions the caller does not hold — and a toolbox
+from `App::into_toolbox` / `with_toolbox` holds none; and, in
+`ctx.tools().toolbox()`, the tool it was taken in (`with_caller()` keeps it).
+A snapshot is also only as new as the last `load()` / `refresh()`.
+
+### "in-process tool calls nest at most 4 deep"
+
+A tool driving a model called a tool that drives a model, and so on. The bound
+is per toolbox — `with_max_depth(n)` raises it — but hitting it usually means
+two tools calling each other in a loop.
+
+### `LocalTools::load` fails with "The server stopped before it ran"
+
+A toolbox from `App::with_toolbox()` binds to the server once `run` has built
+it. Spawn `app.run()` before awaiting `load()`, and keep the app alive.
+
+### A tool works over MCP but the model is told it "returned an image"
+
+A tool result reaches a model as a string. Images, audio and binary resources
+cannot be passed on, and the bridge says so instead of dropping them. Return
+text (or a resource link) for the model, and keep the image for a UI.
 
 ### `proto-2026-07-28-rc` is not a known feature
 

@@ -135,16 +135,18 @@ async fn main() {
 В более сложных сценариях — например, когда промпту нужен доступ к ресурсам, объявленным на том же MCP-сервере, — можно внедрить [Context](https://docs.rs/neva/latest/neva/app/context/struct.Context.html) в обработчик промпта:
 
 ```rust
-#[prompt(descr = "Generates a user message requesting a translate a text using the glossary.")]
-async fn translate_with_glossary(ctx: Context, text: String) -> PromptMessage {
-    let glossary = ctx.resource("res://glossary").await?;
-    let resource = result.contents
-        .into_iter()
-        .next()
-        .expect("No resource contents");
+use neva::prelude::*;
 
-    PromptMessage::user()
-        .with(format!("Translate using this glossary:\n{glossary}\n\nText: {text}"))
+#[prompt(descr = "Generates a user message requesting a translate a text using the glossary.")]
+async fn translate_with_glossary(ctx: Context, text: String) -> Result<PromptMessage, Error> {
+    let result = ctx.resources().read("res://glossary").await?;
+    let glossary = result.contents
+        .first()
+        .and_then(|contents| contents.text())
+        .unwrap_or_default();
+
+    Ok(PromptMessage::user()
+        .with(format!("Translate using this glossary:\n{glossary}\n\nText: {text}")))
 }
 ```
 

@@ -41,13 +41,14 @@ async fn main() -> Result<(), Error> {
 
 ## Вызов инструмента как задачи
 
-Используйте [`client.task()`](https://docs.rs/neva/latest/neva/client/struct.Client.html#method.task) для получения строителя задачи, затем вызовите [`call_tool()`](https://docs.rs/neva/latest/neva/client/task/struct.TaskBuilder.html#method.call_tool) для асинхронного выполнения инструмента в виде управляемой задачи.
+Используйте [`client.tools().as_task()`](https://docs.rs/neva/latest/neva/client/api/struct.Tools.html#method.as_task) для получения строителя задачи, затем вызовите через него инструмент методом [`call()`](https://docs.rs/neva/latest/neva/client/task/struct.TaskBuilder.html#method.call) — он выполнится асинхронно, как управляемая задача.
 Это необходимо при вызове инструмента с `task_support = "required"` на стороне сервера (см. [руководство по задачам сервера](/docs/mcp-server/tasks)).
 
 ```rust
 let result = client
-    .task()
-    .call_tool("my_long_tool", ()).await;
+    .tools()
+    .as_task()
+    .call("my_long_tool", ()).await;
 
 println!("{:?}", result);
 ```
@@ -59,22 +60,24 @@ println!("{:?}", result);
 ```rust
 let ttl = 10_000; // 10 секунд
 let result = client
-    .task()
+    .tools()
+    .as_task()
     .with_ttl(ttl)
-    .call_tool("endless_tool", ()).await;
+    .call("endless_tool", ()).await;
 ```
 
 Если TTL истекает до завершения инструмента, задача отменяется и возвращается соответствующая ошибка.
 
 ### С аргументами
 
-Передавайте аргументы так же, как в [`call_tool()`](https://docs.rs/neva/latest/neva/client/struct.Client.html#method.call_tool):
+Передавайте аргументы так же, как в [`client.tools().call()`](https://docs.rs/neva/latest/neva/client/api/struct.Tools.html#method.call):
 
 ```rust
 let args = [("city1", "London"), ("city2", "Paris")];
 let result = client
-    .task()
-    .call_tool("generate_weather_report", args).await;
+    .tools()
+    .as_task()
+    .call("generate_weather_report", args).await;
 ```
 
 ## Опрос задачи
@@ -85,8 +88,22 @@ let result = client
 `tasks/cancel` подтверждает пустым результатом (отмена кооперативная,
 поэтому итог узнаётся опросом).
 
-`client.task().call_tool(...)` прогоняет этот цикл за вас и разрешается
-финальным исходом, поэтому обращаться к методам напрямую обычно не нужно.
+`client.tools().as_task().call(...)` прогоняет этот цикл за вас и
+разрешается финальным исходом, поэтому обращаться к методам напрямую обычно не
+нужно. Когда всё же нужно — например, идентификатор задачи пережил перезапуск, —
+они доступны через [`client.tasks()`](https://docs.rs/neva/latest/neva/client/api/struct.Tasks.html):
+
+```rust
+let tasks = client.tasks();
+
+let task = tasks.get("task-1").await?;
+println!("{:?}", task.status);
+
+tasks.cancel("task-1").await?;
+```
+
+`tasks/update` или `tasks/cancel`, которые сервер отклонил, — это ошибка, а не
+`Ok(())`.
 
 :::warning `tasks/list` больше нет
 `tasks/list` и `tasks/result` удалены в MCP 2026-07-28, вместе с ними —

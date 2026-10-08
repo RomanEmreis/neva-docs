@@ -8,8 +8,8 @@ sidebar_position: 6
 MCP 2026-07-28 removed sampling as a capability-driven *push* request. The
 client now fulfils `sampling/createMessage`
 [input requests](../spec-2026-07-28.md#input-request-kinds-elicitation-sampling-roots)
-inside its own MRTR round-trip loop, so the caller of `call_tool` still sees
-a single call.
+inside its own MRTR round-trip loop, so the caller of `client.tools().call`
+still sees a single call.
 
 The whole kind is deprecated on arrival: `Client::map_sampling` carries
 `#[deprecated]` and needs `#[allow(deprecated)]`. And the **`#[sampling]`
@@ -56,7 +56,8 @@ than left to stall the round-trip.
 Register the handler with
 [`Client::map_sampling`](https://docs.rs/neva/latest/neva/client/struct.Client.html#method.map_sampling).
 It receives a [CreateMessageRequestParams](https://docs.rs/neva/latest/neva/types/sampling/struct.CreateMessageRequestParams.html) and returns a
-[CreateMessageResult](https://docs.rs/neva/latest/neva/types/sampling/struct.CreateMessageResult.html).
+[CreateMessageResult](https://docs.rs/neva/latest/neva/types/sampling/struct.CreateMessageResult.html),
+or a `Result` of one when it [can fail](#a-handler-that-can-fail).
 
 ```rust
 use neva::prelude::*;
@@ -82,7 +83,7 @@ async fn main() -> Result<(), Error> {
     client.connect().await?;
 
     // The MRTR round-trips happen inside this one call.
-    let result = client.call_tool("summarize_report", [("topic", "EMEA")]).await?;
+    let result = client.tools().call("summarize_report", [("topic", "EMEA")]).await?;
 
     client.disconnect().await
 }
@@ -90,6 +91,50 @@ async fn main() -> Result<(), Error> {
 
 The handler is invoked once per round in which the server calls
 [Context::sample()](https://docs.rs/neva/latest/neva/app/context/struct.Context.html#method.sample).
+
+### A Handler That Can Fail
+
+Calling a model can fail — the model server is down, the key is wrong, the
+context is too long. A handler that may fail returns
+`Result<CreateMessageResult, Error>`:
+
+```rust compile
+use neva::prelude::*;
+use neva::types::sampling::{CreateMessageRequestParams, CreateMessageResult};
+
+async fn complete(params: CreateMessageRequestParams) -> Result<CreateMessageResult, Error> {
+    if params.messages.is_empty() {
+        return Err(Error::new(ErrorCode::InvalidParams, "nothing to sample"));
+    }
+
+    Ok(CreateMessageResult::assistant()
+        .with_model("o3-mini")
+        .with_content("...")
+        .end_turn())
+}
+
+#[tokio::main]
+async fn main() -> Result<(), Error> {
+    let mut client = Client::new()
+        .with_options(|opt| opt.with_default_http());
+
+    #[allow(deprecated)]
+    client.map_sampling(complete);
+
+    client.connect().await?;
+    client.disconnect().await
+}
+```
+
+Where the error goes depends on the protocol generation. Under MCP 2026-07-28
+there is no request of the server's to answer — the sample is an input to the
+client's own call — so **the call that asked for the sample fails** with the
+error. Under `legacy-spec` the error answers the server's
+`sampling/createMessage`, or fails the sampling task.
+
+To answer with a real model, the [svir bridge](../svir#answering-sampling-with-a-model)
+turns the request into a model call and the model's answer into the sample;
+a model's failure converts into this `Error`, so `?` is all the handler needs.
 
 :::note Under `legacy-spec`
 Sampling is a server→client push request, and the

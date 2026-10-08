@@ -46,7 +46,7 @@ use neva::prelude::*;
 use neva::types::sampling::CreateMessageRequestParams;
 
 #[tool]
-async fn generate_weather_report(mut ctx: Context, city: String) -> Result<String, Error> {
+async fn generate_weather_report(ctx: Context, city: String) -> Result<String, Error> {
     let params = CreateMessageRequestParams::new()
         .with_message(format!("What's the weather in {city}?"))
         .with_sys_prompt("You are a helpful assistant.");
@@ -113,7 +113,7 @@ Tools are always executed by the **server**, never by the client or the model.
 use neva::prelude::*;
 use neva::types::sampling::CreateMessageRequestParams;
 
-let Some(tool) = ctx.find_tool("get_weather").await else {
+let Some(tool) = ctx.tools().find("get_weather").await else {
     return Err(ErrorCode::MethodNotFound.into());
 };
 
@@ -123,7 +123,7 @@ let params = CreateMessageRequestParams::new()
     .with_tools([tool]);
 ```
 
-`Context` additionally has the [tools()](https://docs.rs/neva/latest/neva/app/context/struct.Context.html#method.tools), [find_tool()](https://docs.rs/neva/latest/neva/app/context/struct.Context.html#method.find_tool) and [find_tools()](https://docs.rs/neva/latest/neva/app/context/struct.Context.html#method.find_tools) methods that could be helpful to fetching tools metadata for client.
+[`ctx.tools()`](https://docs.rs/neva/latest/neva/app/context/api/struct.Tools.html) also has [list()](https://docs.rs/neva/latest/neva/app/context/api/struct.Tools.html#method.list) and [find_many()](https://docs.rs/neva/latest/neva/app/context/api/struct.Tools.html#method.find_many), for handing the client's model more than one tool's metadata.
 
 ### Configure the tool choice
 
@@ -132,7 +132,7 @@ By default the [with_tools()](https://docs.rs/neva/latest/neva/types/sampling/st
 use neva::prelude::*;
 use neva::types::sampling::{CreateMessageRequestParams, ToolChoiceMode};
 
-let Some(tool) = ctx.find_tool("get_weather").await else {
+let Some(tool) = ctx.tools().find("get_weather").await else {
     return Err(ErrorCode::MethodNotFound.into());
 };
 
@@ -159,8 +159,8 @@ use neva::prelude::*;
 use neva::types::sampling::{CreateMessageRequestParams, SamplingMessage, StopReason, ToolChoiceMode};
 
 #[tool]
-async fn generate_weather_report(mut ctx: Context, city: String) -> Result<String, Error> {
-    let Some(tool) = ctx.find_tool("get_weather").await else {
+async fn generate_weather_report(ctx: Context, city: String) -> Result<String, Error> {
+    let Some(tool) = ctx.tools().find("get_weather").await else {
         return Err(ErrorCode::MethodNotFound.into());
     };
     
@@ -191,7 +191,7 @@ async fn generate_weather_report(mut ctx: Context, city: String) -> Result<Strin
             // once. Without it every earlier step's tools would execute again
             // on each later round, because the handler restarts from the top.
             let tool_results = ctx
-                .memo(format!("tools-{step}"), async { Ok(ctx.use_tools(tools).await) })
+                .memo(format!("tools-{step}"), async { Ok(ctx.tools().call_all(tools).await) })
                 .await?;
 
             // Logging the tools results as user messages
@@ -232,7 +232,7 @@ re-issue. Clients cap those with `McpOptions::with_max_mrtr_rounds`.
 
 And every side effect in the loop body needs a **per-iteration** key, not
 just the `sample` call: the handler restarts from the top on each round, so
-an unguarded `ctx.use_tools` would re-execute every earlier step's tools
+an unguarded `ctx.tools().call_all` would re-execute every earlier step's tools
 each time round.
 :::
 
@@ -242,6 +242,12 @@ Avoid sampling when:
 - The task is deterministic
 - No natural language reasoning is required
 - A regular tool or function call is sufficient
+
+Sampling borrows the **client's** model. A server with a model of its own can
+drive it directly: the [svir bridge](../svir#a-tool-that-drives-a-model) hands
+a model the server's other tools from inside a handler, with
+`ctx.tools().toolbox()`, and the calls run in-process — no round-trip to the
+client, and nothing deprecated.
 
 ## Learn By Example
 A complete working example is available [here](https://github.com/RomanEmreis/neva/blob/main/examples/sampling/server/src/main.rs).

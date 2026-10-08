@@ -46,7 +46,7 @@ async fn main() -> Result<(), Error> {
     client.connect().await?;
 
     // The MRTR round-trip happens inside this one call.
-    let result = client.call_tool("scan_workspace", ()).await?;
+    let result = client.tools().call("scan_workspace", ()).await?;
     tracing::info!("Result: {:?}", result.content);
 
     client.disconnect().await
@@ -60,7 +60,7 @@ into your tool handler and ask for the list with a stable **replay key**:
 
 ```rust
 #[tool]
-async fn scan_workspace(mut ctx: Context) -> Result<String, Error> {
+async fn scan_workspace(ctx: Context) -> Result<String, Error> {
     // Round 1 unwinds the handler with `input_required` and a `roots/list`
     // envelope; round 2 replays the answer from `requestState`.
     #[allow(deprecated)]

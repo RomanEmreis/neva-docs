@@ -9,7 +9,7 @@ MCP 2026-07-28 убрал сэмплирование как *push*-запрос,
 возможностями. Теперь клиент обрабатывает
 [input-запросы](../spec-2026-07-28.md#виды-input-запросов-elicitation-sampling-roots)
 `sampling/createMessage` внутри собственного цикла раундов MRTR, поэтому
-вызывающий `call_tool` по-прежнему видит один вызов.
+вызывающий `client.tools().call` по-прежнему видит один вызов.
 
 Весь этот вид устарел с момента появления: `Client::map_sampling` помечен
 `#[deprecated]` и требует `#[allow(deprecated)]`. Кроме того, **атрибутный
@@ -58,7 +58,8 @@ let mut client = Client::new()
 Зарегистрируйте обработчик через
 [`Client::map_sampling`](https://docs.rs/neva/latest/neva/client/struct.Client.html#method.map_sampling).
 Он получает [CreateMessageRequestParams](https://docs.rs/neva/latest/neva/types/sampling/struct.CreateMessageRequestParams.html) и возвращает
-[CreateMessageResult](https://docs.rs/neva/latest/neva/types/sampling/struct.CreateMessageResult.html).
+[CreateMessageResult](https://docs.rs/neva/latest/neva/types/sampling/struct.CreateMessageResult.html)
+или `Result` с ним, если [может завершиться ошибкой](#a-handler-that-can-fail).
 
 ```rust
 use neva::prelude::*;
@@ -84,13 +85,57 @@ async fn main() -> Result<(), Error> {
     client.connect().await?;
 
     // Раунды MRTR происходят внутри этого единственного вызова.
-    let result = client.call_tool("summarize_report", [("topic", "EMEA")]).await?;
+    let result = client.tools().call("summarize_report", [("topic", "EMEA")]).await?;
 
     client.disconnect().await
 }
 ```
 
 Обработчик вызывается один раз на каждый раунд, в котором сервер вызывает [Context::sample()](https://docs.rs/neva/latest/neva/app/context/struct.Context.html#method.sample).
+
+### Обработчик, который может завершиться ошибкой {#a-handler-that-can-fail}
+
+Обращение к модели может не удаться — сервер модели недоступен, ключ неверен,
+контекст слишком длинный. Обработчик, который может завершиться ошибкой,
+возвращает `Result<CreateMessageResult, Error>`:
+
+```rust
+use neva::prelude::*;
+use neva::types::sampling::{CreateMessageRequestParams, CreateMessageResult};
+
+async fn complete(params: CreateMessageRequestParams) -> Result<CreateMessageResult, Error> {
+    if params.messages.is_empty() {
+        return Err(Error::new(ErrorCode::InvalidParams, "nothing to sample"));
+    }
+
+    Ok(CreateMessageResult::assistant()
+        .with_model("o3-mini")
+        .with_content("...")
+        .end_turn())
+}
+
+#[tokio::main]
+async fn main() -> Result<(), Error> {
+    let mut client = Client::new()
+        .with_options(|opt| opt.with_default_http());
+
+    #[allow(deprecated)]
+    client.map_sampling(complete);
+
+    client.connect().await?;
+    client.disconnect().await
+}
+```
+
+Куда уходит ошибка, зависит от поколения протокола. В MCP 2026-07-28 у сервера
+нет запроса, на который можно ответить, — сэмпл служит входными данными
+собственного вызова клиента, — поэтому **ошибкой завершается вызов, который
+запросил сэмпл**. Под `legacy-spec` ошибка становится ответом на серверный
+`sampling/createMessage` или завершает задачу сэмплирования.
+
+Чтобы отвечать настоящей моделью, [мост svir](../svir#answering-sampling-with-a-model)
+превращает запрос в обращение к модели, а её ответ — в сэмпл; сбой модели
+преобразуется в этот `Error`, так что обработчику достаточно `?`.
 
 :::note Под флагом `legacy-spec`
 Сэмплирование работает как серверный push-запрос, а атрибутный макрос

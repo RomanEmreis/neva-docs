@@ -100,7 +100,8 @@ Rules:
 * A `blocking` body is **not cancelled** when the request is; a panic inside
   it propagates to the awaiting task.
 * A handler that needs `Context` (elicitation, sampling, progress,
-  `ctx.memo`) has to await, so it must be an `async fn`.
+  `ctx.memo`, the `ctx.tools()` / `resources()` / `prompts()` namespaces) has
+  to await, so it must be an `async fn`.
 
 The shape is a defaulted type-level marker — `neva::marker::Async` or
 `marker::Immediate` — on the handler traits
@@ -475,26 +476,61 @@ async fn search(query: String) -> Result<CallToolResponse, Error> {
 
 ## The Context
 
-Inject `Context` into any handler to reach the server itself:
+Inject `Context` into any handler to reach the server itself. Take it as
+`ctx: Context` — its methods take `&self`, and `mut ctx` only warns:
 
 ```rust
 use neva::prelude::*;
 
 #[tool(descr = "Reads a resource this server also exposes")]
 async fn read_resource(ctx: Context, res: Uri) -> Result<Content, Error> {
-    let result = ctx.resource(res).await?;
+    let result = ctx.resources().read(res).await?;
     let resource = result.contents.into_iter().next()
         .ok_or_else(|| Error::new(ErrorCode::InternalError, "no contents"))?;
     Ok(Content::resource(resource))
 }
 ```
 
-`Context` also mutates the registries at runtime — `add_tool`,
-`remove_tool`, `add_prompt`, `remove_prompt`, `add_resource`,
-`remove_resource`, `resource_updated` — and each mutation notifies every
-subscriber that asked for that category. `add_tool` / `add_prompt` run the
-same argument-name check `App::run` does and return an error rather than
-publishing something no peer could call.
+Since **0.7.0** the server's own primitives are reached one namespace per
+kind, the same shape a client sees them in:
+
+| Namespace | Read | Run | Change |
+|---|---|---|---|
+| `ctx.tools()` | `list()`, `find(name)`, `find_many(names)` | `call(ToolUse)`, `call_all(tool_uses)` | `add(tool)`, `remove(name)` |
+| `ctx.resources()` | `is_subscribed(&uri)` | `read(uri)` | `add(resource)`, `remove(uri)`, `notify_updated(uri)` |
+| `ctx.prompts()` | `list()` | `get(name, args)` | `add(prompt)`, `remove(name)` |
+
+```rust
+use neva::prelude::*;
+
+#[tool(descr = "Publishes a greeting tool and a report")]
+async fn publish(ctx: Context) -> Result<String, Error> {
+    ctx.tools()
+        .add(Tool::new("hello", || async { "hello" }))
+        .await?;
+
+    let resources = ctx.resources();
+    resources.add(Resource::new("res://report", "report")).await?;
+    resources.notify_updated("res://report").await?;
+
+    Ok(format!("{} tools", ctx.tools().list().await.len()))
+}
+```
+
+Each change notifies every subscriber that asked for that category.
+`tools().add` / `prompts().add` run the same argument-name check `App::run`
+does and return an error rather than publishing something no peer could call.
+`call` / `read` / `get` go through the handler that serves the primitive, as a
+client's request would.
+
+**`ctx.tools()` is the namespace, not a listing**: `ctx.tools().await` was the
+0.6 listing call and no longer compiles — write `ctx.tools().list().await`. The
+other flat 0.6 methods (`find_tool`, `use_tools`, `add_tool`, `resource`,
+`resource_updated`, `prompt`, …) still compile, `#[deprecated]`. On a 0.6 crate
+the namespaces do not exist; write the flat form there.
+
+With the `svir` feature, `ctx.tools().toolbox()` hands the server's other tools
+to a model from inside a handler — see `svir.md`.
 
 For asking the *client* for input (`elicit`, `sample`, `list_roots`) and
 the re-run primitives (`memo`, `once`, `on_commit`), read `mrtr.md`.
@@ -739,12 +775,12 @@ A category the client asks for but the server does not advertise is
 **dropped from the acknowledgment**, not refused — the subscription still
 opens.
 
-`Context::is_subscribed(&uri)` answers from the live streams, so you can
-skip **expensive local work** nobody will receive. Do not use it to decide
+`ctx.resources().is_subscribed(&uri)` answers from the live streams, so you
+can skip **expensive local work** nobody will receive. Do not use it to decide
 whether to notify: it is node-local, and it can only answer for the instance
-running the handler. `Context::resource_updated` therefore does not pre-check
-it — it publishes unconditionally and lets the subscription filters route the
-result, which is what they already do.
+running the handler. `ctx.resources().notify_updated(uri)` therefore does not
+pre-check it — it publishes unconditionally and lets the subscription filters
+route the result, which is what they already do.
 
 ### Fanning out across instances
 

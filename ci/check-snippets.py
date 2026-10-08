@@ -23,7 +23,7 @@ compile-fragment
     The block is a run of statements meant to sit inside a tool handler. The
     `use` lines are hoisted to file scope and the rest is wrapped in
 
-        async fn __snippet(mut ctx: Context, city: String) -> Result<String, Error>
+        async fn __snippet(ctx: Context, city: String) -> Result<String, Error>
 
     with a trailing `Ok(String::new())`, so fragments may use `ctx`, `city`,
     `?` and `return Err(...)`.
@@ -44,6 +44,12 @@ Override per block with `features="..."` in the metastring.
 Snippets that need different feature sets are compiled in separate crates,
 since Cargo unifies features across a workspace.
 
+A feature set naming `svir` also gets the `svir` crate itself, with its default
+features: the bridge hands neva's tools to svir's `Toolbox`, and a snippet
+calling a model needs svir's HTTP client to do it. `full` leaves `svir` out, as
+neva does, so a block that uses the bridge names it:
+`features="full svir"`.
+
 Checking a tree where every block should compile
 ------------------------------------------------
 `skill/` is the Agent Skill, read by a model rather than rendered, so its
@@ -63,7 +69,7 @@ The comment form also works in docs/ and wins over the metastring.
 Usage: python3 ci/check-snippets.py [--docs-dir docs] [--keep]
                                     [--default-mode {none,compile,compile-fragment}]
                                     [--default-features FEATURES]
-Env:   NEVA_VERSION (default "0.6")
+Env:   NEVA_VERSION (default "0.7")
 """
 
 from __future__ import annotations
@@ -81,11 +87,13 @@ FENCE = re.compile(r"^```rust([^\n]*)\n(.*?)^```", re.S | re.M)
 # An optional directive on the line immediately above a fence. Wins over the
 # metastring, and is how a marker-free tree (skill/) opts a block out.
 DIRECTIVE = re.compile(r"<!--\s*snippet:([^>]*?)-->\s*\n\Z", re.S)
-NEVA_VERSION = os.environ.get("NEVA_VERSION", "0.6")
+NEVA_VERSION = os.environ.get("NEVA_VERSION", "0.7")
+# The svir release neva's `svir` feature is built against.
+SVIR_VERSION = os.environ.get("SVIR_VERSION", "0.1.4")
 
 FRAGMENT_HEAD = (
     "#[allow(unused, deprecated)]\n"
-    "async fn __snippet(mut ctx: Context, city: String) -> Result<String, Error> {\n"
+    "async fn __snippet(ctx: Context, city: String) -> Result<String, Error> {\n"
 )
 FRAGMENT_TAIL = "    Ok(String::new())\n}\nfn main() {}\n"
 
@@ -209,7 +217,15 @@ def main() -> int:
                 'serde_json = "1"\n'
                 # `NotificationBus::subscribe` returns a `Stream`; building one
                 # by hand is what a real bus implementation does.
-                'futures-util = "0.3"\n\n'
+                'futures-util = "0.3"\n'
+                + (
+                    # The model side of the bridge: svir's client, which a
+                    # snippet calling a model needs.
+                    f'svir = "{SVIR_VERSION}"\n'
+                    if "svir" in features.split()
+                    else ""
+                )
+                + "\n"
                 # detach from any enclosing workspace
                 "[workspace]\n",
                 encoding="utf-8",

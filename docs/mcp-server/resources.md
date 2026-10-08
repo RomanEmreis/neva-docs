@@ -194,31 +194,33 @@ mcp_server.run().await;
 
 ## Resource updates
 
-In addition to [reading resources](/docs/mcp-server/tools#mcp-context), [MCP Server Tools](https://modelcontextprotocol.io/specification/draft/server/tools) can also add, update, or remove them:
+In addition to [reading resources](/docs/mcp-server/tools#mcp-context), [MCP Server Tools](https://modelcontextprotocol.io/specification/draft/server/tools) can also add, update, or remove them through
+[`ctx.resources()`](https://docs.rs/neva/latest/neva/app/context/api/struct.Resources.html):
 
 ```rust
 use neva::prelude::*;
 
 /// Adding a new resource
 #[tool]
-async fn add_resource(mut ctx: Context, uri: Uri) -> Result<(), Error> {
+async fn add_resource(ctx: Context, uri: Uri) -> Result<(), Error> {
     let resource = Resource::from(uri); // Create a new resource
-    ctx.add_resource(resource).await
+    ctx.resources().add(resource).await
 }
 
 /// Removing a resource
 #[tool]
-async fn remove_resource(mut ctx: Context, uri: Uri) -> Result<(), Error> {
-    ctx.remove_resource(uri).await
+async fn remove_resource(ctx: Context, uri: Uri) -> Result<(), Error> {
+    ctx.resources().remove(uri).await?;
+    Ok(())
 }
 
 /// Updating an existing resource
 #[tool]
-async fn update_resource(mut ctx: Context, uri: Uri) -> Result<(), Error> {
+async fn update_resource(ctx: Context, uri: Uri) -> Result<(), Error> {
     // Read and update the resource with the given URI
     // ...
 
-    ctx.resource_updated(uri).await
+    ctx.resources().notify_updated(uri).await
 }
 ```
 
@@ -239,17 +241,17 @@ App::new()
 ```
 
 Use
-[`ctx.is_subscribed(&uri)`](https://docs.rs/neva/latest/neva/app/context/struct.Context.html#method.is_subscribed)
+[`ctx.resources().is_subscribed(&uri)`](https://docs.rs/neva/latest/neva/app/context/api/struct.Resources.html#method.is_subscribed)
 to skip expensive local work nobody is listening for — but not to decide
 whether to notify: it is **node-local**, and under a
 [notification bus](./subscriptions#running-more-than-one-instance) a subscriber
 on another instance may be waiting for exactly what this one would skip.
-`resource_updated` therefore does not pre-check it: it publishes
+`notify_updated` therefore does not pre-check it: it publishes
 unconditionally and lets the subscription filters route the result.
 
 :::note Under `legacy-spec`
 The `resources/subscribe` / `resources/unsubscribe` RPC pair comes back, and
-with it `Context::subscribe_to_resource` / `unsubscribe_from_resource`. Those
+with it `ctx.resources().subscribe(uri)` / `unsubscribe(&uri)`. Those
 methods do not exist in the default build — the client owns the subscription
 now. See [Subscriptions](./subscriptions) and [Legacy spec](../legacy-spec.md).
 :::

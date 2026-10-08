@@ -34,7 +34,7 @@ sidebar_position: 7
    (выполнить один раз) или `ctx.on_commit` (отложить до финального
    результата).
 
-Раунды прогоняет клиент внутри `call_tool`, поэтому вызывающий код видит
+Раунды прогоняет клиент внутри `client.tools().call(..)`, поэтому вызывающий код видит
 один вызов.
 
 :::note Под флагом `legacy-spec`
@@ -56,7 +56,7 @@ sidebar_position: 7
 use neva::{Context, error::Error, types::elicitation::ElicitRequestParams, tool};
 
 #[tool]
-async fn greet(mut ctx: Context) -> Result<String, Error> {
+async fn greet(ctx: Context) -> Result<String, Error> {
     if ctx.client_capabilities().elicitation.is_none() {
         return Ok("Hello, stranger!".to_string());
     }
@@ -126,7 +126,7 @@ struct Contact {
 Для создания параметров запроса формы используйте метод [ElicitRequestParams::form()](https://docs.rs/neva/latest/neva/types/elicitation/enum.ElicitRequestParams.html#method.form) с последующим вызовом [with_contract()](https://docs.rs/neva/latest/neva/types/elicitation/struct.ElicitRequestFormParams.html#method.with_schema), который задаёт ожидаемую JSON-схему.
 ```rust
 #[tool]
-async fn generate_business_card(mut ctx: Context) -> Result<String, Error> {
+async fn generate_business_card(ctx: Context) -> Result<String, Error> {
     let params = ElicitRequestParams::form(
         "Please provide your contact information"
     )
@@ -157,7 +157,7 @@ fn format_contact(c: Contact) -> String {
 
 ```rust
 #[tool]
-async fn place_order(mut ctx: Context) -> Result<String, Error> {
+async fn place_order(ctx: Context) -> Result<String, Error> {
     // Вычисляется один раз, дальше воспроизводится.
     let quote: u32 = ctx.memo("quote", async { Ok(fetch_quote().await) }).await?;
 
@@ -181,7 +181,7 @@ async fn place_order(mut ctx: Context) -> Result<String, Error> {
 URL-запросы используются, когда пользователь должен выполнить внешнее действие. Для создания [ElicitRequestUrlParams](https://docs.rs/neva/latest/neva/types/elicitation/struct.ElicitRequestUrlParams.html) используйте метод [ElicitRequestParams::url()](https://docs.rs/neva/latest/neva/types/elicitation/enum.ElicitRequestParams.html#method.url).
 ```rust
 #[tool]
-async fn pay_a_bill(mut ctx: Context) -> Result<&'static str, Error> {
+async fn pay_a_bill(ctx: Context) -> Result<&'static str, Error> {
     let params = ElicitRequestParams::url(
         "https://www.paypal.com/us/webapps/mpp/paypal-payment",
         "Please pay your bill using PayPal"
