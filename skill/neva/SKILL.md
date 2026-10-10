@@ -3,7 +3,7 @@ name: neva
 description: Build, review and debug MCP (Model Context Protocol) servers and clients in Rust with the neva crate — tools, prompts, resources, elicitation and multi round-trip requests, MCP Apps (`ui://` UI resources), Streamable HTTP and stdio transports, OAuth 2.1 auth, DI, deployment and publishing to the MCP Registry, and handing MCP tools to a model through the svir bridge. Use whenever Rust code imports `neva`, whenever the task is to expose something as an MCP server, to talk to one from Rust, or to let a model call an MCP server's tools, and when upgrading such code across neva or MCP-spec versions.
 license: MIT
 metadata:
-  neva-version: "0.7.0"
+  neva-version: "0.7.1"
   mcp-protocol: "2026-07-28"
   docs: "https://romanemreis.github.io/neva-docs/"
   api-reference: "https://docs.rs/neva"

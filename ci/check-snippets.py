@@ -89,7 +89,7 @@ FENCE = re.compile(r"^```rust([^\n]*)\n(.*?)^```", re.S | re.M)
 DIRECTIVE = re.compile(r"<!--\s*snippet:([^>]*?)-->\s*\n\Z", re.S)
 NEVA_VERSION = os.environ.get("NEVA_VERSION", "0.7")
 # The svir release neva's `svir` feature is built against.
-SVIR_VERSION = os.environ.get("SVIR_VERSION", "0.1.4")
+SVIR_VERSION = os.environ.get("SVIR_VERSION", "0.1.6")
 
 FRAGMENT_HEAD = (
     "#[allow(unused, deprecated)]\n"

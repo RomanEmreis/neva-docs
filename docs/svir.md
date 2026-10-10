@@ -31,7 +31,7 @@ instead. And a server's sampling request can be [answered with a model](#answeri
 ```toml
 [dependencies]
 neva = { version = "0.7", features = ["client-full", "svir"] }  # or server-full
-svir = "0.1.4"
+svir = "0.1.6"
 tokio = { version = "1", features = ["full"] }
 ```
 
@@ -384,16 +384,20 @@ The handler [may fail](./mcp-client/sampling#a-handler-that-can-fail): under MCP
 What carries over: the system prompt, the messages, the tools, `maxTokens` and
 `temperature`. Roles are kept; a `tool_use` block is a call in the assistant's
 turn and each `tool_result` a tool message of its own, flattened as a tool's
-answer is for a model. `toolChoice: none` leaves the tools out.
+answer is for a model. `toolChoice: none` leaves the tools out, and
+`toolChoice: required` asks the model for a call; a model server may take it and
+answer without one.
 
-Audio, stop sequences and `toolChoice: required` cannot be passed on and are an
-**error**. What the spec leaves to the client is left out: `includeContext`,
-`modelPreferences` — the model is your choice — and the provider `metadata`.
+Audio and stop sequences cannot be passed on and are an **error**, as is
+`toolChoice: required` with no tools to call. What the spec leaves to the client
+is left out: `includeContext`, `modelPreferences` — the model is your choice —
+and the provider `metadata`.
 
 The sample is the model's text, then a `tool_use` block per call, each keeping
 the call's id so the `tool_result` the server sends back finds it. The stop
 reason is `toolUse` when the model called a tool, and otherwise follows why it
-stopped: `endTurn`, `maxTokens`, or `contentFilter`.
+stopped: `endTurn`, `maxTokens`, `contentFilter`, or `refusal` when the model
+refused, its refusal then the text.
 
 ## Learn By Example
 

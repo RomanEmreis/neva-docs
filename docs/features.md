@@ -82,7 +82,7 @@ the preset:
 
 ```toml
 neva = { version = "...", features = ["full", "svir"] }
-svir = "0.1.4"
+svir = "0.1.6"
 ```
 
 ### Protocol Generation

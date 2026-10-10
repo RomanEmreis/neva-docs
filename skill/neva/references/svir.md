@@ -10,7 +10,7 @@ takes its tools from. It has no MCP. neva's `svir` feature implements
 
 ```toml
 neva = { version = "0.7", features = ["full", "svir"] }   # or server-full / client-full
-svir = "0.1.4"                                          # the model client itself
+svir = "0.1.6"                                          # the model client itself
 ```
 
 * `svir` is **not** in `full`, `server-full` or `client-full` (svir is `0.x`).
@@ -247,11 +247,13 @@ The handler returns `Result<CreateMessageResult, Error>` (0.7.0): under
 2026-07-28 an `Err` fails the call that asked for the sample; under
 `legacy-spec` it answers the server. `sampling_request` carries the system
 prompt, messages, tools, `maxTokens`, `temperature`; `toolChoice: none` drops
-the tools. **Audio, stop sequences and `toolChoice: required` are an error.**
+the tools, and `toolChoice: required` (0.7.1) asks the model for a call, an
+`InvalidParams` error with no tools given. A model server may take it and
+answer without a call. **Audio and stop sequences are an error.**
 `includeContext`, `modelPreferences` and `metadata` are left out — the model is
 the client's choice. `sampling_result` gives text, then a `tool_use` per call
 (ids kept), with `stopReason` `toolUse` / `endTurn` / `maxTokens` /
-`contentFilter`.
+`contentFilter` / `refusal` (0.7.1; the text is then the refusal).
 
 ## Reference
 
