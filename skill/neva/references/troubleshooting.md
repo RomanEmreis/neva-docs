@@ -469,7 +469,7 @@ Match the new signatures; nothing else changed.
 The `svir` feature is off — and it is in **no preset**, not even `full`, so it
 has to be named: `features = ["full", "svir"]`. A separate "unresolved crate
 `svir`" means svir itself is missing from `[dependencies]`: neva pulls it in
-without its HTTP client, so to call a model add `svir = "0.1.4"` yourself.
+without its HTTP client, so to call a model add `svir = "0.1.6"` yourself.
 
 ### "Tool `…` cannot be offered to a model"
 

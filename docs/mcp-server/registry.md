@@ -173,6 +173,13 @@ A `KeyValueInput` or `Argument` carries what a client's configuration UI needs:
 `.required()`, `.secret()`, `.with_default(..)`, `.with_choices([..])`,
 `.with_placeholder(..)`, `.with_format(InputFormat::Number)`.
 
+:::note `Argument` is in the prelude too
+`neva::prelude` brings in the completion request's `Argument`, so with
+`use neva::prelude::*;` and `use neva::registry::*;` both in scope the name is
+ambiguous (E0659). Import the registry's by name, which shadows both globs:
+`use neva::registry::Argument;`.
+:::
+
 :::tip Prefer environment variables for anything user-supplied
 Arguments end up on a command line, and a client that runs one through a shell
 can be made to run more than the server. A secret belongs in
@@ -229,13 +236,15 @@ fine:
 * the `format: uri` fields, parsed rather than prefix-matched;
 * an icon source that is not `https://`, or over 255 characters — a `data:`
   URI carrying the image itself is a URI, and is not a listing's icon;
+* publisher metadata (`with_publisher_metadata`) that is not a JSON object;
 * a `{template}` nothing declares;
 * nothing to install and nothing to call;
 * a remote over stdio, or a package derived from an app with no transport.
 
 :::note It is not a registry's validator
 A registry has rules of its own — which hosts it will fetch an archive from,
-which base URLs it takes, what it makes of a loopback address — and those are
+which base URLs it takes, what it makes of a loopback address, how much
+publisher metadata it keeps (4 KB on the official registry) — and those are
 its to apply and to change. An `Ok` here says the document is the shape the
 schema describes; when a registry refuses it, the registry says which of *its*
 rules was broken, and that is the answer to act on.

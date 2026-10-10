@@ -655,8 +655,10 @@ Five things to get right:
 title, exact versions rather than ranges, the `format: uri` fields, an icon
 source that must be HTTPS and ≤ 255 characters, a `{template}` nothing
 declares, a manifest with nothing to install and nothing to call, a remote over
-stdio. It is **not** a registry's validator — host rules, base URLs and
-loopback policy belong to the registry, which says which of its own rules was
+stdio, and (0.7.1) publisher metadata (`with_publisher_metadata`) that is not a
+JSON object. It is **not** a registry's validator — host rules, base URLs,
+loopback policy and how much publisher metadata it keeps (4 KB on the official
+registry) belong to the registry, which says which of its own rules was
 broken.
 
 Beyond the cargo package: `Package::new(RegistryType::Oci | Mcpb | Other(..), ..)`
@@ -665,7 +667,10 @@ for other distributions, `with_package_argument` / `with_runtime_argument` /
 Transport::streamable_http(url))` for a server that is already running (never
 stdio; every `{placeholder}` in the URL must be declared beside it). Prefer
 `KeyValueInput` environment variables over arguments for anything
-user-supplied — arguments reach a command line.
+user-supplied — arguments reach a command line. `Argument` is in
+`neva::prelude` too (the completion one), so beside `use neva::registry::*;`
+it is ambiguous (E0659): import it by name, `use neva::registry::Argument;`,
+which shadows both globs.
 
 Publishing, once `server.json` is written:
 
