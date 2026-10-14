@@ -30,7 +30,7 @@ instead. And a server's sampling request can be [answered with a model](#answeri
 
 ```toml
 [dependencies]
-neva = { version = "0.7", features = ["client-full", "svir"] }  # or server-full
+neva = { version = "0.8", features = ["client-full", "svir"] }  # or server-full
 svir = "0.1.6"
 tokio = { version = "1", features = ["full"] }
 ```
@@ -131,7 +131,7 @@ Some tools are never offered:
 * a tool that can only be called as a task (`task_support = "required"`);
 * with the `apps` feature, a tool [MCP Apps](./mcp-server/apps#visibility-tools-the-app-calls-and-the-model-never-sees) hides
   from the model;
-* in-process, a tool requiring [roles or permissions](#what-an-in-process-call-holds)
+* in-process, a tool requiring [roles, permissions or scopes](#what-an-in-process-call-holds)
   the caller does not hold.
 
 ## What the model is told
@@ -295,7 +295,7 @@ A toolbox from `ctx.tools().toolbox()` holds the **claims of the current
 request**: a tool those claims do not reach is not offered, and the server's
 checks see them on every call. A toolbox from `App::into_toolbox` or
 `App::with_toolbox` is taken in no request and holds no claims, so a tool that
-requires [roles or permissions](./mcp-server/http#role-based-access-control) is not offered
+requires [roles, permissions or scopes](./mcp-server/http#role-based-access-control) is not offered
 by it at all.
 
 ## Prompts and resources

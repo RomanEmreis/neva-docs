@@ -27,7 +27,7 @@ Use the engine-agnostic `http-server` feature — it ships only the abstractions
 
 ```toml
 [dependencies]
-neva = { version = "0.7", features = ["http-server", "server-macros", "tracing", "di"] }
+neva = { version = "0.8", features = ["http-server", "server-macros", "tracing", "di"] }
 
 axum = "0.8"
 http = "1.4"
@@ -349,15 +349,17 @@ App::new()
 
 ## Authentication
 
-Neva's per-tool / per-prompt / per-resource [role and permission gates](./http#role-based-access-control) work with any engine, but the engine is responsible for **decoding** the inbound credential (bearer token, session cookie, custom header — anything) and inserting the resulting claims into `request.extensions_mut()` **before** the request reaches `dispatch_post`.
+Neva's per-tool / per-prompt / per-resource [role, permission and scope gates](./http#role-based-access-control) work with any engine, but the engine is responsible for **decoding** the inbound credential (bearer token, session cookie, custom header — anything) and inserting the resulting claims into `request.extensions_mut()` **before** the request reaches `dispatch_post`.
 
 The contract:
 
-1. Implement [`neva::auth::Claims`](https://docs.rs/neva/latest/neva/auth/trait.Claims.html) on your decoded claims type (or reuse `DefaultClaims`).
+1. Implement [`neva::auth::Claims`](https://docs.rs/neva/latest/neva/auth/trait.Claims.html) on your decoded claims type (or reuse `DefaultClaims`). Every method has a default, so implement the ones your claims carry — `scopes()` for scope gates, `role()` / `roles()` / `permissions()` for the others, `subject()` and `issuer()` for [`ctx.claims()`](./oauth#who-is-calling) and the binding of `requestState` to its caller.
 2. Wrap them in `Arc<dyn Claims>`.
 3. Insert into `req.extensions_mut()` from a middleware layer on the framework side, before calling the dispatch helper.
 
-If no claims are present, neva treats the request as unauthenticated, and any tool / prompt / resource that declares required roles or permissions will reject it with `403 Forbidden`. Public tools are unaffected.
+If no claims are present, neva treats the request as unauthenticated, and any tool / prompt / resource that declares required roles, permissions or scopes will reject it. Public tools are unaffected. A token short of a required scope is answered before dispatch with `403` and an `insufficient_scope` challenge — the dispatch helpers build it, so the engine has nothing to add.
+
+A handler gets back the concrete type the engine inserted with `ctx.claims().and_then(|c| c.downcast_ref::<MyClaims>())` — a tenant or any other claim the trait does not expose.
 
 The default `VolgaEngine` does this step automatically using Volga's `BearerTokenService`. Custom engines wire up the equivalent inside their own POST middleware chain.
 

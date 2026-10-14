@@ -27,7 +27,7 @@ sidebar_position: 9
 
 ```toml
 [dependencies]
-neva = { version = "0.7", features = ["http-server", "server-macros", "tracing", "di"] }
+neva = { version = "0.8", features = ["http-server", "server-macros", "tracing", "di"] }
 
 axum = "0.8"
 http = "1.4"
@@ -350,15 +350,17 @@ App::new()
 
 ## Аутентификация
 
-Per-tool / per-prompt / per-resource [гейты на роли и права](./http#управление-доступом-на-основе-ролей) работают с любым движком, но **декодирование** входящего credential (bearer-токен, cookie сессии, нестандартный заголовок — что угодно) и вставку результирующих claims в `request.extensions_mut()` **до** того, как запрос попадёт в `dispatch_post`, выполняет именно движок.
+Per-tool / per-prompt / per-resource [гейты на роли, права и scope'ы](./http#управление-доступом-на-основе-ролей) работают с любым движком, но **декодирование** входящего credential (bearer-токен, cookie сессии, нестандартный заголовок — что угодно) и вставку результирующих claims в `request.extensions_mut()` **до** того, как запрос попадёт в `dispatch_post`, выполняет именно движок.
 
 Контракт:
 
-1. Реализуйте [`neva::auth::Claims`](https://docs.rs/neva/latest/neva/auth/trait.Claims.html) для своего типа claims (или используйте `DefaultClaims`).
+1. Реализуйте [`neva::auth::Claims`](https://docs.rs/neva/latest/neva/auth/trait.Claims.html) для своего типа claims (или используйте `DefaultClaims`). У каждого метода есть реализация по умолчанию, так что реализуйте те, что несут ваши claims: `scopes()` — для гейтов по scope, `role()` / `roles()` / `permissions()` — для остальных, `subject()` и `issuer()` — для [`ctx.claims()`](./oauth#who-is-calling) и привязки `requestState` к вызывающему.
 2. Заверните в `Arc<dyn Claims>`.
 3. Вставьте в `req.extensions_mut()` из middleware на стороне фреймворка до вызова диспетчера.
 
-Если claims отсутствуют, neva считает запрос неаутентифицированным, и любой инструмент / промпт / ресурс, требующий ролей или прав, отклонит его с `403 Forbidden`. Публичные инструменты от этого не страдают.
+Если claims отсутствуют, neva считает запрос неаутентифицированным, и любой инструмент / промпт / ресурс, требующий ролей, прав или scope'ов, отклонит его. Публичные инструменты от этого не страдают. Токену, которому не хватает нужного scope, ещё до диспетчеризации отвечают `403` с вызовом `insufficient_scope` — его строят хелперы диспетчеризации, движку добавлять нечего.
+
+Конкретный тип, вставленный движком, обработчик получает обратно через `ctx.claims().and_then(|c| c.downcast_ref::<MyClaims>())` — тенант или любой другой claim, которого трейт не показывает.
 
 `VolgaEngine` по умолчанию делает это автоматически через `BearerTokenService` из Volga. В своём адаптере вы реализуете тот же шаг в собственной цепочке POST-middleware.
 

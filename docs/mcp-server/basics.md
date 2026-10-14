@@ -55,6 +55,7 @@ Besides the `descr`, you can configure your tool with:
 - `output_schema` - Schema for the tool output.
 - `annotations` - Arbitrary [metadata](https://docs.rs/neva/latest/neva/types/tool/struct.ToolAnnotations.html).
 - `roles` & `permissions` - Define which users can run the tool when using Streamable HTTP transport with OAuth.
+- `scopes` - The OAuth scopes the caller's access token must grant, every one of them. A token short of one gets a `403` [step-up challenge](./oauth#scopes).
 
 ## Testing the MCP Server
 

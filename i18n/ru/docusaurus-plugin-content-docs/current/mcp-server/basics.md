@@ -55,6 +55,7 @@ async fn main() {
 - `output_schema` — схема выходных данных инструмента.
 - `annotations` — произвольные [метаданные](https://docs.rs/neva/latest/neva/types/tool/struct.ToolAnnotations.html).
 - `roles` и `permissions` — определяют, кто может запускать инструмент при использовании потокового HTTP-транспорта с OAuth.
+- `scopes` — OAuth scope'ы, которые должен выдавать токен доступа вызывающего, все до одного. Токен, которому не хватает хотя бы одного, получает `403` со [step-up-вызовом](./oauth#scopes).
 
 ## Тестирование MCP-сервера
 

@@ -344,6 +344,33 @@ the handler behind an `Arc<dyn ..>` lives on an internal bridge, not on the seam
 you implement. The futures still have to be `Send`, which an `async fn` holding
 nothing thread-bound across an `.await` already satisfies.
 
+## Stepping up
+
+A server can [gate a tool on a scope](../mcp-server/oauth#scopes) the current
+token does not grant. It answers that call with `403` and a
+`WWW-Authenticate: Bearer error="insufficient_scope"` challenge naming the
+scopes the call needs — and the client treats it as it treats a `401`: it
+re-authorizes and retries the call once, inside the same `tools().call(..)`.
+
+The new authorization asks for the scopes the session already held **plus**
+the ones the challenge names (SEP-2350). A token minted for the challenged scope
+alone would lose access the session already had, and the next call for the old
+scope would be challenged straight back. Concurrent calls refused for the same
+scope share one flow — the user is asked once.
+
+Two cases end in an error instead:
+
+* **The client configured `with_scopes([..])`** and the challenge names a scope
+  outside it. That list is the client's decision about what it may ever ask
+  for, so the call fails naming the scope rather than prompting the user for a
+  grant that would still come back short. Add the scope to `with_scopes`.
+* **The client cannot re-authorize** — it holds a static token from
+  `with_auth(token)` rather than an OAuth session. The call fails with `ErrorCode::InsufficientScope`
+  (-31403), whose `data` carries `requiredScopes` and `missingScopes`.
+
+A non-interactive grant (client credentials, JWT bearer) steps up the same way,
+by running its one token request for the wider set — no user involved.
+
 ## Storing tokens
 
 The default store is in-process: tokens live as long as the client does. Give
@@ -374,7 +401,7 @@ sharing one durable store, never share a slot.
 | `with_client_credentials()` | The client-credentials grant |
 | `with_jwt_bearer(provider)` | The RFC 7523 §2.1 assertion grant |
 | `with_identity_assertion(..)` | The enterprise-managed profile |
-| `with_scopes([..])` | Scopes to request; defaults to the resource's `scopes_supported` |
+| `with_scopes([..])` | Scopes to request; defaults to the resource's `scopes_supported`. Also the most a [step-up](#stepping-up) may ask for |
 | `with_dpop(key)` / `with_dpop_auto()` | Sender-constrained tokens (`client-oauth-dpop`) |
 | `require_https(bool)` | Whether plain-`http` discovery/token endpoints are rejected. On by default; turn off only against a local development issuer |
 | `with_token_store(..)` | Replace the in-process token store |

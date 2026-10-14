@@ -239,16 +239,58 @@ App::new()
 
 | Method | Description |
 |---|---|
-| `set_decoding_key()` | Secret or public key used to verify JWT signatures |
+| `set_decoding_key()` | HMAC secret the tokens are signed with (`HS256`, `HS384`, `HS512`) |
+| `with_decoding_key()` | Any [`DecodingKey`](https://docs.rs/neva/latest/neva/auth/struct.DecodingKey.html): an HMAC secret, or the public half of an RSA, EC or Ed25519 key pair, from PEM or a JSON Web Key — see [A public key](#a-public-key) |
+| `with_alg()` | Accepted signing algorithms. The first call **replaces** the default `HS256`; later calls add to it |
 | `with_aud()` | Accepted token audience values |
-| `with_iss()` | Accepted token issuer values |
+| `with_iss()` | Accepted token issuer values. A token without `iss` is refused |
 | `validate_exp()` | Whether to validate the token expiration (default `true`) |
+
+A key whose family does not match the accepted algorithms — an EC key left on
+the default `HS256`, say — fails the server start instead of refusing every
+token later.
+
+### A public key
+
+An authorization server signs its tokens with a private key and publishes the
+public half. Where the server cannot fetch it — no route to the issuer at all —
+ship the public key with the deployment and validate with it directly:
+
+```rust compile
+use neva::{prelude::*, auth::{Algorithm, DecodingKey}};
+
+#[tokio::main]
+async fn main() {
+    // the issuer's public key, shipped with the deployment
+    let key = DecodingKey::from_pem_file("/etc/mcp/issuer.pem");
+
+    App::new()
+        .with_options(|opt| opt
+            .with_http(|http| http
+                .with_auth(|auth| auth
+                    .with_decoding_key(key)
+                    .with_alg(Algorithm::ES256)
+                    .with_iss(["https://auth.example.com"])
+                    .with_aud(["https://mcp.example.com/mcp"]))))
+        .run()
+        .await;
+}
+```
+
+`DecodingKey::from_jwk(..)` takes one entry of the issuer's JWKS instead of a
+PEM file. Either way the key does not follow the issuer's rotations: a re-keyed
+issuer means a restart with the new key. Where the key set can be fetched from
+*some* URL, [OAuth mode with `with_jwks_uri`](./oauth#an-issuer-the-server-cannot-reach)
+tracks rotations instead. A static key and OAuth mode exclude each other — a
+server configured with both fails to start.
 
 ## Role-Based Access Control
 
-Once authentication is configured, you can restrict access to individual tools, prompts, and resources using `roles` and `permissions` attributes:
+Once authentication is configured, you can restrict access to individual tools, prompts, and resources using `roles`, `permissions` and `scopes` attributes:
 
-```rust
+```rust compile
+use neva::prelude::*;
+
 /// Accessible to everyone
 #[tool]
 async fn public_tool(name: String) {
@@ -273,16 +315,29 @@ async fn restricted_prompt(topic: String) -> PromptMessage {
 async fn restricted_resource(uri: Uri, name: String) -> (String, String) {
     (uri.to_string(), name)
 }
+
+/// Only accessible with a token granting both scopes
+#[tool(scopes = ["notes:read", "notes:write"])]
+async fn edit_note(id: String, text: String) -> String {
+    format!("note {id}: {text}")
+}
 ```
 
-Roles and permissions are extracted from JWT token claims. Access is denied with a `403 Forbidden` if the token does not satisfy the declared requirements.
+Roles, permissions and scopes are read from the token's claims. Any one of the
+listed roles or permissions is enough, and a caller holding none of them is
+refused with `InvalidParams` (-32602). Scopes are a grant the caller can widen,
+so **every** listed scope is required, and a token short of one is answered
+with `403` and an `insufficient_scope` challenge the client can re-authorize
+on — see [Roles, permissions and scopes](./oauth#roles-permissions-and-scopes).
+
+A handler reads the same claims with [`ctx.claims()`](./oauth#who-is-calling).
 
 :::tip Tokens from an authorization server
-`set_decoding_key` is for a deployment that mints its own JWTs. To validate
-tokens issued by an OAuth 2.1 / OIDC provider — against its JWKS, with the
-RFC 9728 metadata document and the `401` challenge that lets clients discover
-it — see [OAuth 2.1](./oauth). The role and permission gates above are
-identical either way.
+A static key fits a deployment that mints its own JWTs, or one that holds the
+issuer's public key. To validate tokens issued by an OAuth 2.1 / OIDC provider
+against its JWKS — following its key rotations, with the RFC 9728 metadata
+document and the `401` challenge that lets clients discover it — see
+[OAuth 2.1](./oauth). The gates above are identical either way.
 :::
 
 ## Blocking Runner
