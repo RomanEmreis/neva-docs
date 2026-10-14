@@ -13,7 +13,7 @@ Enabled by the `apps` feature (included in `server-full`).
 
 ```toml
 [dependencies]
-neva = { version = "0.7", features = ["server-macros", "apps"] }
+neva = { version = "0.8", features = ["server-macros", "apps"] }
 ```
 
 ## What a server is actually responsible for
@@ -151,7 +151,7 @@ async fn main() {
 | `with_domain` | Asks the host to serve the app from a dedicated sandbox origin |
 | `with_prefers_border` | Whether the app wants a visible border and background |
 | `with_ui` | Replaces the whole `_meta.ui` block at once — the escape hatch for a block built elsewhere |
-| `with_roles` / `with_permissions` | Who may **read** the resource — see [Authorization](#authorization) |
+| `with_roles` / `with_permissions` / `with_scopes` | Who may **read** the resource — see [Authorization](#authorization) |
 
 :::warning Two permissions, two meanings
 `with_ui_permissions` requests **browser** permissions for the iframe — camera,
@@ -304,7 +304,7 @@ An app-only tool is listed in `tools/list` like any other. What keeps it out of
 the agent's tool list is the **host**, reading `_meta.ui.visibility`. This is a
 UI affordance, not an access control — if a tool must not be called by an
 untrusted caller, gate it with
-[`with_roles`](./oauth#roles-and-permissions) or a middleware, exactly as you
+[`with_roles`](./oauth#roles-permissions-and-scopes) or a middleware, exactly as you
 would without a UI.
 :::
 
@@ -397,8 +397,8 @@ The switch is read when the server starts, so it applies to every
 
 ## Authorization
 
-A resource registered with `add_ui_resource` carries **no role or permission
-requirement by default**: on an [OAuth-protected server](./oauth) anyone who can
+A resource registered with `add_ui_resource` carries **no role, permission or
+scope requirement by default**: on an [OAuth-protected server](./oauth) anyone who can
 reach it can read it.
 
 That default is usually right. The document is a template a host is expected to
@@ -406,8 +406,8 @@ prefetch and review at connection time, while the data it displays comes from a
 tool — which carries its own requirement.
 
 When the markup itself is sensitive, state the requirement on the resource with
-`with_roles` and `with_permissions`, the same pair
-[`ResourceTemplate`](./oauth#roles-and-permissions) and
+`with_roles`, `with_permissions` and `with_scopes`, the same gates
+[`ResourceTemplate`](./oauth#roles-permissions-and-scopes) and
 `#[resource(roles = [..])]` put on any other resource, checked in the same place:
 
 ```rust compile features="server-full"
@@ -428,14 +428,16 @@ async fn main() {
 ```
 
 A caller holding none of the roles is refused on `resources/read`. Combined,
-`with_roles` and `with_permissions` must **both** be satisfied.
+every gate must be satisfied. `with_scopes(["reports:read"])` requires the
+caller's token to grant the scope, and a token short of it gets the `403`
+[step-up challenge](./oauth#scopes) rather than a plain refusal.
 
 Registering the document with `map_ui_resource` and putting the requirement on
 the returned `ResourceTemplate` does the same job, if the markup is generated
 rather than fixed.
 
-Both builders are gated on the `http-server` feature: roles and permissions come
-from a validated token, which is an HTTP-transport concern.
+The builders are gated on the `http-server` feature: roles, permissions and
+scopes come from a validated token, which is an HTTP-transport concern.
 
 `resources/read` checks the requirement on the **matched route**, rather than
 looking up and cloning the resource template on every read — a template's

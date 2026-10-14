@@ -12,7 +12,7 @@ Enabled by the `apps` feature (included in `client-full`).
 
 ```toml
 [dependencies]
-neva = { version = "0.7", features = ["client", "apps"] }
+neva = { version = "0.8", features = ["client", "apps"] }
 ```
 
 :::info A neva client is not a browser

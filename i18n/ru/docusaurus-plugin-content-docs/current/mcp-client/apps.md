@@ -12,7 +12,7 @@ sidebar_position: 13
 
 ```toml
 [dependencies]
-neva = { version = "0.7", features = ["client", "apps"] }
+neva = { version = "0.8", features = ["client", "apps"] }
 ```
 
 :::info Клиент на neva — не браузер

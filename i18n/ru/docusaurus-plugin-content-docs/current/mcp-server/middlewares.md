@@ -21,6 +21,62 @@ async fn my_middleware(ctx: MwContext, next: Next) -> Response {
 
 Вызов `next(ctx).await` передаёт управление следующему промежуточному обработчику или конечному обработчику.
 
+## Ответить на запрос самому {#answering-a-request-yourself}
+
+Промежуточный обработчик, который возвращается, **не** вызвав `next`, сам
+отвечает на запрос: то, что он вернул, уходит вызывающей стороне — по любому
+транспорту и внутри пакета тоже. Ответ стройте с id запроса:
+
+```rust compile
+use neva::prelude::*;
+
+async fn require_params(ctx: MwContext, next: Next) -> Response {
+    if ctx.request().is_some_and(|req| req.params.is_none()) {
+        let err = Error::new(ErrorCode::InvalidParams, "a tool call needs params");
+        return Response::error(ctx.id(), err);
+    }
+    next(ctx).await
+}
+```
+
+Если промежуточный обработчик уже вызвал `next`, вызывающая сторона получает
+ответ обработчика — он уходит, когда запрос доходит до конца конвейера, поэтому
+другой `Response`, возвращённый после этого, не отправляется. Исключение —
+промежуточный обработчик, который перестал ждать `next` до того, как ответ
+ушёл, например по таймауту: тогда ответом становится его собственный.
+
+```rust compile
+use neva::prelude::*;
+use std::time::Duration;
+
+async fn deadline(ctx: MwContext, next: Next) -> Response {
+    let id = ctx.id();
+    match tokio::time::timeout(Duration::from_secs(5), next(ctx)).await {
+        Ok(resp) => resp,
+        Err(_) => Response::error(id, Error::new(ErrorCode::InternalError, "timed out")),
+    }
+}
+```
+
+Уведомление ответа не получает ни в каком случае.
+
+## Кто вызывает {#who-is-calling}
+
+На HTTP-сервере с аутентификацией
+[`MwContext::claims()`](https://docs.rs/neva/latest/neva/middleware/struct.MwContext.html#method.claims)
+возвращает claims токена вызывающей стороны — те же, что обработчик читает через
+[`ctx.claims()`](./oauth#who-is-calling), и `None` в тех же случаях:
+
+```rust compile
+use neva::prelude::*;
+
+async fn audit(ctx: MwContext, next: Next) -> Response {
+    let client = ctx.claims().and_then(|c| c.client_id()).unwrap_or("-");
+    tracing::info!("tool call by client {client}");
+    next(ctx).await
+}
+```
+
 ## Глобальный промежуточный обработчик
 
 Используйте [`wrap()`](https://docs.rs/neva/latest/neva/app/struct.App.html#method.wrap) для регистрации промежуточного обработчика, который оборачивает **все входящие запросы**:

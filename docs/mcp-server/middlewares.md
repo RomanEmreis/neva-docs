@@ -21,6 +21,62 @@ async fn my_middleware(ctx: MwContext, next: Next) -> Response {
 
 Call `next(ctx).await` to pass control to the next middleware or the actual handler.
 
+## Answering a Request Yourself
+
+A middleware that returns **without** calling `next` answers the request
+itself: what it returns is sent to the caller, over any transport and inside a
+batch alike. Build the answer with the request's id:
+
+```rust compile
+use neva::prelude::*;
+
+async fn require_params(ctx: MwContext, next: Next) -> Response {
+    if ctx.request().is_some_and(|req| req.params.is_none()) {
+        let err = Error::new(ErrorCode::InvalidParams, "a tool call needs params");
+        return Response::error(ctx.id(), err);
+    }
+    next(ctx).await
+}
+```
+
+Once a middleware has called `next`, the reply the caller gets is the
+handler's — it goes out when the request reaches the end of the pipeline, so a
+different `Response` returned afterwards is not sent. The exception is a
+middleware that stops waiting for `next` before the reply is out, a timeout
+around it say: then its own answer is the reply.
+
+```rust compile
+use neva::prelude::*;
+use std::time::Duration;
+
+async fn deadline(ctx: MwContext, next: Next) -> Response {
+    let id = ctx.id();
+    match tokio::time::timeout(Duration::from_secs(5), next(ctx)).await {
+        Ok(resp) => resp,
+        Err(_) => Response::error(id, Error::new(ErrorCode::InternalError, "timed out")),
+    }
+}
+```
+
+A notification gets no reply either way.
+
+## Who Is Calling
+
+On an HTTP server with authentication,
+[`MwContext::claims()`](https://docs.rs/neva/latest/neva/middleware/struct.MwContext.html#method.claims)
+returns the claims of the caller's token — the same ones a handler reads with
+[`ctx.claims()`](./oauth#who-is-calling), and `None` in the same cases:
+
+```rust compile
+use neva::prelude::*;
+
+async fn audit(ctx: MwContext, next: Next) -> Response {
+    let client = ctx.claims().and_then(|c| c.client_id()).unwrap_or("-");
+    tracing::info!("tool call by client {client}");
+    next(ctx).await
+}
+```
+
 ## Global Middleware
 
 Use [`wrap()`](https://docs.rs/neva/latest/neva/app/struct.App.html#method.wrap) to register a middleware that wraps **all incoming requests**:

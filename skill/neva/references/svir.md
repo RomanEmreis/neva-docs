@@ -9,7 +9,7 @@ takes its tools from. It has no MCP. neva's `svir` feature implements
 ## Setup — the feature is in no preset
 
 ```toml
-neva = { version = "0.7", features = ["full", "svir"] }   # or server-full / client-full
+neva = { version = "0.8", features = ["full", "svir"] }   # or server-full / client-full
 svir = "0.1.6"                                          # the model client itself
 ```
 
@@ -88,7 +88,7 @@ toolbox kind.
   request: a prefix each.
 * Never offered: task-only tools (`task_support = "required"`); with `apps`,
   tools hidden from the model (`visibility = ["app"]`); in-process, tools
-  needing roles/permissions the caller lacks.
+  needing roles/permissions/scopes the caller lacks.
 
 ## What the model is told
 
@@ -130,8 +130,8 @@ runs through the server's **middleware** (auth, rate limits, audit apply to the
 model) and the tool gets its `Context` and `Dc<T>` as over MCP. There is **no
 peer**: a tool that elicits, samples or lists roots is refused at once, and its
 progress/log notifications go nowhere. A toolbox from `into_toolbox` /
-`with_toolbox` holds **no claims**, so tools with `roles` / `permissions` are
-not offered by it.
+`with_toolbox` holds **no claims**, so tools with `roles` / `permissions` /
+`scopes` are not offered by it.
 
 ## A tool that drives a model
 

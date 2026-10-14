@@ -13,7 +13,7 @@ that command tests the legacy profile. Exercise the default one with an
 explicit list: `--features "server-full client-full"`.
 
 ```toml
-neva = { version = "0.7", features = ["server-full", "legacy-spec"] }
+neva = { version = "0.8", features = ["server-full", "legacy-spec"] }
 ```
 
 ## You usually do not need it on the client
@@ -325,6 +325,43 @@ Behaviour that changes without a signature:
 
 New: `list_all()` on every listing, `client.tasks()`, a sampling handler that
 returns `Result`, and the `svir` feature (`svir.md`), which is in no preset.
+
+## Upgrading 0.7.x → 0.8.0
+
+Who is calling, scope gates, and stricter bearer validation. Four breaks:
+
+* **`DefaultClaims.aud` is `Vec<String>`**, was `Option<String>` — a token names
+  one audience or several. Read `claims.audience()`. New fields `client_id`
+  and `scope`, so a literal naming every field needs them, or
+  `..Default::default()`. A token whose `aud` is an array, refused on 0.7, is
+  accepted.
+* **`ErrorCode::InsufficientScope`** (-31403) is a new variant: an exhaustive
+  `match` needs an arm.
+* **`AuthConfig::with_alg` replaces the default `HS256`** instead of adding to
+  it; later calls add. A static key that cannot serve every named algorithm
+  fails the start (an EC key on the default `HS256`, say).
+* **`AuthConfig::with_iss` refuses a token without `iss`.**
+
+Behaviour that changes without a signature:
+
+* **A middleware's own answer is sent** — returned without `next`, or after a
+  timeout around `next`. On 0.7 it was dropped and the caller timed out.
+* **`requestState` is bound to issuer + subject**, not the subject alone. A
+  state minted by the other version is a principal mismatch: in a rolling
+  upgrade, elicitations straddling both restart; states lapse in 5 minutes.
+* **`scopes_supported` is derived** from the declared scopes unless
+  `with_scopes` is set.
+* **A static key and `with_oauth` together fail the start.**
+* **Start failures reach stderr** with `tracing` on and no subscriber.
+* `neva::auth::{Claims, DefaultClaims}` are under `server`, not
+  `http-server`. The Volga adapter needs volga 0.13.3.
+
+New: `ctx.claims()` / `MwContext::claims()` with `issuer()`, `audience()`,
+`client_id()`, `scopes()` and `downcast_ref::<T>()`; `scopes = [..]` on
+`#[tool]` / `#[prompt]` / `#[resource]` and `with_scopes` on the builders, with
+the `403 insufficient_scope` step-up; `OAuthConfig::with_jwks_uri`;
+`AuthConfig::with_decoding_key` and `neva::auth::DecodingKey` for public keys.
+All in `http.md`.
 
 ## Examples in the neva repository
 

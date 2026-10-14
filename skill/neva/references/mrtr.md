@@ -292,7 +292,8 @@ implement it with a real distributed lock for the same reason it must share
 the MRTR secret.
 
 **Bind the state to this service.** A sealed state is bound to its request and
-principal, but not by itself to the service — so where several services share
+principal — the token's issuer and subject together (since 0.8.0; the subject
+alone before) — but not by itself to the service — so where several services share
 one `with_request_state_secret`, a state minted by one is a state the others
 accept. `App::with_request_state_audience("https://weather.example.com/mcp")`
 closes that. It must be identical on every instance of the same service; a

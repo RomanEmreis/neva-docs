@@ -13,7 +13,7 @@ protocol generation — MCP 2024-11-05 … 2025-11-25.
 
 ```toml
 [dependencies]
-neva = { version = "0.7", features = ["server-full", "legacy-spec"] }
+neva = { version = "0.8", features = ["server-full", "legacy-spec"] }
 ```
 
 It is a **generation switch, not an addition**: enabling it compiles the
@@ -99,6 +99,83 @@ speaks legacy to that peer for the rest of the connection. See
 
 The **server** side has no such fallback — it is compile-time pure. A server
 that must serve legacy clients needs the `legacy-spec` build.
+
+## Upgrading 0.7.x → 0.8.0 {#migrating-to-080}
+
+0.8.0 tells a handler [who is calling](./mcp-server/oauth#who-is-calling), lets a
+tool, prompt or resource [require OAuth scopes](./mcp-server/oauth#scopes), and
+tightens bearer-token validation. Four changes can break a build or a running
+deployment; the rest is additive.
+
+### `DefaultClaims.aud` is a list
+
+A token names one audience or several (RFC 7519 §4.1.3), and `aud` now holds
+every one of them: `Vec<String>`, where it was `Option<String>`. `DefaultClaims`
+also gained `client_id` and `scope`. A struct built with `..Default::default()`
+is unaffected; code that reads `aud`, or names every field, changes:
+
+```rust
+// before
+let aud: Option<String> = claims.aud.clone();
+
+// after — or `claims.aud`, the Vec itself
+let aud: &[String] = claims.audience();
+```
+
+A token whose `aud` is an array — refused in 0.7 — is now accepted.
+
+### `ErrorCode` has a new variant
+
+[`ErrorCode::InsufficientScope`](./mcp-server/error-handling#error-codes)
+(`-31403`). An exhaustive `match` on `ErrorCode` needs an arm for it, or a
+wildcard.
+
+### `with_alg` replaces the default algorithm
+
+On [`AuthConfig`](./mcp-server/http#auth-configuration-options), the first
+`with_alg(..)` call used to add to the default `HS256`; it now replaces it, and
+later calls add. The accepted algorithms are exactly the ones named, so name
+every algorithm the tokens are signed with. A static decoding key must suit all
+of them: an RSA key left on the default `HS256`, or named next to an `ES256`,
+now fails the server start — with a message naming the algorithms the key can
+serve — instead of refusing every token.
+
+### `with_iss` requires `iss`
+
+A token without an `iss` claim used to pass a server configured with
+`with_iss([..])`. It is refused now. OAuth mode always validated the issuer, so
+only a JWT configuration whose tokens carry no `iss` is affected.
+
+### Behaviour that changed without a signature
+
+* **A middleware's own answer reaches the caller.** A middleware that returned
+  without calling `next`, or stopped waiting for it — a timeout around it — had
+  its `Response` dropped, and the caller waited out its own timeout. It is sent
+  now. See [Answering a Request Yourself](./mcp-server/middlewares#answering-a-request-yourself).
+* **`requestState` is bound to the caller's issuer as well as its subject.** A
+  state minted by 0.7 for an authenticated caller is refused by 0.8 as a
+  principal mismatch, and the other way round. In a rolling upgrade, an
+  elicitation that straddles the two versions starts over; states lapse within
+  the 5-minute TTL. An unauthenticated caller is unaffected.
+* **`scopes_supported` is derived** from the scopes the server's items declare,
+  when `with_scopes` was not called. A server with no scope gates advertises
+  what it did before.
+* **Start failures reach stderr without a subscriber.** With `tracing` on and no
+  subscriber installed, a failed start — a bind address in use, a rejected auth
+  configuration — and the MCP Apps resource warning went nowhere. They go to
+  stderr now; stdout, which the stdio transport owns, is untouched.
+* **`neva::auth::{Claims, DefaultClaims}` no longer need `http-server`** — they
+  are under `server`, so handler code calling `ctx.claims()` builds over stdio
+  too, where it always answers `None`.
+* **The Volga adapter requires volga 0.13.3.** That matters only if you depend
+  on volga directly alongside neva.
+
+And, additively: `ctx.claims()` and `MwContext::claims()`, `issuer()`,
+`audience()`, `client_id()`, `scopes()` and `downcast_ref` on `Claims`,
+`scopes = [..]` on the macros and `with_scopes` on the builders,
+[`OAuthConfig::with_jwks_uri`](./mcp-server/oauth#an-issuer-the-server-cannot-reach),
+and [`AuthConfig::with_decoding_key`](./mcp-server/http#a-public-key) with
+`neva::auth::DecodingKey`.
 
 ## Upgrading 0.6.x → 0.7.0 {#migrating-to-070}
 

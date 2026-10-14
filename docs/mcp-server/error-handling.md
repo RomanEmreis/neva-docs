@@ -71,6 +71,8 @@ Some errors are produced automatically by the framework, before any handler runs
 | A routing header disagrees with the body | `HeaderMismatch` (-32020) + HTTP `400` |
 | A request relies on an undeclared client capability | `MissingRequiredClientCapability` (-32021) + HTTP `400` |
 | The peer names a protocol version the server does not speak | `UnsupportedProtocolVersion` (-32022) + HTTP `400` |
+| The caller holds none of an item's [roles or permissions](./oauth#roles-permissions-and-scopes) | `InvalidParams` (-32602) |
+| The caller's token lacks a scope an item [requires](./oauth#scopes) | `InsufficientScope` (-31403) + HTTP `403` |
 
 ## The `Error` Type
 
@@ -95,6 +97,7 @@ let err = Error::new(ErrorCode::InvalidParams, "Missing required field: name");
 | `HeaderMismatch` | -32020 | A routing header disagrees with the request body |
 | `MissingRequiredClientCapability` | -32021 | The request needs a capability the client did not declare |
 | `UnsupportedProtocolVersion` | -32022 | The requested protocol version is not supported |
+| `InsufficientScope` | -31403 | The access token does not grant every scope the item requires. neva's own code: MCP allocates none |
 
 :::warning `ResourceNotFound` is deprecated
 MCP 2026-07-28 dropped the dedicated `-32002` code — "resource not found" is
@@ -138,6 +141,11 @@ All three answer HTTP `400`. Neva raises them for you on the HTTP transport;
 you only construct them by hand in a custom
 [handler](./basics#custom-handlers) or [engine](./custom-http).
 
+`InsufficientScope` carries `requiredScopes`, every scope the item requires,
+and `missingScopes`, the ones the token lacks. It answers HTTP `403` with a
+`WWW-Authenticate: Bearer error="insufficient_scope"` challenge naming
+`requiredScopes`, which is what a client [steps up](./oauth#scopes) on.
+
 ## Automatic Conversions
 
 Neva implements `From` for common error types so they can be propagated with `?`:
@@ -162,7 +170,7 @@ async fn read_file(uri: Uri, path: String) -> Result<ResourceContents, Error> {
 
 ## Errors in Middleware
 
-Middleware receives a `MwContext` and returns a `Response`. To short-circuit with an error, construct an error response directly:
+Middleware receives a `MwContext` and returns a `Response`. To short-circuit with an error, construct an error response directly — returned without calling `next`, it is the reply the caller gets:
 
 ```rust
 use neva::prelude::*;
@@ -175,3 +183,6 @@ async fn auth_check(ctx: MwContext, next: Next) -> Response {
     next(ctx).await
 }
 ```
+
+See [Answering a Request Yourself](./middlewares#answering-a-request-yourself)
+for what reaches the caller once `next` has been called.

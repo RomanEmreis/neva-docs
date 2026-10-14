@@ -71,6 +71,8 @@ async fn read_file(uri: Uri, path: String) -> Result<ResourceContents, Error> {
 | Заголовок маршрутизации расходится с телом | `HeaderMismatch` (-32020) + HTTP `400` |
 | Запрос опирается на необъявленную возможность клиента | `MissingRequiredClientCapability` (-32021) + HTTP `400` |
 | Узел называет версию протокола, которую сервер не поддерживает | `UnsupportedProtocolVersion` (-32022) + HTTP `400` |
+| У вызывающего нет ни одной из [ролей или прав](./oauth#roles-permissions-and-scopes) элемента | `InvalidParams` (-32602) |
+| Токену вызывающего не хватает scope, которого [требует](./oauth#scopes) элемент | `InsufficientScope` (-31403) + HTTP `403` |
 
 ## Тип `Error`
 
@@ -95,6 +97,7 @@ let err = Error::new(ErrorCode::InvalidParams, "Missing required field: name");
 | `HeaderMismatch` | -32020 | Заголовок маршрутизации расходится с телом запроса |
 | `MissingRequiredClientCapability` | -32021 | Запросу нужна возможность, которую клиент не объявил |
 | `UnsupportedProtocolVersion` | -32022 | Запрошенная версия протокола не поддерживается |
+| `InsufficientScope` | -31403 | Токен доступа выдаёт не все scope'ы, которых требует элемент. Собственный код neva: MCP такого не выделяет |
 
 :::warning `ResourceNotFound` устарел
 MCP 2026-07-28 отказался от отдельного кода `-32002` — «ресурс не найден»
@@ -139,6 +142,11 @@ let err = Error::new(ErrorCode::UnsupportedProtocolVersion, "unsupported version
 вручную их приходится создавать только в собственном
 [обработчике](./basics#custom-handlers) или [движке](./custom-http).
 
+`InsufficientScope` несёт `requiredScopes` — все scope'ы, которых требует
+элемент, — и `missingScopes` — те, которых нет у токена. Он отвечает HTTP `403`
+с вызовом `WWW-Authenticate: Bearer error="insufficient_scope"`, называющим
+`requiredScopes`, — по нему клиент и [добирает права](./oauth#scopes).
+
 ## Автоматические преобразования
 
 Neva реализует `From` для распространённых типов ошибок, чтобы их можно было распространять с помощью `?`:
@@ -163,7 +171,7 @@ async fn read_file(uri: Uri, path: String) -> Result<ResourceContents, Error> {
 
 ## Ошибки в промежуточных обработчиках
 
-Промежуточный обработчик получает `MwContext` и возвращает `Response`. Для прерывания с ошибкой сконструируйте ответ с ошибкой напрямую:
+Промежуточный обработчик получает `MwContext` и возвращает `Response`. Для прерывания с ошибкой сконструируйте ответ с ошибкой напрямую — возвращённый без вызова `next`, он и станет ответом вызывающей стороне:
 
 ```rust
 use neva::prelude::*;
@@ -176,3 +184,6 @@ async fn auth_check(ctx: MwContext, next: Next) -> Response {
     next(ctx).await
 }
 ```
+
+Что доходит до вызывающей стороны после вызова `next`, см. в разделе
+[Ответить на запрос самому](./middlewares#answering-a-request-yourself).

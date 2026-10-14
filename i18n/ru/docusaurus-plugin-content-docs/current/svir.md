@@ -31,7 +31,7 @@ MCP-сервер описывает инструменты, модель их в
 
 ```toml
 [dependencies]
-neva = { version = "0.7", features = ["client-full", "svir"] }  # или server-full
+neva = { version = "0.8", features = ["client-full", "svir"] }  # или server-full
 svir = "0.1.6"
 tokio = { version = "1", features = ["full"] }
 ```
@@ -134,7 +134,7 @@ MCP допускает ещё `.` и до 128 символов. Инструме
 * инструмент, который можно вызвать только как задачу (`task_support = "required"`);
 * с фичей `apps` — инструмент, который [MCP Apps](./mcp-server/apps#visibility-tools-the-app-calls-and-the-model-never-sees)
   скрывает от модели;
-* при вызове в процессе — инструмент, требующий [ролей или разрешений](#what-an-in-process-call-holds),
+* при вызове в процессе — инструмент, требующий [ролей, разрешений или scope'ов](#what-an-in-process-call-holds),
   которых у вызывающего нет.
 
 ## Что сообщается модели {#what-the-model-is-told}
@@ -300,7 +300,7 @@ Toolbox из `ctx.tools().toolbox()` несёт **claims текущего зап
 инструмент, до которого эти claims не дотягиваются, не предлагается, а
 проверки сервера видят их при каждом вызове. Toolbox из `App::into_toolbox` или
 `App::with_toolbox` взят вне какого-либо запроса и claims не несёт, поэтому
-инструмент, требующий [ролей или разрешений](./mcp-server/http#управление-доступом-на-основе-ролей),
+инструмент, требующий [ролей, разрешений или scope'ов](./mcp-server/http#управление-доступом-на-основе-ролей),
 он не предлагает вовсе.
 
 ## Промпты и ресурсы {#prompts-and-resources}
