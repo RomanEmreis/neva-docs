@@ -59,6 +59,49 @@ If a tool is **parameterless**, pass the [unit type `()`](https://doc.rust-lang.
 let result = client.tools().call("hello", ()).await?;
 ```
 
+## When a Call Fails
+
+A call fails in one of two ways. A tool that ran and failed answers with a
+[tool error](../mcp-server/error-handling#tool-handlers-all-errors-become-tool-errors):
+the call returns `Ok`, with `is_error` set and the failure in `content`, for
+the model to read. A call the server refused — an unknown tool, a scope the
+token lacks — returns `Err`, and the [`Error`](https://docs.rs/neva/latest/neva/error/struct.Error.html)
+keeps the code the server sent.
+[`code()`](https://docs.rs/neva/latest/neva/error/struct.Error.html#method.code)
+is what to branch on, and `data()` holds whatever comes with it:
+
+```rust compile
+use neva::prelude::*;
+
+#[tokio::main]
+async fn main() -> Result<(), Error> {
+    let mut client = Client::new()
+        .with_options(|opt| opt.with_default_http());
+    client.connect().await?;
+
+    match client.tools().call("forget", ("id", "42")).await {
+        Ok(result) if result.is_error => eprintln!("the tool failed: {:?}", result.content),
+        Ok(result) => println!("{:?}", result.content),
+        Err(err) => match err.code() {
+            ErrorCode::InsufficientScope => {
+                let missing = err.data().map(|data| &data["missingScopes"]);
+                eprintln!("the token lacks {missing:?}");
+            }
+            ErrorCode::Timeout => eprintln!("no answer in time"),
+            _ => return Err(err),
+        },
+    }
+
+    client.disconnect().await
+}
+```
+
+An error the client raises on its own side may carry one of neva's internal
+codes, `Timeout` or `RequestCancelled`; those never travel on the wire. A code
+the server sends that is not an [`ErrorCode`](../mcp-server/error-handling#error-codes)
+— a server's own — does not reach the caller as that code: the response fails
+to parse, and the call ends with `ParseError` or `InternalError` instead.
+
 ## Structured Content
 
 Some tools return structured JSON data (see [MCP Structured Content spec](https://modelcontextprotocol.io/specification/draft/server/tools#structured-content)).

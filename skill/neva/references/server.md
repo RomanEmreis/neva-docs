@@ -269,6 +269,34 @@ A schema you write is published **verbatim** — `default`, `pattern`,
 `"integer"` is its own type, not an alias for `"number"`: a field declared
 `integer` rejects `1.5` and accepts `1.0`.
 
+**Structured arguments.** A `Json<T>` argument is described by `T`'s schema
+when `T` derives one (`#[json_schema(de)]` or `schemars::JsonSchema`; no
+`schemars` dependency needed — neva re-exports it):
+
+```rust
+use neva::prelude::*;
+
+#[json_schema(de)]
+#[schemars(title = "A profile")]   // optional; kept in the published schema
+struct Profile {
+    name: String,
+    age: u32,
+}
+
+#[tool(descr = "Saves a profile")]
+async fn save_profile(profile: Json<Profile>) -> String {
+    format!("saved {}", profile.name)
+}
+```
+
+The schema is inlined under `properties.profile` — nested types too, no
+`$ref`/`$defs`. As a property it carries no root keywords: no `$schema` and
+no `title` naming the Rust type (0.8.1; 0.8.0 published both, and a strict
+2020-12 validator can refuse `$schema` below the root). A
+`#[schemars(title = "...")]` stays. A `T` without a schema publishes
+`{"type":"object"}`; a recursive `T` cannot be inlined — give an explicit
+`input_schema`.
+
 ### Mirroring an argument into a header
 
 Annotate a property with `x-mcp-header` and clients mirror the value into

@@ -95,10 +95,46 @@ async fn main() {
 | `with_aud()` | Accepted audiences |
 | `with_iss()` | Accepted issuers. A token **without** `iss` is refused (0.8.0) |
 | `validate_exp()` | Validate expiry (default `true`) |
+| `require_https()` | Refuse plain HTTP from a non-loopback peer (default `true`). `false` where TLS ends in front of the server (0.8.1) |
 
 A key whose family does not match the algorithms — an EC key left on the
 default `HS256` — **fails the server start**. A static key and `with_oauth`
 together also fail the start ("Bearer auth is ambiguous"): pick one.
+
+**HTTPS is required once auth is on.** A plain-HTTP request from a peer that
+is not loopback is refused before the token is read: `400` with
+`WWW-Authenticate: Bearer error="invalid_request", error_description="HTTPS required"`.
+`with_tls` and loopback peers are never refused. Where TLS ends in front of
+the server — reverse proxy, ingress, mesh sidecar, a Docker published port
+(the peer is the bridge gateway, not loopback) — every request is plain HTTP
+from a non-loopback address, so turn the check off:
+
+```rust
+use neva::prelude::*;
+
+#[tokio::main]
+async fn main() {
+    let secret = std::env::var("JWT_SECRET").expect("JWT_SECRET must be set");
+
+    App::new()
+        .with_options(|opt| opt
+            .with_http(|http| http
+                .bind("0.0.0.0:3000")
+                .with_auth(|auth| auth
+                    .set_decoding_key(secret.as_bytes())
+                    .require_https(false))))   // TLS ends at the ingress
+        .run()
+        .await;
+}
+```
+
+The server does not read `X-Forwarded-Proto`: with the check off it takes a
+token from any peer that reaches it, so never turn it off on a server
+reachable directly over plain HTTP. Only the MCP endpoint is checked; the
+metadata document answers either way. On 0.8.0 there is no switch — terminate
+TLS in the server with `with_tls`, or upgrade. Not the same `require_https` as
+the one in `with_oauth(.. with_config(|cfg| cfg.with_client_config(..)))`,
+which governs the URLs the server **fetches** keys from.
 
 **An issuer's public key** (no route to the issuer at all) — ship it with the
 deployment. It does not follow key rotations; a re-keyed issuer means a
@@ -247,7 +283,8 @@ derived from the issuer.
 
 Spell the document out to advertise scopes or correct the resource
 identifier behind a reverse proxy — the default is the *bind* address, not
-the public URL:
+the public URL. A proxy that ends TLS also needs `require_https(false)` on
+the auth config (above):
 
 ```rust
 use neva::prelude::*;
@@ -276,7 +313,7 @@ async fn main() {
 | `with_jwks_uri(..)` | Fetch the key set from this URL and **skip discovery** (0.8.0) |
 | `with_refresh_cooldown(..)` | Minimum interval between JWKS refreshes (default 60 s) |
 | `with_max_key_age(..)` | Re-fetch the key set even for known kids after this (default 15 min) |
-| `with_config(\|cfg\| cfg.with_client_config(\|c\| c.require_https(false)))` | Local dev issuer over plain http — applies to the `with_jwks_uri` URL too |
+| `with_config(\|cfg\| cfg.with_client_config(\|c\| c.require_https(false)))` | Local dev issuer over plain http — applies to the `with_jwks_uri` URL too. Governs what the server *fetches*; `AuthConfig::require_https` governs what it *accepts* |
 
 **An issuer the server reaches under another name** — issuer on the host as
 `http://localhost:8787`, server in a container reaching it as

@@ -363,6 +363,21 @@ the `403 insufficient_scope` step-up; `OAuthConfig::with_jwks_uri`;
 `AuthConfig::with_decoding_key` and `neva::auth::DecodingKey` for public keys.
 All in `http.md`.
 
+## Upgrading 0.8.0 → 0.8.1
+
+Drop-in: nothing renamed, nothing removed. New:
+
+* **`AuthConfig::require_https(bool)`**, default `true`. An authenticated
+  server refuses plain HTTP from a non-loopback peer, and on 0.8.0 nothing
+  turned that off — behind a proxy that ends TLS every request was `400`
+  `invalid_request`. `require_https(false)` there. See `http.md`.
+* **`Error::code()`** — the code of a refused request, for a client to branch
+  on. On 0.8.0 the field is private. See `client.md`.
+
+Behaviour that changes without a signature: a `Json<T>` argument's schema
+under `properties` no longer carries `$schema` or the type's name as `title`;
+a `#[schemars(title = "...")]` stays. A test that pins `inputSchema` changes.
+
 ## Examples in the neva repository
 
 Legacy variants live under a `legacy/` sub-directory, each its own Cargo

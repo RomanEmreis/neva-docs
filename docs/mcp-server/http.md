@@ -245,10 +245,58 @@ App::new()
 | `with_aud()` | Accepted token audience values |
 | `with_iss()` | Accepted token issuer values. A token without `iss` is refused |
 | `validate_exp()` | Whether to validate the token expiration (default `true`) |
+| `require_https()` | Whether the MCP endpoint refuses plain HTTP from a peer that is not loopback (default `true`) — see [Plain HTTP behind a proxy](#plain-http-behind-a-proxy) |
 
 A key whose family does not match the accepted algorithms — an EC key left on
 the default `HS256`, say — fails the server start instead of refusing every
 token later.
+
+### Plain HTTP behind a proxy
+
+With authentication on, the MCP endpoint takes requests over HTTPS. A request
+over plain HTTP from a peer that is not loopback is refused before its token is
+read: `400 Bad Request` with
+`WWW-Authenticate: Bearer error="invalid_request", error_description="HTTPS required"`.
+A server that terminates TLS itself ([`with_tls`](#tls)) is never refused, and
+neither is a loopback peer, so local development needs nothing.
+
+Where TLS ends *in front of* the server, every request arrives over plain HTTP
+from the address of whatever ended it: a reverse proxy or an ingress, a service
+mesh sidecar, or a container's published port, which reaches the server from
+the bridge gateway rather than from loopback. Turn the check off there:
+
+```rust compile
+use neva::prelude::*;
+
+#[tokio::main]
+async fn main() {
+    let secret = std::env::var("JWT_SECRET")
+        .expect("JWT_SECRET must be set");
+
+    App::new()
+        .with_options(|opt| opt
+            .with_http(|http| http
+                .bind("0.0.0.0:3000")
+                .with_auth(|auth| auth
+                    .set_decoding_key(secret.as_bytes())
+                    // TLS ends at the ingress
+                    .require_https(false))))
+        .run()
+        .await;
+}
+```
+
+The server does not read `X-Forwarded-Proto`, so with the check off it takes a
+token from any peer that reaches it. Never turn it off on a server reachable
+directly over plain HTTP. Only the MCP endpoint is checked: the
+[metadata document](./oauth#publishing-the-metadata-document) answers either way.
+
+:::note Two settings named `require_https`
+This one decides what the server **accepts**. The one in an OAuth
+configuration's `with_client_config` decides which URLs the server **fetches**
+the issuer's keys from — see
+[A local development issuer](./oauth#a-local-development-issuer).
+:::
 
 ### A public key
 

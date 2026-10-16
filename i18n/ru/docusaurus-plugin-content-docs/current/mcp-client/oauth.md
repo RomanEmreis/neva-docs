@@ -7,7 +7,7 @@ sidebar_position: 12
 Клиент neva авторизуется сам. Направьте его на защищённый сервер, вызовите
 `connect()` — и первый `401` запустит всю последовательность: прочитать вызов
 `WWW-Authenticate`, получить
-[Protected Resource Metadata](../mcp-server/oauth#публикация-документа-метаданных),
+[Protected Resource Metadata](../mcp-server/oauth#publishing-the-metadata-document),
 найти сервер авторизации, получить `client_id`, выполнить grant, приложить
 токен — и дальше прозрачно его обновлять.
 
@@ -371,7 +371,8 @@ scope'ы, — и клиент обращается с ним так же, как
 * **Клиент не может переавторизоваться** — у него статический токен из
   `with_auth(token)`, а не OAuth-сессия. Вызов падает с
   `ErrorCode::InsufficientScope` (-31403), чей `data` несёт `requiredScopes` и
-  `missingScopes`.
+  `missingScopes`, — отличить её поможет `match` по
+  [`err.code()`](./tools#when-a-call-fails).
 
 Неинтерактивный grant (client credentials, JWT bearer) добирает права так же —
 одним запросом токена под расширенный набор, без пользователя.

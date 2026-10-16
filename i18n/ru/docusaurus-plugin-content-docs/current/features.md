@@ -125,7 +125,7 @@ neva = { version = "...", features = ["server-macros", "tracing"] }
 neva = { version = "...", features = ["server-macros", "http-server-volga", "tracing", "di", "tasks"] }
 ```
 
-HTTP-транспорт по умолчанию (на базе Volga) без TLS — подходит для локальных или внутренних развёртываний за обратным прокси.
+HTTP-транспорт по умолчанию (на базе Volga) без TLS — подходит для локальных или внутренних развёртываний за обратным прокси. С включённой JWT-аутентификацией прокси, на котором заканчивается TLS, требует [`require_https(false)`](./mcp-server/http#plain-http-behind-a-proxy).
 
 ### HTTP-сервер на собственном стеке (axum / hyper / actix-web)
 

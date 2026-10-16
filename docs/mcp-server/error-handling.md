@@ -63,7 +63,8 @@ Some errors are produced automatically by the framework, before any handler runs
 
 | Situation | Error code |
 |-----------|------------|
-| Tool name not registered | `MethodNotFound` (-32601) |
+| Tool or prompt name not registered | `InvalidParams` (-32602) |
+| Method not registered | `MethodNotFound` (-32601) |
 | Resource URI not matched | `ErrorCode::RESOURCE_NOT_FOUND` — `InvalidParams` (-32602) |
 | Malformed JSON-RPC message | `ParseError` (-32700) |
 | Invalid request structure | `InvalidRequest` (-32600) |
@@ -83,6 +84,11 @@ use neva::prelude::*;
 
 let err = Error::new(ErrorCode::InvalidParams, "Missing required field: name");
 ```
+
+`err.code()` reads the code back, and `err.data()` the
+[payload](#protocol-errors-with-a-data-payload) some codes carry — what a
+client [branches on](../mcp-client/tools#when-a-call-fails) when a request is
+refused.
 
 ### Error Codes
 

@@ -97,6 +97,53 @@ neva не моделирует сама — `default`, `pattern`, `examples`, `$
 как `integer`, отклоняет `1.5`, но по-прежнему принимает `1.0`, потому что
 проверяется само значение, а не то, как оно записано.
 
+### Структурированные аргументы {#structured-arguments}
+
+Аргумент, переданный как `Json<T>`, описывается собственной схемой `T`, если
+`T` её выводит — через [`#[json_schema]`](https://docs.rs/neva/latest/neva/attr.json_schema.html)
+или `schemars::JsonSchema`:
+
+```rust compile
+use neva::prelude::*;
+
+#[json_schema(de)]
+struct Profile {
+    name: String,
+    age: u32,
+}
+
+#[tool(descr = "Saves a profile")]
+async fn save_profile(profile: Json<Profile>) -> String {
+    format!("saved {}", profile.name)
+}
+```
+
+Схема встраивается под именем аргумента вместе с вложенными типами, без
+`$ref` в таблицу `$defs`:
+
+```json
+{
+  "type": "object",
+  "properties": {
+    "profile": {
+      "type": "object",
+      "properties": {
+        "name": { "type": "string" },
+        "age": { "type": "integer", "format": "uint32", "minimum": 0 }
+      },
+      "required": ["name", "age"]
+    }
+  },
+  "required": ["profile"]
+}
+```
+
+Свойство — не корневая схема, поэтому ключевых слов корня у него нет: ни
+`$schema`, ни `title` с именем Rust-типа. Заголовок, который тип задаёт сам
+через `#[schemars(title = "...")]`, сохраняется. Тип без выведенной схемы
+публикуется как `{ "type": "object" }`, а рекурсивный тип встроить нельзя — ему
+нужна явная `input_schema`.
+
 ## Схема выходных данных {#output-schema}
 
 Если инструмент возвращает [**структурированные данные**](https://modelcontextprotocol.io/specification/draft/server/tools#tool-result) (например, JSON-объект),

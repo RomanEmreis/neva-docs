@@ -167,6 +167,18 @@ server that expects the private one. State the public URL:
 The value is canonicalized per RFC 8707 — scheme and host lowercased, default
 ports dropped — so the string you write and the string a client derives agree.
 
+A proxy that terminates TLS also forwards over plain HTTP, from an address
+that is not loopback, and the MCP endpoint refuses that by default. Add
+`require_https(false)` to the auth configuration — see
+[Plain HTTP behind a proxy](./http#plain-http-behind-a-proxy):
+
+```rust
+.with_auth(|auth| auth
+    .require_https(false)
+    .with_oauth(|oauth| oauth
+        .with_issuer("https://auth.example.com")))
+```
+
 ## What a client sees
 
 ```
@@ -333,6 +345,11 @@ similar, drop that requirement — and only there:
         .with_config(|cfg| cfg
             .with_client_config(|c| c.require_https(false)))))
 ```
+
+That `require_https` governs the URLs the server fetches — discovery, the key
+set. Whether the server accepts a client's request over plain HTTP is a
+different switch, on the auth configuration itself:
+[Plain HTTP behind a proxy](./http#plain-http-behind-a-proxy).
 
 ## On a custom HTTP stack
 

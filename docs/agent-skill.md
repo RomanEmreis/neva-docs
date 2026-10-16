@@ -32,13 +32,13 @@ The skill front-loads exactly those traps, then routes to detail on demand.
 |---|---|
 | `SKILL.md` | Establishing the version and profile, the namespaced client and `Context` API, handler shapes, the non-negotiables, minimal server and client, routing |
 | `references/server.md` | Handler shapes (`async fn`, plain `fn`, `blocking`), tools, prompts, resources, schemas, argument names, content types, the `Context` namespaces, per-request client capabilities, DI, middleware, logging, subscriptions, cross-instance fan-out |
-| `references/client.md` | Connecting, the namespaces, sharing a client, cancellation, calling, structured results, batching, subscribing, answering input requests, tasks |
+| `references/client.md` | Connecting, the namespaces, sharing a client, cancellation, calling, telling a failed call apart, structured results, batching, subscribing, answering input requests, tasks |
 | `references/mrtr.md` | The re-run model, `memo` / `once` / `on_commit`, elicitation modes, tasks |
 | `references/apps.md` | MCP Apps: `ui://` resources, the `_meta.ui` blocks, visibility, the security block, the View handshake |
 | `references/svir.md` | The svir bridge: `RemoteTools`, `into_toolbox` / `with_toolbox`, `ctx.tools().toolbox()`, what a model is told, prompts and resources as messages, sampling answered with a model |
 | `references/http.md` | Transports, TLS, JWT and OAuth 2.1 (both sides, DPoP, CIMD, grants), who is calling, role / permission / scope gates and the `403` step-up, DNS-rebinding, shutdown, custom engines, publishing to the MCP Registry, feature flags, multi-instance deploy |
 | `references/troubleshooting.md` | Error codes, symptom → cause, everything removed in this generation |
-| `references/legacy.md` | The `legacy-spec` profile and every upgrade path, 0.4.x → 0.8.0 |
+| `references/legacy.md` | The `legacy-spec` profile and every upgrade path, 0.4.x → 0.8.1 |
 
 `SKILL.md` stays short on purpose: an entrypoint an agent always reads, and
 eight references it loads only when the task needs one.
@@ -92,12 +92,12 @@ python3 ci/check-snippets.py --docs-dir skill --default-mode compile --default-f
 
 ## Version
 
-The skill tracks neva **0.8.0** / MCP **2026-07-28**, with the legacy
+The skill tracks neva **0.8.1** / MCP **2026-07-28**, with the legacy
 generation documented separately. The frontmatter records both, so an
 assistant can tell whether the skill matches the crate in front of it:
 
 ```yaml
 metadata:
-  neva-version: "0.8.0"
+  neva-version: "0.8.1"
   mcp-protocol: "2026-07-28"
 ```

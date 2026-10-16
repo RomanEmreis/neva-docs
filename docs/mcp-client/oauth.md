@@ -366,7 +366,8 @@ Two cases end in an error instead:
   grant that would still come back short. Add the scope to `with_scopes`.
 * **The client cannot re-authorize** — it holds a static token from
   `with_auth(token)` rather than an OAuth session. The call fails with `ErrorCode::InsufficientScope`
-  (-31403), whose `data` carries `requiredScopes` and `missingScopes`.
+  (-31403), whose `data` carries `requiredScopes` and `missingScopes` — match on
+  [`err.code()`](./tools#when-a-call-fails) to tell it apart.
 
 A non-interactive grant (client credentials, JWT bearer) steps up the same way,
 by running its one token request for the wider set — no user involved.

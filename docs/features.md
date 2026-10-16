@@ -123,7 +123,7 @@ Attribute macros and logging, but no HTTP transport compiled in. Useful for stdi
 neva = { version = "...", features = ["server-macros", "http-server-volga", "tracing", "di", "tasks"] }
 ```
 
-Default (Volga-based) HTTP transport without TLS — suitable for local or internal deployments behind a reverse proxy.
+Default (Volga-based) HTTP transport without TLS — suitable for local or internal deployments behind a reverse proxy. With JWT auth on, a proxy that ends TLS needs [`require_https(false)`](./mcp-server/http#plain-http-behind-a-proxy).
 
 ### HTTP server on a custom stack (axum / hyper / actix-web)
 

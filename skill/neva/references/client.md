@@ -215,6 +215,49 @@ returns the raw `Response`, error responses included, and sends the params'
 own `_meta` (a `traceparent`, say) as given — only the progress token is
 replaced by the client's.
 
+### When a call fails
+
+Two shapes. A tool that ran and failed is a **tool error**: `Ok`, with
+`result.is_error` set and the failure in `content`, meant for the model. A
+request the server refused — unknown tool, bad arguments, a missing scope —
+is `Err(Error)` carrying the server's code. Branch on `err.code()` (0.8.1)
+and read the payload with `err.data()`:
+
+```rust
+use neva::prelude::*;
+
+#[tokio::main]
+async fn main() -> Result<(), Error> {
+    let mut client = Client::new().with_options(|opt| opt.with_default_http());
+    client.connect().await?;
+
+    match client.tools().call("forget", ("id", "42")).await {
+        Ok(result) if result.is_error => eprintln!("tool failed: {:?}", result.content),
+        Ok(result) => println!("{:?}", result.content),
+        Err(err) => match err.code() {
+            ErrorCode::InsufficientScope => {
+                let missing = err.data().map(|data| &data["missingScopes"]);
+                eprintln!("token lacks {missing:?}");
+            }
+            ErrorCode::Timeout => eprintln!("no answer in time"),
+            _ => return Err(err),
+        },
+    }
+
+    client.disconnect().await
+}
+```
+
+* `Timeout` and `RequestCancelled` are neva's **internal** codes, raised on
+  the caller's side; they never travel on the wire.
+* An unknown tool or prompt is `InvalidParams` (-32602), not `MethodNotFound`.
+* A server's own code — anything that is not an `ErrorCode` — does not
+  survive: the response fails to parse and the call ends `ParseError` or
+  `InternalError`.
+* On 0.8.0 there is no `code()` and the field is private; `to_string()` is
+  the message alone. Tell errors apart by `err.data()` there — a
+  `missingScopes` key is `InsufficientScope` — or upgrade.
+
 ### Structured results
 
 ```rust

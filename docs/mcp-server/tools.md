@@ -95,6 +95,53 @@ against the published schema accepts exactly what the tool accepts.
 declared `integer` rejects `1.5` but still accepts `1.0`, since the check
 judges the value and not how it was written.
 
+### Structured Arguments
+
+An argument passed as `Json<T>` is described by `T`'s own schema when `T`
+derives one — with [`#[json_schema]`](https://docs.rs/neva/latest/neva/attr.json_schema.html)
+or `schemars::JsonSchema`:
+
+```rust compile
+use neva::prelude::*;
+
+#[json_schema(de)]
+struct Profile {
+    name: String,
+    age: u32,
+}
+
+#[tool(descr = "Saves a profile")]
+async fn save_profile(profile: Json<Profile>) -> String {
+    format!("saved {}", profile.name)
+}
+```
+
+The schema is inlined under the argument's name, nested types included, with
+no `$ref` into a `$defs` table:
+
+```json
+{
+  "type": "object",
+  "properties": {
+    "profile": {
+      "type": "object",
+      "properties": {
+        "name": { "type": "string" },
+        "age": { "type": "integer", "format": "uint32", "minimum": 0 }
+      },
+      "required": ["name", "age"]
+    }
+  },
+  "required": ["profile"]
+}
+```
+
+A property is not a root schema, so it carries none of a root's keywords: no
+`$schema`, and no `title` naming the Rust type. A title the type sets itself,
+with `#[schemars(title = "...")]`, is kept. A type that derives no schema is
+published as `{ "type": "object" }`, and a recursive type, which cannot be
+inlined, needs an explicit `input_schema`.
+
 ## Output Schema
 
 If your tool returns [**structured data**](https://modelcontextprotocol.io/specification/draft/server/tools#tool-result) (for example, a JSON object),
