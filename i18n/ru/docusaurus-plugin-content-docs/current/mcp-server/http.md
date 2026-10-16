@@ -246,10 +246,58 @@ App::new()
 | `with_aud()` | Принимаемые значения audience токена |
 | `with_iss()` | Принимаемые значения issuer токена. Токен без `iss` отклоняется |
 | `validate_exp()` | Проверять ли срок действия токена (по умолчанию `true`) |
+| `require_https()` | Отклоняет ли конечная точка MCP голый HTTP от узла, который не является loopback (по умолчанию `true`) — см. [Голый HTTP за прокси](#plain-http-behind-a-proxy) |
 
 Ключ, чьё семейство не подходит к принимаемым алгоритмам — скажем, EC-ключ при
 `HS256` по умолчанию, — останавливает старт сервера, а не отклоняет потом каждый
 токен.
+
+### Голый HTTP за прокси {#plain-http-behind-a-proxy}
+
+С включённой аутентификацией конечная точка MCP принимает запросы по HTTPS.
+Запрос по голому HTTP от узла, который не является loopback, отклоняется ещё до
+чтения токена: `400 Bad Request` с
+`WWW-Authenticate: Bearer error="invalid_request", error_description="HTTPS required"`.
+Сервер, который сам терминирует TLS ([`with_tls`](#tls)), не отклоняется никогда,
+как и loopback-узел, так что для локальной разработки ничего делать не нужно.
+
+Если TLS заканчивается *перед* сервером, каждый запрос приходит по голому HTTP
+с адреса того, кто его терминировал: обратного прокси или ingress, sidecar'а
+service mesh или опубликованного порта контейнера, который достаётся серверу со
+шлюза bridge-сети, а не с loopback. Там проверку нужно выключить:
+
+```rust compile
+use neva::prelude::*;
+
+#[tokio::main]
+async fn main() {
+    let secret = std::env::var("JWT_SECRET")
+        .expect("JWT_SECRET must be set");
+
+    App::new()
+        .with_options(|opt| opt
+            .with_http(|http| http
+                .bind("0.0.0.0:3000")
+                .with_auth(|auth| auth
+                    .set_decoding_key(secret.as_bytes())
+                    // TLS заканчивается на ingress
+                    .require_https(false))))
+        .run()
+        .await;
+}
+```
+
+Сервер не читает `X-Forwarded-Proto`, поэтому с выключенной проверкой он
+примет токен от любого узла, который до него дотянется. Никогда не выключайте
+её на сервере, доступном напрямую по голому HTTP. Проверяется только конечная
+точка MCP: [документ метаданных](./oauth#publishing-the-metadata-document)
+отвечает в любом случае.
+
+:::note Две настройки с именем `require_https`
+Эта решает, что сервер **принимает**. Та, что в `with_client_config`
+OAuth-конфигурации, решает, с каких URL сервер **забирает** ключи issuer'а, —
+см. [Локальный issuer для разработки](./oauth#a-local-development-issuer).
+:::
 
 ### Публичный ключ {#a-public-key}
 

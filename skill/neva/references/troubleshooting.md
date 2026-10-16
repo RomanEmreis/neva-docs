@@ -54,8 +54,8 @@ async fn search(query: String) -> Result<CallToolResponse, Error> {
 |---|---|---|
 | `ParseError` | -32700 | Malformed JSON |
 | `InvalidRequest` | -32600 | Not a valid JSON-RPC object |
-| `MethodNotFound` | -32601 | Unknown method or unregistered tool |
-| `InvalidParams` | -32602 | Missing or wrongly typed params |
+| `MethodNotFound` | -32601 | Unknown method |
+| `InvalidParams` | -32602 | Missing or wrongly typed params; also an unknown tool or prompt name |
 | `InternalError` | -32603 | Unexpected server-side failure |
 | `HeaderMismatch` | -32020 | A routing header disagrees with the body |
 | `MissingRequiredClientCapability` | -32021 | The request needs a capability the caller did not declare |
@@ -86,6 +86,12 @@ and `requested`. `InsufficientScope` answers HTTP **`403`** instead, with a
 `WWW-Authenticate: Bearer error="insufficient_scope", scope=".."` challenge,
 and carries `requiredScopes` and `missingScopes`. An exhaustive `match` on
 `ErrorCode` written before 0.8.0 needs an arm for it.
+
+A client reads the code back with `err.code()` (0.8.1) and the payload with
+`err.data()`. Two more variants, `Timeout` and `RequestCancelled`, are neva's
+own: raised on the caller's side, never sent on the wire. A peer's code that
+is not an `ErrorCode` fails to parse and arrives as `ParseError` or
+`InternalError`. See "When a call fails" in `client.md`.
 
 **`ResourceNotFound` is deprecated.** MCP 2026-07-28 dropped the dedicated
 `-32002`; "resource not found" is `InvalidParams` now. Use the
@@ -575,7 +581,34 @@ The server reaches the issuer under another name than the one tokens carry
 (`localhost` vs `host.docker.internal`, an internal service vs a public
 ingress). Discovery cannot work there — the metadata names the public URL.
 Keep `with_issuer(<public>)` and add `.with_jwks_uri(<reachable>/jwks)`
-(0.8.0); a plain-http URL also needs `require_https(false)`.
+(0.8.0); a plain-http URL also needs
+`with_client_config(|c| c.require_https(false))`.
+
+### Every request is `400`: `error="invalid_request"`, "HTTPS required"
+
+Auth is on, and the request came over plain HTTP from a peer that is not
+loopback: the proxy or ingress that terminates TLS, a mesh sidecar, or a
+Docker published port (the peer is the bridge gateway). Only the MCP endpoint
+refuses, before reading the token — the metadata document still answers.
+Behind TLS termination add `.require_https(false)` to `with_auth(..)` (0.8.1;
+0.8.0 has no switch — terminate TLS in the server with `with_tls`). It is not
+`with_client_config(|c| c.require_https(false))`, which governs the URLs the
+server fetches keys from. Never turn it off on a server reachable directly
+over plain HTTP: the server does not read `X-Forwarded-Proto`.
+
+### A strict validator rejects a tool, or a property's `title` is gone
+
+On 0.8.0 the schema of a `Json<T>` argument kept the keywords schemars gives a
+root — `$schema`, and the type's name as `title` — inside `properties`. JSON
+Schema 2020-12 forbids `$schema` below a resource root, so a strict validator
+can refuse the tool. 0.8.1 drops both, which also changes a snapshot of the
+`inputSchema`. A title you want published goes on the type:
+`#[schemars(title = "...")]`.
+
+### `err.code()` does not compile — "no method named `code`"
+
+`Error::code()` is 0.8.1. On 0.8.0 the field is private and `to_string()` is
+the message alone: tell errors apart by `err.data()`, or bump the version.
 
 ### `principal mismatch` on a `requestState` during a rolling upgrade
 

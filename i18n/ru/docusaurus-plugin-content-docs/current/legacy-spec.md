@@ -105,6 +105,27 @@ id: 0:7
 Серверу, который должен обслуживать легаси-клиентов, нужна сборка с
 `legacy-spec`.
 
+## Обновление 0.8.0 → 0.8.1 {#migrating-to-081}
+
+Замена без правок — ничего не переименовано и не удалено. Два дополнения:
+
+* **[`AuthConfig::require_https`](./mcp-server/http#plain-http-behind-a-proxy).**
+  Сервер с аутентификацией отклоняет голый HTTP от узла, который не является
+  loopback. В 0.8.0 выключить это было нечем, поэтому за прокси, терминирующим
+  TLS, каждый запрос получал `400` с `error="invalid_request"`.
+  `require_https(false)` пропускает такие запросы.
+* **[`Error::code()`](./mcp-client/tools#when-a-call-fails)** — код, с которым
+  отклонён запрос; по нему клиент и ветвится.
+
+И одно изменение в том, что публикует сервер: схема
+[структурированного аргумента](./mcp-server/tools#structured-arguments) —
+аргумента `#[tool]` с типом `JsonSchema`, в том числе `Json<T>`, — больше не
+несёт внутри `properties` ни `$schema`, ни имени типа в `title`. JSON Schema
+2020-12 допускает `$schema` только в корне ресурса схемы, так что строгий
+валидатор мог отвергнуть инструмент целиком. `#[schemars(title = "...")]`
+сохраняется. Тест, фиксирующий `inputSchema` инструмента, нужно обновить под
+новую форму.
+
 ## Обновление 0.7.x → 0.8.0 {#migrating-to-080}
 
 0.8.0 сообщает обработчику, [кто вызывает](./mcp-server/oauth#who-is-calling),
@@ -132,7 +153,7 @@ let aud: &[String] = claims.audience();
 
 ### У `ErrorCode` новый вариант
 
-[`ErrorCode::InsufficientScope`](./mcp-server/error-handling#коды-ошибок)
+[`ErrorCode::InsufficientScope`](./mcp-server/error-handling#error-codes)
 (`-31403`). Исчерпывающему `match` по `ErrorCode` нужна ветка для него или
 шаблон `_`.
 

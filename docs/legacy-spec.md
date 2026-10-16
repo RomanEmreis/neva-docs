@@ -100,6 +100,26 @@ speaks legacy to that peer for the rest of the connection. See
 The **server** side has no such fallback — it is compile-time pure. A server
 that must serve legacy clients needs the `legacy-spec` build.
 
+## Upgrading 0.8.0 → 0.8.1 {#migrating-to-081}
+
+Drop-in — nothing renamed, nothing removed. Two additions:
+
+* **[`AuthConfig::require_https`](./mcp-server/http#plain-http-behind-a-proxy).**
+  An authenticated server refuses plain HTTP from a peer that is not loopback.
+  On 0.8.0 nothing turned that off, so behind a proxy that terminates TLS every
+  request was answered `400` with `error="invalid_request"`.
+  `require_https(false)` lets those requests through.
+* **[`Error::code()`](./mcp-client/tools#when-a-call-fails)** — the code a
+  refused request carries, for a client to branch on.
+
+And one change in what a server publishes: the schema of a
+[structured argument](./mcp-server/tools#structured-arguments) — a `#[tool]`
+argument of a `JsonSchema` type, `Json<T>` among them — no longer carries
+`$schema`, or the type's name as `title`, inside `properties`. JSON Schema
+2020-12 allows `$schema` only at a schema resource's root, so a strict
+validator could refuse the whole tool. A `#[schemars(title = "...")]` is kept.
+A test that pins a tool's `inputSchema` needs the new shape.
+
 ## Upgrading 0.7.x → 0.8.0 {#migrating-to-080}
 
 0.8.0 tells a handler [who is calling](./mcp-server/oauth#who-is-calling), lets a

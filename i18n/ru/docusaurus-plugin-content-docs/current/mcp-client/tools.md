@@ -59,6 +59,51 @@ let result = client.tools().call("hello", args).await?;
 let result = client.tools().call("hello", ()).await?;
 ```
 
+## Когда вызов не удался {#when-a-call-fails}
+
+Вызов может не удаться двумя способами. Инструмент, который отработал с ошибкой,
+отвечает [ошибкой инструмента](../mcp-server/error-handling#tool-handlers-all-errors-become-tool-errors):
+вызов возвращает `Ok`, с установленным `is_error` и описанием сбоя в `content` —
+его читает модель. Вызов, который сервер отклонил, — неизвестный инструмент,
+scope, которого нет в токене, — возвращает `Err`, и
+[`Error`](https://docs.rs/neva/latest/neva/error/struct.Error.html) сохраняет
+код, присланный сервером. Ветвиться нужно по
+[`code()`](https://docs.rs/neva/latest/neva/error/struct.Error.html#method.code),
+а `data()` содержит то, что к нему прилагается:
+
+```rust compile
+use neva::prelude::*;
+
+#[tokio::main]
+async fn main() -> Result<(), Error> {
+    let mut client = Client::new()
+        .with_options(|opt| opt.with_default_http());
+    client.connect().await?;
+
+    match client.tools().call("forget", ("id", "42")).await {
+        Ok(result) if result.is_error => eprintln!("the tool failed: {:?}", result.content),
+        Ok(result) => println!("{:?}", result.content),
+        Err(err) => match err.code() {
+            ErrorCode::InsufficientScope => {
+                let missing = err.data().map(|data| &data["missingScopes"]);
+                eprintln!("the token lacks {missing:?}");
+            }
+            ErrorCode::Timeout => eprintln!("no answer in time"),
+            _ => return Err(err),
+        },
+    }
+
+    client.disconnect().await
+}
+```
+
+Ошибка, которую клиент порождает на своей стороне, может нести один из
+внутренних кодов neva — `Timeout` или `RequestCancelled`; по сети они не
+передаются никогда. Код, присланный сервером, но не входящий в
+[`ErrorCode`](../mcp-server/error-handling#error-codes), — собственный код
+сервера — до вызывающего в этом виде не доходит: ответ не разбирается, и вызов
+завершается с `ParseError` или `InternalError`.
+
 ## Структурированное содержимое
 
 Некоторые инструменты возвращают структурированные JSON-данные (см. [спецификацию MCP Structured Content](https://modelcontextprotocol.io/specification/draft/server/tools#structured-content)).
