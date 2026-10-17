@@ -98,7 +98,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 снимка: модели, назвавшей другой, сообщат, что такого инструмента нет.
 
 `tools.client()` снова даёт доступ к клиенту — к остальному, что предлагает
-сервер: его промптам и ресурсам.
+сервер: его промптам, ресурсам и [инструкциям](#the-servers-instructions).
 
 ## Что предлагать модели {#choosing-what-is-offered}
 
@@ -136,6 +136,57 @@ MCP допускает ещё `.` и до 128 символов. Инструме
   скрывает от модели;
 * при вызове в процессе — инструмент, требующий [ролей, разрешений или scope'ов](#what-an-in-process-call-holds),
   которых у вызывающего нет.
+
+## Инструкции сервера {#the-servers-instructions}
+
+То, что сервер говорит о том, когда и как им пользоваться, — его
+[инструкции](./mcp-client/basics#server-instructions) — предназначено той же
+модели, что и его инструменты. В svir для этого одно место — системный промпт:
+
+```rust
+use neva::{Client, svir::RemoteTools};
+
+#[tokio::main]
+async fn main() -> Result<(), Box<dyn std::error::Error>> {
+    let mut client = Client::new()
+        .with_options(|opt| opt.with_http(|http| http.bind("127.0.0.1:3000").with_endpoint("/mcp")));
+    client.connect().await?;
+
+    let tools = RemoteTools::new(client).load().await?;
+
+    // Сначала свои инструкции; серверные — после них и помечены как серверные.
+    let mut system = String::from("You are a research assistant.");
+    if let Some(instructions) = tools.client().server_instructions() {
+        system.push_str("\n\n## From the docs server\n\n");
+        system.push_str(instructions);
+    }
+
+    let model = svir::Client::openai("http://127.0.0.1:1234").build()?;
+    let request = svir::Request::new("qwen3")
+        .system(system)
+        .tools(&tools)
+        .user("What changed in the last release?");
+    let done = model.complete(&request).await?;
+    println!("{} calls", done.calls.len());
+    Ok(())
+}
+```
+
+Две вещи мост оставляет вам:
+
+* **Имена.** Инструкции — свободный текст, и инструменты в них названы так,
+  как их называет сервер. После `rename` или `with_prefix` в них по-прежнему
+  написано `search`, хотя модели предложен `docs_search`, и ничто их не
+  переписывает: переименовываются только описания инструментов, поэтому и
+  описание, где упомянут другой инструмент, сохраняет серверное имя. Сообщите
+  модели префикс рядом с инструкциями или оставьте серверные имена.
+* **Доверие.** Инструкции — текст, который выбрал сервер, а системный промпт
+  модель ставит выше остального запроса. Свои инструкции ставьте первыми, а
+  серверные помечайте как серверные, как выше. Так сервер, который вы не
+  контролируете, пишет в ваш системный промпт, поэтому передавать его
+  инструкции — решение, а не поведение по умолчанию. Когда в одном запросе
+  инструменты нескольких серверов, системный промпт всё равно один: как
+  объединить их инструкции, решаете вы.
 
 ## Что сообщается модели {#what-the-model-is-told}
 

@@ -54,6 +54,13 @@ seconds if the flow opens a browser.
 read from `_meta["io.modelcontextprotocol/serverInfo"]`, which every result
 carries.
 
+`client.server_instructions()` (0.8.2) is the server's `instructions` — what
+it says about when and how to use it — from the `server/discover` result, or
+from `initialize` against a legacy server. It is an `Option<&str>`: `None`
+before `connect()`, and `None` from a server that gave none, which is every
+neva server before 0.8.2. The text is written for a model; handing it to one
+is `svir.md`.
+
 `disconnect()` is **local** — it shuts down the transport and sends
 nothing. There is no goodbye message in the protocol.
 

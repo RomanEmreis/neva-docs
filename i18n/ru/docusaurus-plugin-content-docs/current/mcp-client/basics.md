@@ -116,6 +116,39 @@ async fn main() -> Result<(), Error> {
 нужен новый дочерний процесс.
 :::
 
+## Инструкции сервера {#server-instructions}
+
+Сервер может сказать, как им пользоваться: для чего нужны его инструменты и
+когда за них браться.
+[`server_instructions()`](https://docs.rs/neva/latest/neva/client/struct.Client.html#method.server_instructions)
+возвращает то, что он сказал:
+
+```rust compile
+use neva::prelude::*;
+
+#[tokio::main]
+async fn main() -> Result<(), Error> {
+    let mut client = Client::new()
+        .with_options(|opt| opt.with_default_http());
+    client.connect().await?;
+
+    if let Some(instructions) = client.server_instructions() {
+        println!("{instructions}");
+    }
+
+    client.disconnect().await
+}
+```
+
+Они приходят с результатом `server/discover` или, от
+[легаси-сервера](./http#talking-to-a-legacy-server), с результатом
+`initialize`, поэтому до `connect()` это `None` — и `None` от сервера, который
+[их не задал](../mcp-server/basics#instructions-for-the-client).
+
+Инструкции написаны для модели. Приложение, которое отдаёт ей инструменты
+сервера, обычно кладёт их в системный промпт — как это сделать и за чем при
+этом следить, показывает [мост svir](../svir#the-servers-instructions).
+
 ## Получение промпта {#get-a-prompt}
 
 Далее получим [промпт](/docs/mcp-server/basics#adding-a-prompt-handler), чтобы увидеть, как они работают на стороне клиента.

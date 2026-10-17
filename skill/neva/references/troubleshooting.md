@@ -515,6 +515,14 @@ A tool result reaches a model as a string. Images, audio and binary resources
 cannot be passed on, and the bridge says so instead of dropping them. Return
 text (or a resource link) for the model, and keep the image for a UI.
 
+### The model calls a tool it is not offered, and is told there is no such tool
+
+The toolbox renames — `with_prefix("docs_")`, a `rename` — and the model read
+the server's own names somewhere the bridge does not rewrite: the server's
+instructions put in the system prompt, or a tool description that names
+another tool. Only the descriptors are renamed. Say the prefix next to the
+instructions, or keep the server's names (`svir.md`).
+
 ### `403 insufficient_scope` / `InsufficientScope` (-31403)
 
 The token is valid but lacks a scope the tool, prompt or resource requires
@@ -609,6 +617,16 @@ can refuse the tool. 0.8.1 drops both, which also changes a snapshot of the
 
 `Error::code()` is 0.8.1. On 0.8.0 the field is private and `to_string()` is
 the message alone: tell errors apart by `err.data()`, or bump the version.
+
+### `with_instructions` / `server_instructions` not found
+
+Both are 0.8.2. On 0.8.1 a neva server sends no `instructions`, and the client
+drops the ones a server sends — bump the version.
+
+### `server_instructions()` is `None`
+
+Before `connect()` it always is. After it, the server gave none: a neva server
+without `with_instructions(..)`, or any neva server before 0.8.2.
 
 ### `principal mismatch` on a `requestState` during a rolling upgrade
 

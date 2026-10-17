@@ -25,7 +25,9 @@ and body disagree, so if you sit behind a proxy that rewrites headers, that
 is the first place to look at a sudden `400`.
 
 `Client::server_info` is read from `_meta["io.modelcontextprotocol/serverInfo"]`,
-which every result carries — it is no longer part of the discovery result.
+which every result carries — it is no longer part of the discovery result. The
+server's [instructions](./basics#server-instructions) still are, and
+`Client::server_instructions` reads them from there.
 
 The standalone SSE `GET` stream is gone from the transport — neva no longer
 opens one behind `connect()`. Server-initiated notifications arrive instead on

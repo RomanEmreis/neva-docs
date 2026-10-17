@@ -378,6 +378,18 @@ Behaviour that changes without a signature: a `Json<T>` argument's schema
 under `properties` no longer carries `$schema` or the type's name as `title`;
 a `#[schemars(title = "...")]` stays. A test that pins `inputSchema` changes.
 
+## Upgrading 0.8.1 → 0.8.2
+
+Drop-in: nothing renamed, nothing removed, nothing different on the wire until
+it is used. New:
+
+* **`McpOptions::with_instructions(..)`** — the server's `instructions`, in the
+  `server/discover` result, or the `initialize` result under `legacy-spec`. On
+  0.8.1 a neva server sent none. See `server.md`.
+* **`Client::server_instructions()`** — the instructions the connected server
+  gave, from either handshake. On 0.8.1 the client dropped them. Passing them
+  to a model is `svir.md`.
+
 ## Examples in the neva repository
 
 Legacy variants live under a `legacy/` sub-directory, each its own Cargo

@@ -38,6 +38,35 @@ itself, advertising the versions it speaks plus the capabilities implied by
 what you registered and configured. `with_name` / `with_version` are what
 every result reports back under `_meta["io.modelcontextprotocol/serverInfo"]`.
 
+### Instructions
+
+`with_instructions` (0.8.2) is what the server tells a client about when and
+how to use it. neva sends it as `instructions` in the `server/discover` result
+— in the `initialize` result under `legacy-spec` — and sends no
+`instructions` at all when it is not set:
+
+```rust
+use neva::prelude::*;
+
+#[tokio::main]
+async fn main() {
+    App::new()
+        .with_options(|opt| opt
+            .with_stdio()
+            .with_name("memory")
+            .with_instructions("Recall before answering; record what you learn."))
+        .run()
+        .await;
+}
+```
+
+A client may hand them to its model before the model has seen any tool, so
+they carry what one tool's `descr` cannot: what the tools are for as a set,
+and when to reach for them unprompted. Name tools by their MCP names. The spec
+sets no length limit, but clients may cut — Claude Code keeps the first 4,096
+characters — so lead with what matters. The client side reads them with
+`client.server_instructions()` (`client.md`).
+
 ## Handler shapes
 
 Since **0.6.0** every registration point takes a handler in either shape,

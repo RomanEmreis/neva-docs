@@ -48,4 +48,5 @@
 | routing header | заголовок маршрутизации | `Mcp-Method`, `Mcp-Name`, `Mcp-Param-{name}` |
 | extension | расширение | Механизм расширения MCP; Tasks — первое встроенное |
 | cache scope | область кэширования | `public` / `private` в `CacheableResult` |
+| server instructions | инструкции сервера | Поле `instructions` в результате `server/discover`: когда и как пользоваться сервером |
 | deprecated | устаревший | Помеченный `#[deprecated]`; сохранён для миграции |

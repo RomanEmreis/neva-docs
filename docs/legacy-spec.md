@@ -100,6 +100,19 @@ speaks legacy to that peer for the rest of the connection. See
 The **server** side has no such fallback — it is compile-time pure. A server
 that must serve legacy clients needs the `legacy-spec` build.
 
+## Upgrading 0.8.1 → 0.8.2 {#migrating-to-082}
+
+Drop-in — nothing renamed, nothing removed, and nothing changes on the wire
+until you use one of the two additions:
+
+* **[`McpOptions::with_instructions`](./mcp-server/basics#instructions-for-the-client)**
+  — what the server tells a client about when and how to use it, sent in the
+  `server/discover` result, or in the `initialize` result under `legacy-spec`.
+  On 0.8.1 a neva server sent no instructions.
+* **[`Client::server_instructions`](./mcp-client/basics#server-instructions)**
+  — the instructions the connected server gave, from either handshake. On
+  0.8.1 the client dropped them.
+
 ## Upgrading 0.8.0 → 0.8.1 {#migrating-to-081}
 
 Drop-in — nothing renamed, nothing removed. Two additions:

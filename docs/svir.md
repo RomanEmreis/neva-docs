@@ -96,7 +96,7 @@ renews it, for example when the server sends
 called: a model naming another one is told there is no such tool.
 
 `tools.client()` reaches the client again, for the rest of what the server
-offers — its prompts and resources.
+offers — its prompts, its resources and its [instructions](#the-servers-instructions).
 
 ## Choosing what is offered
 
@@ -133,6 +133,57 @@ Some tools are never offered:
   from the model;
 * in-process, a tool requiring [roles, permissions or scopes](#what-an-in-process-call-holds)
   the caller does not hold.
+
+## The server's instructions
+
+What a server says about when and how to use it — its
+[instructions](./mcp-client/basics#server-instructions) — is meant for the same
+model as its tools. svir has one place for it, the system prompt:
+
+```rust compile features="full svir"
+use neva::{Client, svir::RemoteTools};
+
+#[tokio::main]
+async fn main() -> Result<(), Box<dyn std::error::Error>> {
+    let mut client = Client::new()
+        .with_options(|opt| opt.with_http(|http| http.bind("127.0.0.1:3000").with_endpoint("/mcp")));
+    client.connect().await?;
+
+    let tools = RemoteTools::new(client).load().await?;
+
+    // Yours first; the server's after it, marked as the server's.
+    let mut system = String::from("You are a research assistant.");
+    if let Some(instructions) = tools.client().server_instructions() {
+        system.push_str("\n\n## From the docs server\n\n");
+        system.push_str(instructions);
+    }
+
+    let model = svir::Client::openai("http://127.0.0.1:1234").build()?;
+    let request = svir::Request::new("qwen3")
+        .system(system)
+        .tools(&tools)
+        .user("What changed in the last release?");
+    let done = model.complete(&request).await?;
+    println!("{} calls", done.calls.len());
+    Ok(())
+}
+```
+
+Two things the bridge leaves to you:
+
+* **Names.** The instructions are free text, and they name the tools the way
+  the server does. After a `rename` or `with_prefix` they still say `search`
+  where the model is offered `docs_search`, and nothing rewrites them — only
+  the descriptors are renamed, so a tool description that names another tool
+  keeps the server's name too. Tell the model the prefix next to the
+  instructions, or keep the server's names.
+* **Trust.** The instructions are text the server chose, and a model weighs
+  the system prompt above the rest of the request. Put your own instructions
+  first and mark the server's as its own, as above. A server you do not
+  control writes into your system prompt this way, so forwarding its
+  instructions is a decision, not a default. With the tools of several
+  servers in one request there is still one system prompt: how their
+  instructions are joined is yours to decide.
 
 ## What the model is told
 

@@ -27,14 +27,16 @@ sidebar_position: 8
 
 `Client::server_info` читается из
 `_meta["io.modelcontextprotocol/serverInfo"]`, который несёт каждый
-результат, — в результате discovery этого поля больше нет.
+результат, — в результате discovery этого поля больше нет. А
+[инструкции](./basics#server-instructions) сервера остались там, и
+`Client::server_instructions` читает их оттуда.
 
 Отдельного SSE-потока `GET` в транспорте больше нет — neva его не открывает
 под капотом `connect()`. Серверные уведомления вместо этого приходят на
 запросе [`subscriptions/listen`](./subscriptions): ответ на этот `POST` и есть
 поток, а открывает его `Client::listen`.
 
-### Работа с легаси-сервером
+### Работа с легаси-сервером {#talking-to-a-legacy-server}
 
 Клиент работает в **двойном режиме**. Если `server/discover` отклонён на
 уровне протокола — `MethodNotFound`, `InvalidRequest` либо ответ не в формате

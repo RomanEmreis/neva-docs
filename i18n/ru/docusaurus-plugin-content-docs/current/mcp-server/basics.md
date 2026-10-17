@@ -174,6 +174,41 @@ async fn action_handler(req: Request) {
 а если нужно обслуживать клиентов до 2026-07-28 — см.
 [Легаси-спецификация](../legacy-spec.md).
 
+## Инструкции для клиента {#instructions-for-the-client}
+
+Сервер может ещё и сказать, для чего он нужен.
+[`with_instructions()`](https://docs.rs/neva/latest/neva/app/options/struct.McpOptions.html#method.with_instructions)
+задаёт поле `instructions`, которое neva отправляет в результате
+`server/discover`:
+
+```rust compile
+use neva::prelude::*;
+
+#[tokio::main]
+async fn main() {
+    App::new()
+        .with_options(|opt| opt
+            .with_stdio()
+            .with_name("memory")
+            .with_version("1.0.0")
+            .with_instructions("Recall before answering; record what you learn."))
+        .run()
+        .await;
+}
+```
+
+Клиент может передать их своей модели — часто раньше, чем модель увидит хоть
+один инструмент, — поэтому здесь место тому, чего не скажет описание
+отдельного инструмента: для чего инструменты нужны вместе и когда модели
+браться за них без подсказки.
+
+Спецификация не ограничивает длину, но клиенты могут обрезать текст — Claude
+Code оставляет первые 4 096 символов, — поэтому главное ставьте в начало.
+Сервер без `with_instructions()` не отправляет `instructions` вовсе. В профиле
+[`legacy-spec`](../legacy-spec.md) они уходят в результате `initialize`, а
+клиент в обоих случаях читает их через
+[`server_instructions()`](../mcp-client/basics#server-instructions).
+
 ## Поддержка пакетных запросов JSON-RPC 2.0
 
 Neva-серверы обрабатывают [пакетные запросы JSON-RPC 2.0](https://www.jsonrpc.org/specification#batch) автоматически — на транспортах `stdio` и HTTP — без какой-либо дополнительной настройки.
