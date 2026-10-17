@@ -116,6 +116,40 @@ retrying: that needs a fresh `Client`, because a stdio server needs a fresh
 child process anyway.
 :::
 
+## Server Instructions
+
+A server may say how it is meant to be used: what its tools are for, and when
+to reach for them.
+[`server_instructions()`](https://docs.rs/neva/latest/neva/client/struct.Client.html#method.server_instructions)
+returns what it said:
+
+```rust compile
+use neva::prelude::*;
+
+#[tokio::main]
+async fn main() -> Result<(), Error> {
+    let mut client = Client::new()
+        .with_options(|opt| opt.with_default_http());
+    client.connect().await?;
+
+    if let Some(instructions) = client.server_instructions() {
+        println!("{instructions}");
+    }
+
+    client.disconnect().await
+}
+```
+
+They arrive with the `server/discover` result, or with the `initialize` result
+from a [legacy server](./http#talking-to-a-legacy-server), so they are `None`
+until `connect()` has run, and `None` from a server that
+[gave none](../mcp-server/basics#instructions-for-the-client).
+
+The instructions are written for a model. An application that hands the
+server's tools to one usually puts them in its system prompt — the
+[svir bridge](../svir#the-servers-instructions) shows how, and what to watch
+for when you do.
+
 ## Get a Prompt
 
 Next, let’s fetch a [prompt](/docs/mcp-server/basics#adding-a-prompt-handler) to see how prompts work from the client side.

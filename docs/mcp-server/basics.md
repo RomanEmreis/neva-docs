@@ -174,6 +174,39 @@ See [MCP 2026-07-28](../spec-2026-07-28.md#discovery-replaces-the-handshake)
 for the full picture, or [Legacy spec](../legacy-spec.md) if you need to
 serve pre-2026-07-28 clients.
 
+## Instructions for the Client
+
+A server can also say what it is for.
+[`with_instructions()`](https://docs.rs/neva/latest/neva/app/options/struct.McpOptions.html#method.with_instructions)
+sets the `instructions` neva sends in the `server/discover` result:
+
+```rust compile
+use neva::prelude::*;
+
+#[tokio::main]
+async fn main() {
+    App::new()
+        .with_options(|opt| opt
+            .with_stdio()
+            .with_name("memory")
+            .with_version("1.0.0")
+            .with_instructions("Recall before answering; record what you learn."))
+        .run()
+        .await;
+}
+```
+
+A client may hand them to its model, often before the model has seen a single
+tool, so this is the place for what a tool's description cannot say: what the
+tools are for as a set, and when the model should reach for them unprompted.
+
+The spec sets no length limit, but clients may cut the text — Claude Code keeps
+the first 4,096 characters — so put what matters first. A server without
+`with_instructions()` sends no `instructions` at all. Under
+[`legacy-spec`](../legacy-spec.md) they go out in the `initialize` result
+instead, and a client reads them with
+[`server_instructions()`](../mcp-client/basics#server-instructions) either way.
+
 ## JSON-RPC 2.0 Batch Support
 
 Neva servers handle [JSON-RPC 2.0 batch requests](https://www.jsonrpc.org/specification#batch) automatically on both `stdio` and HTTP transports — no extra configuration is required.

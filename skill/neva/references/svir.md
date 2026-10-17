@@ -90,6 +90,53 @@ toolbox kind.
   tools hidden from the model (`visibility = ["app"]`); in-process, tools
   needing roles/permissions/scopes the caller lacks.
 
+## The server's instructions
+
+`tools.client().server_instructions()` (0.8.2) is what the server says about
+when and how to use it, meant for the same model as its tools. svir's one
+place for it is the system prompt — yours first, the server's after it and
+marked as its own:
+
+<!-- snippet: features="full svir" -->
+```rust
+use neva::{Client, svir::RemoteTools};
+
+#[tokio::main]
+async fn main() -> Result<(), Box<dyn std::error::Error>> {
+    let mut client = Client::new().with_options(|opt| opt.with_default_http());
+    client.connect().await?;
+
+    let tools = RemoteTools::new(client).with_prefix("docs_").load().await?;
+
+    let mut system = String::from("You are a research assistant.");
+    if let Some(instructions) = tools.client().server_instructions() {
+        // The prefix is said here: the instructions name the server's tools.
+        system.push_str("\n\n## From the docs server (its tools carry a `docs_` prefix)\n\n");
+        system.push_str(instructions);
+    }
+
+    let model = svir::Client::openai("http://127.0.0.1:1234").build()?;
+    let request = svir::Request::new("qwen3")
+        .system(system)
+        .tools(&tools)
+        .user("What changed in the last release?");
+    let done = model.complete(&request).await?;
+    println!("{}", done.text);
+    Ok(())
+}
+```
+
+* **Names are not rewritten.** `rename` / `with_prefix` rename the
+  descriptors only. The instructions — and a tool description that names
+  another tool — still say `search` where the model is offered `docs_search`,
+  and a model that calls `search` is told there is no such tool. Say the
+  prefix next to them, as above, or keep the server's names.
+* **Forwarding is a decision, not a default.** The text is the server's, and a
+  model weighs the system prompt above the rest of the request: from a server
+  you do not control, this is that server writing into your system prompt.
+  Tools of several servers in one request still share one system prompt —
+  how their instructions are joined is yours.
+
 ## What the model is told
 
 A tool result is one string: text blocks joined with a blank line; structured
